@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.venv/
+.pytest_cache/
+.ruff_cache/
+.basedpyright/
+.coverage
+__pycache__/
+*.py[cod]
+coverage.xml
+htmlcov/
