@@ -30,7 +30,7 @@ jobs:
           python-version: "3.11"
           working-directory: workspace/backend
           enable-cache: true
-          cache-dependency-glob: workspace/backend/uv.lock
+          cache-dependency-glob: uv.lock
 
       - name: Install locked dependencies
         run: uv sync --locked --all-groups
