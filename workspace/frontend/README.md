@@ -14,7 +14,7 @@
 ## 설치 및 실행
 
 ```bash
-cd frontend
+cd workspace/frontend
 npm install
 cp .env.example .env.local
 npm run dev
