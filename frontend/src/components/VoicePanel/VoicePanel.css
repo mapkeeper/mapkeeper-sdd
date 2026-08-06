@@ -1,0 +1,81 @@
+.voice-panel {
+  display: grid;
+  gap: 12px;
+  color: #191f28;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.voice-panel__state {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.voice-panel__primary,
+.voice-panel__fallback button {
+  min-height: 56px;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 16px;
+  background: #3182f6;
+  color: #fff;
+  font-family: Pretendard, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: .01em;
+  text-align: center;
+  cursor: pointer;
+}
+
+.voice-panel__primary {
+  display: flex;
+  min-height: 300px !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  border-radius: 28px;
+  background: linear-gradient(145deg, #2f6bd4, #17469f);
+  font-size: 25px;
+  box-shadow: 0 16px 34px rgba(31,87,189,.22);
+}
+.voice-panel__waves { display:flex; align-items:center; justify-content:center; gap:6px; width:190px; height:104px; border-radius:52px; background:rgba(255,255,255,.14); }
+.voice-panel__waves i { width:4px; height:28px; border-radius:9px; background:#fff; opacity:.75; }
+.voice-panel__waves i:nth-child(2), .voice-panel__waves i:nth-last-child(2) { height:50px; }
+.voice-panel__waves i:nth-child(3), .voice-panel__waves i:nth-last-child(3) { height:70px; }
+.voice-panel__waves b { display:grid; width:76px; height:76px; place-items:center; border-radius:50%; background:#fff; color:#245bbd; font-size:34px; }
+.voice-panel__listening { display:grid; min-height:330px; place-content:center; justify-items:center; text-align:center; }
+.voice-panel__pulse { display:grid; width:130px; height:130px; place-items:center; border-radius:50%; background:#e8f3ff; color:#245bbd; font-size:60px; animation:voice-pulse 1.4s ease-in-out infinite; }
+@keyframes voice-pulse { 50% { transform:scale(1.08); box-shadow:0 0 0 35px rgba(49,130,246,.08); } }
+
+.voice-panel__fallback form {
+  display: grid;
+  gap: 12px;
+}
+
+.voice-panel__fallback textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 96px;
+  padding: 20px;
+  border: 0;
+  border-radius: 20px;
+  background: #fff;
+  color: #191f28;
+  box-shadow: 0 4px 20px rgba(0,0,0,.04);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.voice-panel__transcript {
+  min-height: 56px;
+  padding: 20px;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 18px;
+  line-height: 1.6;
+  box-shadow: 0 4px 20px rgba(0,0,0,.04);
+}

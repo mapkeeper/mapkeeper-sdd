@@ -1,0 +1,147 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
+import { server } from '@/mocks/server';
+import { StoreChangeWizard } from '@/features/store-change/StoreChangeWizard';
+
+async function createDraft(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+  await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '영업시간을 밤 10시까지로 바꿔줘');
+  await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+  expect(await screen.findByRole('heading', { name: '변경안을 확인해 주세요' })).toBeInTheDocument();
+}
+
+describe('StoreChangeWizard', () => {
+  afterEach(() => vi.unstubAllEnvs());
+  test('인식 텍스트로 변경안을 만들고 검토 화면으로 이동한다', async () => {
+    const user = userEvent.setup();
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+    await createDraft(user);
+    expect(screen.getByText('09:00-10:00')).toBeInTheDocument();
+    expect(screen.getByText('DRAFT')).toBeInTheDocument();
+  });
+
+  test('음성 또는 직접 입력 문장에 따라 허용된 변경 필드와 값이 동적으로 생성된다', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<StoreChangeWizard storeProfileId="store-123" />);
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '8월 10일은 임시 휴무로 해줘');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+    expect(await screen.findByText('8월 10일 임시 휴무')).toBeInTheDocument();
+    expect(screen.getByText('임시 휴무')).toBeInTheDocument();
+    unmount();
+
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '대표 메뉴를 만두전골로 바꿔줘');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+    expect(await screen.findByText('만두전골')).toBeInTheDocument();
+    expect(screen.getByText('대표 메뉴')).toBeInTheDocument();
+  });
+
+  test('허용 필드 값을 수정해도 DRAFT로 유지하고 로컬 거절은 API 없이 끝낸다', async () => {
+    const user = userEvent.setup();
+    let patchCalls = 0;
+    let approveCalls = 0;
+    server.use(
+      http.patch('/api/v1/store-change-proposals/:proposalId', () => {
+        patchCalls += 1;
+        return HttpResponse.json({
+          success: true,
+          status: 'SUCCESS',
+          data: {
+            proposalId: 'prop-001',
+            changes: [{ field: 'businessHours', currentValue: '09:00-22:00', proposedValue: '09:00-20:00' }],
+            status: 'DRAFT',
+          },
+          error: null,
+          timestamp: '2026-08-03T00:00:00Z',
+        });
+      }),
+      http.post('/api/v1/store-change-proposals/:proposalId/approve', () => {
+        approveCalls += 1;
+        return HttpResponse.error();
+      }),
+    );
+    const { unmount } = render(<StoreChangeWizard storeProfileId="store-123" />);
+    await createDraft(user);
+    await user.click(screen.getByRole('button', { name: '변경안 수정' }));
+    const value = screen.getByLabelText('영업시간 변경 값');
+    await user.clear(value);
+    await user.type(value, '09:00-20:00');
+    await user.click(screen.getByRole('button', { name: '수정 내용 저장' }));
+    expect(await screen.findByText('09:00-20:00')).toBeInTheDocument();
+    expect(patchCalls).toBe(1);
+
+    await user.click(screen.getByRole('button', { name: '변경안 거절' }));
+    expect(screen.getByText('변경안을 적용하지 않았습니다')).toBeInTheDocument();
+    expect(approveCalls).toBe(0);
+    unmount();
+  });
+
+  test('키보드 제출이나 음성은 승인하지 않고 승인 버튼 클릭만 approve를 한 번 호출한다', async () => {
+    const user = userEvent.setup();
+    const approvalKeys: string[] = [];
+    let resolveApproval: (() => void) | undefined;
+    const approvalBarrier = new Promise<void>((resolve) => { resolveApproval = resolve; });
+    server.use(
+      http.post('/api/v1/store-change-proposals/prop-001/approve', async ({ request }) => {
+        approvalKeys.push(request.headers.get('Idempotency-Key') ?? '');
+        await approvalBarrier;
+        return HttpResponse.json({
+          success: true,
+          status: 'PROCESSING',
+          data: { proposalId: 'prop-001', syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001' },
+          error: null,
+          timestamp: '2026-08-03T00:00:00Z',
+        });
+      }),
+    );
+    const onSyncHandoff = vi.fn();
+    render(<StoreChangeWizard storeProfileId="store-123" onSyncHandoff={onSyncHandoff} />);
+    await createDraft(user);
+    await user.click(screen.getByRole('button', { name: '승인 단계로 이동' }));
+
+    await user.keyboard('{Enter}');
+    expect(approvalKeys).toHaveLength(0);
+    const approveButton = screen.getByRole('button', { name: '승인' });
+    await user.dblClick(approveButton);
+    expect(approveButton).toBeDisabled();
+    expect(approvalKeys).toHaveLength(1);
+    expect(approvalKeys[0]).not.toBe('');
+
+    resolveApproval?.();
+    await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({
+      syncJobId: 'job-001',
+      statusUrl: '/api/v1/sync-jobs/job-001',
+    }));
+  });
+
+  test('Mock 서버가 검증 오류를 반환해도 처리 안내 후 원문 메모 DRAFT로 진행한다', async () => {
+    const user = userEvent.setup();
+    vi.stubEnv('VITE_API_MOCKING', 'true');
+    server.use(
+      http.post('/api/v1/store-change-proposals', () => HttpResponse.json({
+        success: false,
+        status: 'FAILED',
+        data: null,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: '허용되지 않은 필드입니다.',
+          details: [{ field: 'recognizedText', reason: 'unsupported field' }],
+        },
+        timestamp: '2026-08-03T00:00:00Z',
+      }, { status: 422 })),
+    );
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '전화번호 바꿔줘');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('AI가 변경안을 작성 중입니다...');
+    expect(await screen.findByRole('heading', { name: '변경안을 확인해 주세요' }, { timeout: 1_500 })).toBeInTheDocument();
+    expect(screen.getByText('요청 메모')).toBeInTheDocument();
+    expect(screen.getByText('전화번호 바꿔줘')).toBeInTheDocument();
+    expect(screen.queryByText('허용되지 않은 필드입니다.')).not.toBeInTheDocument();
+  });
+});
