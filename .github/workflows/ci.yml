@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend quality gate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workspace/backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+
+      - name: Install Python and uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          python-version: "3.11"
+          working-directory: workspace/backend
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install locked dependencies
+        run: uv sync --locked --all-groups
+
+      - name: Check formatting
+        run: uv run --locked ruff format --check .
+
+      - name: Run lint checks
+        run: uv run --locked ruff check .
+
+      - name: Run type checks
+        run: uv run --locked basedpyright
+
+      - name: Run tests
+        run: >-
+          uv run --locked pytest
+          --cov=mapkeeper
+          --cov-report=term-missing
+          --cov-fail-under=100
+
+  container:
+    name: Container build gate
+    needs: backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+
+      - name: Validate Compose configuration
+        run: docker compose -f workspace/compose.yaml config --quiet
+
+      - name: Build backend image
+        run: docker build --tag mapkeeper-backend:ci workspace/backend
