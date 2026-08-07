@@ -17,7 +17,7 @@ describe('민감정보 경계', () => {
       return HttpResponse.json({
         success: true,
         status: 'SUCCESS',
-        data: { proposalId: 'prop-001', recognizedTextMasked: '***', changes: [], status: 'DRAFT' },
+        data: { proposalId: '22222222-2222-4222-8222-222222222222', recognizedTextMasked: '***', changes: [], status: 'DRAFT' },
         error: null,
         timestamp: '2026-08-03T00:00:00Z',
       });

@@ -5,9 +5,9 @@ import {
   approveStoreChangeProposal,
   createStoreChangeProposal,
   patchStoreChangeProposal,
+  rejectStoreChangeProposal,
 } from '@/services/storeChangeApi';
-import type { StoreChangeApprovalResponse } from '@/services/api.types';
-import type { ProposalChange, StoreChangeProposal } from '@/types/domain';
+import type { ProposalChange, StoreChangeApprovalResponse, StoreChangeProposalData } from '@/services/contracts/storeChange';
 
 export interface StoreChangeSyncHandoff {
   syncJobId: string;
@@ -15,13 +15,15 @@ export interface StoreChangeSyncHandoff {
 }
 
 interface StoreChangeFlow {
-  proposal: StoreChangeProposal | null;
+  proposal: StoreChangeProposalData | null;
   isCreating: boolean;
   isSaving: boolean;
+  isRejecting: boolean;
   isApproving: boolean;
   errorMessage: string | null;
-  create(recognizedText: string): Promise<StoreChangeProposal | null>;
-  save(changes: ProposalChange[]): Promise<StoreChangeProposal | null>;
+  create(recognizedText: string): Promise<StoreChangeProposalData | null>;
+  save(changes: ProposalChange[]): Promise<StoreChangeProposalData | null>;
+  reject(): Promise<StoreChangeProposalData | null>;
   approveFromButton(): Promise<StoreChangeApprovalResponse | null>;
   clear(): void;
   clearError(): void;
@@ -30,6 +32,9 @@ interface StoreChangeFlow {
 function safeUserMessage(error: unknown): string {
   if (!(error instanceof ApiClientError)) return '예상하지 못한 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
   if (error.causeBody?.code === 'VALIDATION_ERROR') return '입력 내용을 다시 확인해 주세요.';
+  if (error.causeBody?.code === 'STALE_PROPOSAL') return '변경안이 그새 바뀌었어요. 새로고침 후 다시 시도해 주세요.';
+  if (error.causeBody?.code === 'INVALID_STATE') return '이미 처리된 변경안이에요. 새로 만들어 주세요.';
+  if (error.causeBody?.code === 'IDEMPOTENCY_CONFLICT') return '이전 승인 요청과 내용이 달라졌어요. 새로고침 후 다시 시도해 주세요.';
   if (error.causeBody?.code === 'PERMISSION_DENIED' || error.status === 401 || error.status === 403) {
     return '이 작업을 수행할 권한이 없습니다. 관리자에게 문의해 주세요.';
   }
@@ -38,31 +43,23 @@ function safeUserMessage(error: unknown): string {
   return '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 }
 
-function isFlexibleMockMode(): boolean {
-  return import.meta.env.VITE_API_MOCKING === 'true' || import.meta.env.MODE === 'test';
-}
-
-function createLocalMockFallback(recognizedText: string): StoreChangeProposal {
-  const hasBusinessHoursIntent = /시간|영업/.test(recognizedText);
-  return {
-    proposalId: 'prop-001',
-    recognizedTextMasked: '입력하신 요청을 안전하게 메모했습니다.',
-    changes: hasBusinessHoursIntent ? [{
-      field: 'businessHours',
-      currentValue: '09:00-22:00',
-      proposedValue: '09:00-22:00',
-    }] : [],
-    status: 'DRAFT',
-  };
+// UC1 approval idempotency identity is Proposal ID + approval content (API Contract §7):
+// a retry with the exact same changes reuses the key, any content change mints a new one.
+function contentSignature(changes: readonly ProposalChange[]): string {
+  return [...changes]
+    .sort((a, b) => a.field.localeCompare(b.field))
+    .map((change) => `${change.field}:${JSON.stringify(change.proposedValue)}`)
+    .join('|');
 }
 
 export function useStoreChangeFlow(
   storeProfileId: string,
   onSyncHandoff?: (handoff: StoreChangeSyncHandoff) => void,
 ): StoreChangeFlow {
-  const [proposal, setProposal] = useState<StoreChangeProposal | null>(null);
+  const [proposal, setProposal] = useState<StoreChangeProposalData | null>(null);
   const [isCreating, setCreating] = useState(false);
   const [isSaving, setSaving] = useState(false);
+  const [isRejecting, setRejecting] = useState(false);
   const [isApproving, setApproving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const approvalLockRef = useRef(false);
@@ -80,12 +77,6 @@ export function useStoreChangeFlow(
       setProposal(result.data);
       return result.data;
     } catch (error: unknown) {
-      if (isFlexibleMockMode()) {
-        const fallback = createLocalMockFallback(recognizedText.trim());
-        setProposal(fallback);
-        setErrorMessage(null);
-        return fallback;
-      }
       setErrorMessage(safeUserMessage(error));
       return null;
     } finally {
@@ -94,7 +85,7 @@ export function useStoreChangeFlow(
   }, [isCreating, storeProfileId]);
 
   const save = useCallback(async (changes: ProposalChange[]) => {
-    if (!proposal || isSaving) return null;
+    if (!proposal || proposal.status !== 'DRAFT' || isSaving) return null;
     setSaving(true);
     setErrorMessage(null);
     try {
@@ -109,22 +100,45 @@ export function useStoreChangeFlow(
     }
   }, [isSaving, proposal]);
 
-  const approveFromButton = useCallback(async () => {
-    if (!proposal || approvalLockRef.current) return null;
-    approvalLockRef.current = true;
-    setApproving(true);
+  const reject = useCallback(async () => {
+    if (!proposal || proposal.status !== 'DRAFT' || isRejecting) return null;
+    setRejecting(true);
     setErrorMessage(null);
-    const lease = acquireIdempotencyKey(`store-change:${proposal.proposalId}`);
     try {
-      const result = await approveStoreChangeProposal(proposal.proposalId, lease.key);
-      setProposal((current) => current ? { ...current, status: 'APPROVED' } : current);
-      onSyncHandoff?.({ syncJobId: result.data.syncJobId, statusUrl: result.data.statusUrl });
+      const result = await rejectStoreChangeProposal(proposal.proposalId);
+      setProposal(result.data);
       return result.data;
     } catch (error: unknown) {
       setErrorMessage(safeUserMessage(error));
       return null;
     } finally {
-      lease.resolve();
+      setRejecting(false);
+    }
+  }, [isRejecting, proposal]);
+
+  const approveFromButton = useCallback(async () => {
+    if (!proposal || proposal.status !== 'DRAFT' || approvalLockRef.current) return null;
+    approvalLockRef.current = true;
+    setApproving(true);
+    setErrorMessage(null);
+    const lease = acquireIdempotencyKey(`store-change:${proposal.proposalId}:${contentSignature(proposal.changes)}`);
+    try {
+      const result = await approveStoreChangeProposal(proposal.proposalId, lease.key);
+      lease.settleDefinitive();
+      setProposal((current) => current ? { ...current, status: 'APPROVED' } : current);
+      onSyncHandoff?.({ syncJobId: result.data.syncJobId, statusUrl: result.data.statusUrl });
+      return result.data;
+    } catch (error: unknown) {
+      // status 0 means the request never definitively reached/returned from the server
+      // (network failure) - keep the key so a retry with the same content reuses it.
+      if (error instanceof ApiClientError && error.status === 0) {
+        lease.retainOnAmbiguous();
+      } else {
+        lease.settleDefinitive();
+      }
+      setErrorMessage(safeUserMessage(error));
+      return null;
+    } finally {
       approvalLockRef.current = false;
       setApproving(false);
     }
@@ -139,10 +153,12 @@ export function useStoreChangeFlow(
     proposal,
     isCreating,
     isSaving,
+    isRejecting,
     isApproving,
     errorMessage,
     create,
     save,
+    reject,
     approveFromButton,
     clear,
     clearError: () => setErrorMessage(null),

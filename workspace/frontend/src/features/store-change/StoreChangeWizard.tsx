@@ -3,18 +3,13 @@ import type { FormEvent } from 'react';
 import { ProposalEditor } from '@/components/ProposalEditor/ProposalEditor';
 import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
-import type { ProposalChange, ProposalField } from '@/types/domain';
+import type { ProposalChange } from '@/services/contracts/storeChange';
+import { fieldLabels, formatChangeValue } from '@/features/store-change/proposalFormat';
 import { useStoreChangeFlow } from '@/features/store-change/useStoreChangeFlow';
 import type { StoreChangeSyncHandoff } from '@/features/store-change/useStoreChangeFlow';
 import './storeChange.css';
 
 type WizardStep = 'INPUT' | 'MANUAL' | 'REVIEW' | 'EDIT' | 'CONFIRM' | 'REJECTED' | 'SYNC';
-
-const fieldLabels: Record<ProposalField, string> = {
-  businessHours: '영업시간',
-  temporaryClosure: '임시 휴무',
-  representativeMenuName: '대표 메뉴',
-};
 
 export interface StoreChangeWizardProps {
   storeProfileId: string;
@@ -76,10 +71,12 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
     if (proposal) setStep('REVIEW');
   };
 
-  const rejectLocally = () => {
-    flow.clear();
-    setDraftNote(null);
-    setStep('REJECTED');
+  const rejectProposal = async () => {
+    const rejected = await flow.reject();
+    if (rejected) {
+      setDraftNote(null);
+      setStep('REJECTED');
+    }
   };
 
   if (isDraftPreparing) {
@@ -148,7 +145,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
             {flow.proposal.changes.map((change) => (
               <div key={change.field}>
                 <dt><span aria-hidden="true">◷</span><span>{fieldLabels[change.field]}</span><i>변경</i><button type="button" onClick={beginEdit}>✎ 직접 수정</button></dt>
-                <dd><small>기존</small><s>{change.currentValue}</s><b aria-hidden="true">↓</b><small className="is-new">변경</small><strong>{change.proposedValue}</strong></dd>
+                <dd><small>기존</small><s>{formatChangeValue(change, 'currentValue')}</s><b aria-hidden="true">↓</b><small className="is-new">변경</small><strong>{formatChangeValue(change, 'proposedValue')}</strong></dd>
               </div>
             ))}
             {draftNote ? (
@@ -161,7 +158,9 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
           <div className="store-change-wizard__actions">
             <button type="button" aria-label="승인 단계로 이동" onClick={() => setStep('CONFIRM')}>맞아요 <small>(3사에 반영)</small></button>
             <button type="button" className="store-change-wizard__secondary" onClick={beginEdit}>변경안 수정</button>
-            <button type="button" className="store-change-wizard__danger" onClick={rejectLocally}>변경안 거절</button>
+            <button type="button" className="store-change-wizard__danger" disabled={flow.isRejecting} onClick={() => void rejectProposal()}>
+              {flow.isRejecting ? '거절 처리 중…' : '변경안 거절'}
+            </button>
           </div>
         </section>
       ) : null}
