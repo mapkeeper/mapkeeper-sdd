@@ -1,48 +1,21 @@
 import { useEffect, useState } from 'react';
 import { ApiClientError } from '@/services/api';
 import { retryStartedMessage, SYNC_COPY, SYNC_STATUS_TITLES } from '@/content/syncMessages';
-import {
-  getSyncJobSnapshot,
-  isRetryEligible,
-  isTerminalSyncStatus,
-  retrySyncJob,
-} from '@/services/syncJobs';
-import type { ApiErrorBody } from '@/services/api.types';
-import type { Platform, PlatformTaskStatus, SyncJob } from '@/types/domain';
+import { eligibleRetryTasks, getSyncJob, isTerminalSyncStatus, retrySyncJob } from '@/services/syncJobs';
+import type { Platform } from '@/services/contracts/common';
+import type { GetSyncJobResponse, PlatformSyncTaskStatus } from '@/services/contracts/syncJob';
 import googleLogo from '@/assets/platforms/google.svg';
 import naverLogo from '@/assets/platforms/naver.svg';
 import kakaoLogo from '@/assets/platforms/kakao.svg';
 import './SyncStatus.css';
 
-const platformLabels: Record<Platform, string> = {
-  google: 'Google', naver: 'Naver', kakao: 'Kakao',
-};
+// Production polling constants (API Contract §7): 2s cadence, stop polling automatically
+// after 60s of non-terminal status.
+const POLL_INTERVAL_MS = 2_000;
+const POLL_TIMEOUT_MS = 60_000;
 
-const accessiblePlatformLabels: Record<Platform, string> = {
-  google: 'Google', naver: 'Naver', kakao: 'Kakao',
-};
-
-const displayPlatformLabels: Record<Platform, string> = {
-  google: '구글', naver: '네이버', kakao: '카카오',
-};
-
-export type PlatformResultStatus = 'SUCCESS' | 'FAIL' | 'PENDING' | 'PROCESSING' | 'RETRYING';
-export interface PlatformResult {
-  id: Platform;
-  name: string;
-  status: PlatformResultStatus;
-  errorMessage?: string;
-}
-
-function toPlatformResults(job: SyncJob | null, warning: ApiErrorBody | null = null): PlatformResult[] {
-  if (!job) return [];
-  return (Object.entries(job.platforms) as Array<[Platform, PlatformTaskStatus]>).map(([id, status]) => ({
-    id,
-    name: displayPlatformLabels[id],
-    status: status === 'FAILED' ? 'FAIL' : status,
-    ...(status === 'FAILED' ? { errorMessage: warning?.code === 'API_TIMEOUT' ? '접속 시간 초과' : warning?.code === 'PERMISSION_DENIED' ? '권한 확인 필요' : '플랫폼 연결에 실패했습니다.' } : {}),
-  }));
-}
+const accessiblePlatformLabels: Record<Platform, string> = { google: 'Google', naver: 'Naver', kakao: 'Kakao' };
+const displayPlatformLabels: Record<Platform, string> = { google: '구글', naver: '네이버', kakao: '카카오' };
 
 const platformLogos: Record<Platform, string> = {
   google: googleLogo,
@@ -50,7 +23,7 @@ const platformLogos: Record<Platform, string> = {
   kakao: kakaoLogo,
 };
 
-const statusIcons: Record<PlatformTaskStatus, string> = {
+const statusIcons: Record<PlatformSyncTaskStatus, string> = {
   PENDING: '○',
   PROCESSING: '◌',
   RETRYING: '↻',
@@ -58,7 +31,7 @@ const statusIcons: Record<PlatformTaskStatus, string> = {
   FAILED: '!',
 };
 
-const statusLabels: Record<PlatformTaskStatus, string> = {
+const statusLabels: Record<PlatformSyncTaskStatus, string> = {
   PENDING: '대기 중',
   PROCESSING: '반영 중',
   RETRYING: '재시도 중',
@@ -68,10 +41,8 @@ const statusLabels: Record<PlatformTaskStatus, string> = {
 
 export interface SyncStatusDashboardProps {
   syncJobId: string;
-  initialJob?: SyncJob;
-  resultOverride?: PlatformResult[] | null;
+  initialJob?: GetSyncJobResponse;
   autoPoll?: boolean;
-  pollIntervalMs?: number;
 }
 
 function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
@@ -85,41 +56,41 @@ function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
 }
 
 function safePollingError(error: unknown): string {
-  if (error instanceof ApiClientError && error.status === 0) {
-    return SYNC_COPY.networkError;
-  }
+  if (error instanceof ApiClientError && error.status === 0) return SYNC_COPY.networkError;
   return SYNC_COPY.pollingError;
 }
 
-export function SyncStatusDashboard({
-  syncJobId,
-  initialJob,
-  resultOverride = null,
-  autoPoll = true,
-  pollIntervalMs = 500,
-}: SyncStatusDashboardProps) {
-  const [job, setJob] = useState<SyncJob | null>(initialJob ?? null);
-  const [warning, setWarning] = useState<ApiErrorBody | null>(null);
+export function SyncStatusDashboard({ syncJobId, initialJob, autoPoll = true }: SyncStatusDashboardProps) {
+  const [job, setJob] = useState<GetSyncJobResponse | null>(initialJob ?? null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const [isRetrying, setRetrying] = useState(false);
+  const [isRechecking, setRechecking] = useState(false);
+  const [delayed, setDelayed] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
-  const [platformResults, setPlatformResults] = useState<PlatformResult[]>(() => toPlatformResults(initialJob ?? null));
 
+  // Single polling implementation: aborts on unmount, on a newer syncJobId/refresh
+  // superseding it, and stops (without retrying) on a network error. It never restarts
+  // itself once delayed - only the one-shot recheck button issues another GET.
   useEffect(() => {
     if (!autoPoll) return;
     const controller = new AbortController();
 
     const poll = async () => {
+      setDelayed(false);
+      let elapsed = 0;
       try {
         for (;;) {
-          const snapshot = await getSyncJobSnapshot(syncJobId, controller.signal);
-          setJob(snapshot.job);
-          setWarning(snapshot.warning);
-          setPlatformResults(toPlatformResults(snapshot.job, snapshot.warning));
+          const result = await getSyncJob(syncJobId, controller.signal);
+          setJob(result.data);
           setErrorMessage(null);
-          if (isTerminalSyncStatus(snapshot.job.status)) return;
-          await delay(pollIntervalMs, controller.signal);
+          if (isTerminalSyncStatus(result.data.status)) return;
+          if (elapsed >= POLL_TIMEOUT_MS) {
+            setDelayed(true);
+            return;
+          }
+          await delay(POLL_INTERVAL_MS, controller.signal);
+          elapsed += POLL_INTERVAL_MS;
         }
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
@@ -129,7 +100,7 @@ export function SyncStatusDashboard({
 
     void poll();
     return () => controller.abort();
-  }, [autoPoll, pollIntervalMs, refreshToken, syncJobId]);
+  }, [autoPoll, refreshToken, syncJobId]);
 
   const retry = async () => {
     if (isRetrying) return;
@@ -137,13 +108,31 @@ export function SyncStatusDashboard({
     setErrorMessage(null);
     try {
       const result = await retrySyncJob(syncJobId);
-      const labels = result.retryingPlatforms.map((platform) => platformLabels[platform]).join(', ');
-      setRetryMessage(retryStartedMessage(labels.split(', ')));
+      const labels = result.data.retryingPlatforms.map((platform) => accessiblePlatformLabels[platform]);
+      setRetryMessage(retryStartedMessage(labels));
+      setDelayed(false);
       setRefreshToken((current) => current + 1);
     } catch (error: unknown) {
       setErrorMessage(safePollingError(error));
     } finally {
       setRetrying(false);
+    }
+  };
+
+  // One immediate GET only; if the job is still non-terminal it remains delayed instead
+  // of silently resuming the 2s loop (API Contract §7 "다시 확인 버튼").
+  const recheck = async () => {
+    if (isRechecking) return;
+    setRechecking(true);
+    setErrorMessage(null);
+    try {
+      const result = await getSyncJob(syncJobId);
+      setJob(result.data);
+      if (isTerminalSyncStatus(result.data.status)) setDelayed(false);
+    } catch (error: unknown) {
+      setErrorMessage(safePollingError(error));
+    } finally {
+      setRechecking(false);
     }
   };
 
@@ -156,13 +145,12 @@ export function SyncStatusDashboard({
     );
   }
 
-  const renderedResults = resultOverride ?? platformResults;
-  const progress = renderedResults.filter(({ status }) => status === 'SUCCESS').length;
   const isTerminal = isTerminalSyncStatus(job.status);
-  const isAllSuccess = renderedResults.length > 0 && renderedResults.every(({ status }) => status === 'SUCCESS');
-  const hasFailure = renderedResults.some(({ status }) => status === 'FAIL');
-  const canRetry = resultOverride !== null ? hasFailure : isRetryEligible(warning?.code, warning?.retryable);
-  const firstFailedPlatform = renderedResults.find(({ status }) => status === 'FAIL')?.id;
+  const succeededCount = job.platformTasks.filter((task) => task.status === 'SUCCESS').length;
+  const eligibleTasks = eligibleRetryTasks(job.platformTasks);
+  const canRetry = eligibleTasks.length > 0;
+  const isAllSuccess = job.status === 'SUCCESS';
+  const hasFailure = job.platformTasks.some((task) => task.status === 'FAILED');
   const mainTitle = isAllSuccess
     ? '3사에 반영되었습니다!'
     : hasFailure ? '일부 플랫폼 반영에 실패했어요' : '플랫폼에 반영하고 있어요';
@@ -182,32 +170,45 @@ export function SyncStatusDashboard({
       </header>
 
       {!isTerminal ? <label className="sync-status__progress">
-        <span>{progress} / {job.summary.total}개 플랫폼 완료</span>
-        <progress aria-label="동기화 진행률" max={job.summary.total} value={progress} />
-      </label> : <progress className="sr-only" aria-label="동기화 진행률" max={job.summary.total} value={progress} />}
+        <span>{succeededCount} / {job.platformTasks.length}개 플랫폼 완료</span>
+        <progress aria-label="동기화 진행률" max={job.platformTasks.length} value={succeededCount} />
+      </label> : <progress className="sr-only" aria-label="동기화 진행률" max={job.platformTasks.length} value={succeededCount} />}
 
       <ul className="sync-status__platforms">
-        {renderedResults.map((result) => {
-          const domainStatus: PlatformTaskStatus = result.status === 'FAIL' ? 'FAILED' : result.status;
-          return (
-          <li key={result.id} aria-label={`${accessiblePlatformLabels[result.id]} ${statusLabels[domainStatus]}`}>
-            <img className="sync-status__brand-logo" src={platformLogos[result.id]} alt={`${accessiblePlatformLabels[result.id]} 로고`} />
-            <div className="sync-status__platform-copy"><strong>{result.name}</strong><span>{result.status === 'SUCCESS' ? '업데이트 완료' : result.status === 'FAIL' ? result.errorMessage : statusLabels[domainStatus]}</span></div>
-            <span className="sr-only">{statusLabels[domainStatus]}</span>
-            {result.status === 'SUCCESS' ? <span className="sync-status__success-check" aria-hidden="true">✓</span> : null}
-            {result.status === 'FAIL' ? <div className="sync-status__failure-action"><strong>실패&nbsp; !</strong>{canRetry ? <button type="button" aria-label={result.id === firstFailedPlatform ? '실패한 플랫폼 다시 시도' : `${result.name} 재시도`} onClick={() => void retry()} disabled={isRetrying} style={{ minHeight: 56 }}>{isRetrying ? '재시도 중…' : '↻ 재시도'}</button> : null}</div> : null}
-            {!['SUCCESS', 'FAIL'].includes(result.status) ? <span className={`sync-status__platform-icon sync-status__platform-icon--${domainStatus.toLowerCase()}`} aria-hidden="true">{statusIcons[domainStatus]}</span> : null}
+        {job.platformTasks.map((task) => (
+          <li key={task.platform} aria-label={`${accessiblePlatformLabels[task.platform]} ${statusLabels[task.status]}`}>
+            <img className="sync-status__brand-logo" src={platformLogos[task.platform]} alt={`${accessiblePlatformLabels[task.platform]} 로고`} />
+            <div className="sync-status__platform-copy">
+              <strong>{displayPlatformLabels[task.platform]}</strong>
+              <span>{task.status === 'SUCCESS' ? '업데이트 완료' : task.status === 'FAILED' ? (task.error?.message ?? '반영에 실패했습니다.') : statusLabels[task.status]}</span>
+            </div>
+            <span className="sr-only">{statusLabels[task.status]}</span>
+            {task.status === 'SUCCESS' ? <span className="sync-status__success-check" aria-hidden="true">✓</span> : null}
+            {task.status === 'FAILED' ? (
+              <div className="sync-status__failure-action">
+                <strong>실패&nbsp; !</strong>
+                <span className="sync-status__attempt-count">{task.attemptCount}/3회 시도</span>
+              </div>
+            ) : null}
+            {!['SUCCESS', 'FAILED'].includes(task.status) ? <span className={`sync-status__platform-icon sync-status__platform-icon--${task.status.toLowerCase()}`} aria-hidden="true">{statusIcons[task.status]}</span> : null}
           </li>
-        );})}
+        ))}
       </ul>
 
       {job.status === 'PARTIAL_SUCCESS' ? (
         <p className="sync-status__explanation">{SYNC_COPY.partialSuccess}</p>
       ) : null}
-      {warning ? <p className="sync-status__warning">{warning.message}</p> : null}
+      {delayed ? (
+        <div className="sync-status__delayed" role="status">
+          <p>{SYNC_COPY.delayedNotice}</p>
+          <button type="button" onClick={() => void recheck()} disabled={isRechecking} style={{ minHeight: 56 }}>
+            {isRechecking ? SYNC_COPY.recheckingAction : SYNC_COPY.recheckAction}
+          </button>
+        </div>
+      ) : null}
       {errorMessage ? <p role="alert">{errorMessage}</p> : null}
       {retryMessage ? <p role="status">{retryMessage}</p> : null}
-      {canRetry && !hasFailure ? (
+      {canRetry ? (
         <button type="button" onClick={() => void retry()} disabled={isRetrying} style={{ minHeight: 56 }}>
           {isRetrying ? SYNC_COPY.retryingAction : SYNC_COPY.retryAction}
         </button>

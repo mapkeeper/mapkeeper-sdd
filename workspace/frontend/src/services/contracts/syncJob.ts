@@ -10,6 +10,7 @@ export const platformSyncTaskSchema = z.strictObject({
   error: platformTaskErrorSchema.nullable(),
 });
 export type PlatformSyncTask = z.infer<typeof platformSyncTaskSchema>;
+export type PlatformSyncTaskStatus = PlatformSyncTask['status'];
 
 // `PARTIAL_SUCCESS` is valid only on the job-level `status`; PlatformSyncTaskStatus
 // never allows it (API Contract §2, Data Model §1).

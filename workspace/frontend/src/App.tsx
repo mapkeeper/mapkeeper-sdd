@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { SeoGenerationWizard } from '@/features/seo/SeoGenerationWizard';
 import { StoreChangeWizard } from '@/features/store-change/StoreChangeWizard';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
-import type { PlatformResult } from '@/components/SyncStatus/SyncStatus';
 import { MockScenarioPanel } from '@/mocks/MockScenarioPanel';
 import { reviewSummaryFixture, sourceReviewFixtures } from '@/mocks/fixtures/storeFixtures';
 import googleLogo from '@/assets/platforms/google.svg';
@@ -74,10 +73,10 @@ function Home({ onStore, onSeo }: { onStore(): void; onSeo(): void }) {
   </main>;
 }
 
-function SyncResult({ onHome, syncJobId, resultOverride }: { onHome(): void; syncJobId: string; resultOverride: PlatformResult[] | null }) {
+function SyncResult({ onHome, syncJobId }: { onHome(): void; syncJobId: string }) {
   return <main className="flex min-h-dvh flex-col bg-gray-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] font-pretendard">
     <button type="button" aria-label="홈으로 나가기" onClick={onHome} className="ml-auto grid h-12 w-12 place-items-center rounded-full bg-white text-3xl shadow-card">×</button>
-    <SyncStatusDashboard syncJobId={syncJobId} pollIntervalMs={100} resultOverride={resultOverride} />
+    <SyncStatusDashboard syncJobId={syncJobId} />
     <button type="button" onClick={onHome} className="mt-auto h-14 w-full rounded-2xl bg-blue-600 text-[18px] font-bold text-white shadow-lg shadow-blue-200">홈으로 돌아가기</button>
   </main>;
 }
@@ -85,35 +84,20 @@ function SyncResult({ onHome, syncJobId, resultOverride }: { onHome(): void; syn
 export function App() {
   const [screen, setScreen] = useState<AppScreen>('HOME');
   const [syncJobId, setSyncJobId] = useState('');
-  const [demoResults, setDemoResults] = useState<PlatformResult[] | null>(null);
   const mockMode = import.meta.env.VITE_API_MOCKING === 'true';
   const showDeveloperTools = import.meta.env.VITE_SHOW_DEVELOPER_TOOLS === 'true'
     || (import.meta.env.DEV && import.meta.env.VITE_SHOW_DEVELOPER_TOOLS !== 'false');
   const goHome = () => setScreen('HOME');
   return <div className="app-viewport"><div className="app-phone" data-testid="dashboard-container">
     {screen === 'HOME' && <Home onStore={() => setScreen('STORE_CHANGE')} onSeo={() => setScreen('SEO')} />}
-    {screen === 'SEO' && <SeoGenerationWizard storeProfileId="store-123" sourceReviews={mockMode ? sourceReviewFixtures : []} {...(mockMode ? { reviewSummary: reviewSummaryFixture } : {})} onExit={goHome} syncResultOverride={demoResults} />}
+    {screen === 'SEO' && <SeoGenerationWizard storeProfileId="store-123" sourceReviews={mockMode ? sourceReviewFixtures : []} {...(mockMode ? { reviewSummary: reviewSummaryFixture } : {})} onExit={goHome} />}
     {screen === 'STORE_CHANGE' && <main className="standalone-flow"><button className="standalone-flow__close" type="button" aria-label="홈으로 나가기" onClick={goHome}>×</button><StoreChangeWizard storeProfileId="store-123" onSyncHandoff={({ syncJobId: nextId }) => { setSyncJobId(nextId); setScreen('STORE_SYNC'); }} /></main>}
-    {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} resultOverride={demoResults} />}
+    {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} />}
   </div>{showDeveloperTools && <footer className="developer-footer">
     <details>
       <summary><span aria-hidden="true">⚙️ </span>개발자용 모의 응답 설정</summary>
       <div className="developer-footer__controls" aria-label="동기화 결과 테스트 설정">
-        <p>Step 2.5 동기화 결과를 즉시 전환합니다.</p>
-        <div>
-          <button type="button" onClick={() => setDemoResults([
-            { id: 'google', name: '구글', status: 'SUCCESS' },
-            { id: 'naver', name: '네이버', status: 'SUCCESS' },
-            { id: 'kakao', name: '카카오', status: 'SUCCESS' },
-          ])}>전체 성공 테스트</button>
-          <button type="button" onClick={() => setDemoResults([
-            { id: 'google', name: '구글', status: 'SUCCESS' },
-            { id: 'naver', name: '네이버', status: 'SUCCESS' },
-            { id: 'kakao', name: '카카오', status: 'FAIL', errorMessage: '접속 시간 초과' },
-          ])}>일부 실패 테스트</button>
-        </div>
-        <button className="developer-footer__reset" type="button" onClick={() => setDemoResults(null)}>실제 응답 사용</button>
-        {mockMode ? <MockScenarioPanel /> : null}
+        {mockMode ? <MockScenarioPanel /> : <p>Mock 모드가 아닐 때는 시나리오 패널을 사용할 수 없습니다.</p>}
       </div>
     </details>
   </footer>}</div>;

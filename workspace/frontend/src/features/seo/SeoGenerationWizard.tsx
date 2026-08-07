@@ -4,7 +4,6 @@ import { SeoCommonInputForm } from '@/features/seo/SeoCommonInputForm';
 import { SeoPlatformResultCard } from '@/components/SeoPlatformResultCard/SeoPlatformResultCard';
 import { useSeoGenerationFlow } from '@/features/seo/useSeoGenerationFlow';
 import type { SeoCommonInputValue, SeoSyncHandoff } from '@/features/seo/useSeoGenerationFlow';
-import type { PlatformResult } from '@/components/SyncStatus/SyncStatus';
 import type { ReviewSummary, SourceReview } from '@/types/domain';
 import './seoGeneration.css';
 
@@ -20,7 +19,6 @@ export interface SeoGenerationWizardProps {
   reviewSummary?: ReviewSummary;
   onSyncHandoff?: (handoff: SeoSyncHandoff) => void;
   onExit?: () => void;
-  syncResultOverride?: PlatformResult[] | null;
 }
 
 interface StepHeaderProps {
@@ -50,7 +48,6 @@ export function SeoGenerationWizard({
   reviewSummary,
   onSyncHandoff,
   onExit = () => undefined,
-  syncResultOverride = null,
 }: SeoGenerationWizardProps) {
   const receivedSummary: ReviewSummary = reviewSummary ?? {
     summary: sourceReviews.length > 0
@@ -178,7 +175,7 @@ export function SeoGenerationWizard({
           <div className="mobile-step-screen__content result-content">
             <div className="result-check" aria-hidden="true">✓</div>
             <h1 id="result-title">3사에 반영되었습니다!</h1>
-            <SyncStatusDashboard syncJobId={handoff.syncJobId} pollIntervalMs={100} resultOverride={syncResultOverride} />
+            <SyncStatusDashboard syncJobId={handoff.syncJobId} />
           </div>
           <button className="bottom-primary" type="button" onClick={onExit}>홈으로 돌아가기</button>
         </section>

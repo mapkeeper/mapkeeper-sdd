@@ -1,7 +1,9 @@
 import { ApiClientError, apiRequest } from '@/services/api';
-import type { CreateStoreChangeResponse, GetSyncJobResponse, RetrySyncJobResponse, StoreChangeApprovalResponse } from '@/services/api.types';
+import type { CreateStoreChangeResponse, StoreChangeApprovalResponse } from '@/services/api.types';
 import type { ApproveSeoGenerationResponse, ContentGenerationData } from '@/services/contracts/seo';
+import type { GetSyncJobResponse, RetrySyncJobResponse } from '@/services/contracts/syncJob';
 import { MOCK_TIMESTAMP } from '@/mocks/factories/envelopeFactory';
+import { SYNC_JOB_ID } from '@/mocks/fixtures/syncJobFixtures';
 import { setMockScenario } from '@/mocks/scenarios';
 
 describe('API contract mocks', () => {
@@ -74,19 +76,28 @@ describe('API contract mocks', () => {
     }]);
   });
 
-  test.each(['all-success', 'partial-success', 'retryable-failure', 'non-retryable-failure'] as const)('sync scenario %s returns contracted enums and summary', async (scenario) => {
+  test.each(['all-success', 'partial-success', 'retryable-failure', 'non-retryable-failure'] as const)('sync scenario %s returns contracted enums, task-level truth, and a top-level status separate from the domain status', async (scenario) => {
     setMockScenario(scenario);
-    const result = await apiRequest<GetSyncJobResponse>('/api/v1/sync-jobs/job-001');
+    const result = await apiRequest<GetSyncJobResponse>(`/api/v1/sync-jobs/${SYNC_JOB_ID}`);
+    expect(['SUCCESS', 'PROCESSING', 'FAILED']).toContain(result.status);
     expect(['PENDING', 'PROCESSING', 'PARTIAL_SUCCESS', 'SUCCESS', 'FAILED', 'RETRYING']).toContain(result.data.status);
-    expect(Object.keys(result.data.platforms)).toEqual(['google', 'naver', 'kakao']);
-    expect(result.data.summary.total).toBe(3);
+    expect(result.data.platformTasks.map(({ platform }) => platform)).toEqual(['google', 'naver', 'kakao']);
+    expect(result.data.platformTasks).toHaveLength(3);
   });
 
   test('retry preserves successful platform and returns eligible failed platform only', async () => {
     setMockScenario('partial-success');
-    const before = await apiRequest<GetSyncJobResponse>('/api/v1/sync-jobs/job-001');
-    expect(before.data.platforms.google).toBe('SUCCESS');
-    const retried = await apiRequest<RetrySyncJobResponse>('/api/v1/sync-jobs/job-001/retry', { method: 'POST' });
-    expect(retried.data).toEqual({ syncJobId: 'job-001', retryingPlatforms: ['naver'] });
+    const before = await apiRequest<GetSyncJobResponse>(`/api/v1/sync-jobs/${SYNC_JOB_ID}`);
+    expect(before.data.platformTasks.find((task) => task.platform === 'google')?.status).toBe('SUCCESS');
+    const retried = await apiRequest<RetrySyncJobResponse>(`/api/v1/sync-jobs/${SYNC_JOB_ID}/retry`, { method: 'POST' });
+    expect(retried.data).toEqual({ syncJobId: SYNC_JOB_ID, status: 'RETRYING', retryingPlatforms: ['naver'], statusUrl: `/api/v1/sync-jobs/${SYNC_JOB_ID}` });
+  });
+
+  test('재시도 가능한 실패가 없으면 409 NO_RETRYABLE_TASKS를 반환한다', async () => {
+    setMockScenario('all-success');
+    await expect(apiRequest<RetrySyncJobResponse>(`/api/v1/sync-jobs/${SYNC_JOB_ID}/retry`, { method: 'POST' })).rejects.toMatchObject({
+      status: 409,
+      causeBody: { code: 'NO_RETRYABLE_TASKS', message: '재시도 가능한 실패 플랫폼이 없습니다.' },
+    } satisfies Partial<ApiClientError>);
   });
 });

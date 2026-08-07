@@ -1,4 +1,4 @@
-import type { SyncJobStatus } from '@/types/domain';
+import type { SyncJobStatus } from '@/services/contracts/common';
 
 export const SYNC_STATUS_TITLES: Record<SyncJobStatus, string> = {
   PENDING: '동기화 대기 중',
@@ -15,6 +15,9 @@ export const SYNC_COPY = {
   retryingAction: '재시도 요청 중…',
   pollingError: '동기화 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   networkError: '동기화 상태를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.',
+  delayedNotice: '반영이 예상보다 오래 걸리고 있어요. 서버에서는 계속 처리 중이니 잠시 후 다시 확인해 주세요.',
+  recheckAction: '다시 확인',
+  recheckingAction: '확인하는 중…',
 } as const;
 
 export function retryStartedMessage(platformLabels: readonly string[]): string {

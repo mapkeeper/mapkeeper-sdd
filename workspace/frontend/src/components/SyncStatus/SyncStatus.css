@@ -86,7 +86,7 @@
 .sync-status__success-check { display:grid; width:30px; height:30px; flex:none; place-items:center; border-radius:50%; background:#22c55e; color:#fff; font-size:19px; font-weight:900; }
 .sync-status__failure-action { display:grid; flex:none; justify-items:end; gap:5px; }
 .sync-status__failure-action > strong { color:#ef4444; font-size:16px; }
-.sync-status .sync-status__failure-action button { min-height:40px !important; padding:8px 12px; border-radius:10px; background:#e8f3ff; color:#1d4ed8; font-size:15px; box-shadow:inset 0 0 0 1px #93c5fd; }
+.sync-status__attempt-count { color:#9ca3af; font-size:13px; font-weight:600; }
 
 .sync-status__platform-icon {
   display: grid;
@@ -112,7 +112,8 @@
 .sync-status__platform-label--retrying { color: #3182f6; }
 
 .sync-status__explanation,
-.sync-status__warning {
+.sync-status__warning,
+.sync-status__delayed {
   margin: 0;
   padding: 16px;
   border-radius: 16px;
@@ -121,6 +122,8 @@
   font-size:15px;
   font-weight: 500;
 }
+.sync-status__delayed { display: grid; gap: 12px; justify-items: start; }
+.sync-status__delayed p { margin: 0; }
 
 .sync-status button {
   min-height: 56px;
