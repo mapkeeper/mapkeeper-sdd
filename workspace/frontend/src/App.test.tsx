@@ -31,6 +31,17 @@ describe('App mobile routing', () => {
     expect(screen.queryByText('SEO 단계 화면')).not.toBeInTheDocument();
   });
 
+  test('배포 화면에서는 내부 API 응답을 사용해도 개발자 도구를 숨긴다', () => {
+    // Given: a deployment build with internal API responses and developer tools disabled.
+    vi.stubEnv('VITE_SHOW_DEVELOPER_TOOLS', 'false');
+
+    // When: the application renders its home screen.
+    render(<App />);
+
+    // Then: the user-facing page does not expose internal response controls.
+    expect(screen.queryByText('개발자용 모의 응답 설정')).not.toBeInTheDocument();
+  });
+
   test('홈, UC2, UC1, 동기화 결과 중 한 화면만 전환해 표시한다', async () => {
     const user = userEvent.setup();
     render(<App />);

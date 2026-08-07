@@ -13,11 +13,12 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/mapkeeper-backend
+  BACKEND_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/mapkeeper-backend
+  FRONTEND_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/mapkeeper-frontend
 
 jobs:
   publish-and-deploy:
-    name: Publish and deploy backend
+    name: Publish and deploy application
     runs-on: ubuntu-latest
     environment: development
     steps:
@@ -53,8 +54,22 @@ jobs:
           context: workspace/backend
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.IMAGE_NAME }}:development
+            ${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.BACKEND_IMAGE_NAME }}:development
+
+      - name: Build and publish frontend image
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: workspace/frontend
+          push: true
+          build-args: |
+            VITE_API_BASE_URL=
+            VITE_API_MOCKING=true
+            VITE_MOCK_SCENARIO=default
+            VITE_SHOW_DEVELOPER_TOOLS=false
+          tags: |
+            ${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.FRONTEND_IMAGE_NAME }}:development
 
       - name: Connect to Tailscale
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8
@@ -88,13 +103,23 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_REF: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          BACKEND_IMAGE_REF: ${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+          FRONTEND_IMAGE_REF: ${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
         run: |
           printf '%s' "$GHCR_TOKEN" | ssh "$DEPLOY_USER@$DEPLOY_HOST" \
             "docker login ghcr.io --username '${{ github.actor }}' --password-stdin"
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd \"\$HOME/mapkeeper\" && BACKEND_IMAGE='$IMAGE_REF' docker compose pull backend"
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd \"\$HOME/mapkeeper\" && BACKEND_IMAGE='$IMAGE_REF' docker compose up -d --no-build --remove-orphans"
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-            "curl --fail --retry 10 --retry-delay 2 --retry-connrefused http://127.0.0.1:8000/health"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- \
+            "$BACKEND_IMAGE_REF" "$FRONTEND_IMAGE_REF" <<'REMOTE'
+          set -e
+          backend_image_ref=$1
+          frontend_image_ref=$2
+          cd "$HOME/mapkeeper"
+          BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
+            docker compose pull backend frontend
+          BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
+            docker compose up -d --no-build --remove-orphans
+          curl --fail --retry 10 --retry-delay 2 --retry-connrefused \
+            http://127.0.0.1:8000/health
+          curl --fail --retry 10 --retry-delay 2 --retry-connrefused \
+            http://127.0.0.1:3000/healthz
+          REMOTE

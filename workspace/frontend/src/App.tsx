@@ -49,7 +49,7 @@ function Home({ onStore, onSeo }: { onStore(): void; onSeo(): void }) {
         <div className="grid grid-cols-3 divide-x divide-gray-200">
           {platforms.map((platform) => <div key={platform.name} className="flex flex-col items-center gap-2">
             <img src={platform.logo} alt={`${platform.name} 로고`} className="h-9 w-9" />
-            <span className="text-[15px] font-bold text-green-600">연결됨</span>
+            <span className="text-[15px] font-bold text-green-700">연결됨</span>
           </div>)}
         </div>
       </section>
@@ -87,13 +87,15 @@ export function App() {
   const [syncJobId, setSyncJobId] = useState('');
   const [demoResults, setDemoResults] = useState<PlatformResult[] | null>(null);
   const mockMode = import.meta.env.VITE_API_MOCKING === 'true';
+  const showDeveloperTools = import.meta.env.VITE_SHOW_DEVELOPER_TOOLS === 'true'
+    || (import.meta.env.DEV && import.meta.env.VITE_SHOW_DEVELOPER_TOOLS !== 'false');
   const goHome = () => setScreen('HOME');
   return <div className="app-viewport"><div className="app-phone" data-testid="dashboard-container">
     {screen === 'HOME' && <Home onStore={() => setScreen('STORE_CHANGE')} onSeo={() => setScreen('SEO')} />}
     {screen === 'SEO' && <SeoGenerationWizard storeProfileId="store-123" sourceReviews={mockMode ? sourceReviewFixtures : []} {...(mockMode ? { reviewSummary: reviewSummaryFixture } : {})} onExit={goHome} syncResultOverride={demoResults} />}
     {screen === 'STORE_CHANGE' && <main className="standalone-flow"><button className="standalone-flow__close" type="button" aria-label="홈으로 나가기" onClick={goHome}>×</button><StoreChangeWizard storeProfileId="store-123" onSyncHandoff={({ syncJobId: nextId }) => { setSyncJobId(nextId); setScreen('STORE_SYNC'); }} /></main>}
     {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} resultOverride={demoResults} />}
-  </div>{(import.meta.env.DEV || mockMode) && <footer className="developer-footer">
+  </div>{showDeveloperTools && <footer className="developer-footer">
     <details>
       <summary><span aria-hidden="true">⚙️ </span>개발자용 모의 응답 설정</summary>
       <div className="developer-footer__controls" aria-label="동기화 결과 테스트 설정">

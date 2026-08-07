@@ -1,6 +1,31 @@
 name: mapkeeper
 
 services:
+  frontend:
+    image: ${FRONTEND_IMAGE:-mapkeeper-frontend:local}
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_API_MOCKING: ${VITE_API_MOCKING:-true}
+        VITE_MOCK_SCENARIO: ${VITE_MOCK_SCENARIO:-default}
+        VITE_SHOW_DEVELOPER_TOOLS: ${VITE_SHOW_DEVELOPER_TOOLS:-false}
+    init: true
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_PORT:-3000}:8080"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget --quiet --output-document=/dev/null http://127.0.0.1:8080/healthz || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
   backend:
     image: ${BACKEND_IMAGE:-mapkeeper-backend:local}
     build:
@@ -21,4 +46,3 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-

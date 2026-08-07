@@ -63,6 +63,25 @@ npm run test:run
 npm run build
 ```
 
+## 컨테이너 실행
+
+프로젝트의 `workspace` 디렉터리에서 프론트엔드와 백엔드를 함께 실행합니다.
+
+```bash
+docker compose up --build -d
+curl http://127.0.0.1:3000/healthz
+```
+
+프론트엔드는 비루트 Nginx가 8080 포트에서 정적 파일을 제공하고, 호스트의 기본 3000 포트로 연결됩니다. `/api` 요청은 같은 Compose 네트워크의 `backend:8000`으로 전달됩니다.
+
+Vite 환경변수는 이미지 빌드 시점에 적용됩니다. 개발 배포에서는 내부 응답을 사용하되 `VITE_SHOW_DEVELOPER_TOOLS=false`로 사용자 화면에서 개발자 도구를 숨깁니다. 실제 백엔드 API로 전환할 때는 이미지를 다음 값으로 다시 빌드합니다.
+
+```dotenv
+VITE_API_BASE_URL=
+VITE_API_MOCKING=false
+VITE_SHOW_DEVELOPER_TOOLS=false
+```
+
 특정 테스트만 실행하려면 다음과 같이 경로를 전달합니다.
 
 ```bash
