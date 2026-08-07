@@ -121,3 +121,13 @@ export interface ParsedApiResult<T> {
   requestId: string | null;
   warning: ApiError | null;
 }
+
+// The generic runtime envelope shape used to build mock responses and to check the wire
+// shape before per-endpoint Zod validation (API Contract §1).
+export interface ApiEnvelope<T> {
+  success: boolean;
+  status: ApiStatus;
+  data: T | null;
+  error: ApiError | null;
+  timestamp: string;
+}

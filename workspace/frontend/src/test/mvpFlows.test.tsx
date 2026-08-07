@@ -13,7 +13,7 @@ describe('MVP 통합 흐름', () => {
   test('UC1 생성부터 명시적 승인과 SyncJob handoff까지 완료한다', async () => {
     const user = userEvent.setup();
     const onSyncHandoff = vi.fn();
-    render(<StoreChangeWizard storeProfileId="store-123" onSyncHandoff={onSyncHandoff} />);
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" onSyncHandoff={onSyncHandoff} />);
     await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
     await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '영업시간을 밤 10시까지로 바꿔줘');
     await user.click(screen.getByRole('button', { name: '변경안 만들기' }));

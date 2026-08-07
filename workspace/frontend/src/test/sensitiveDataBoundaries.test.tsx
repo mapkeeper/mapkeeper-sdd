@@ -22,9 +22,9 @@ describe('민감정보 경계', () => {
         timestamp: '2026-08-03T00:00:00Z',
       });
     }));
-    await createStoreChangeProposal({ storeProfileId: 'store-123', recognizedText: '영업시간 변경', locale: 'ko-KR' });
+    await createStoreChangeProposal({ storeProfileId: '11111111-1111-4111-8111-111111111111', recognizedText: '영업시간 변경', locale: 'ko-KR' });
 
-    expect(requestBody).toEqual({ storeProfileId: 'store-123', recognizedText: '영업시간 변경', locale: 'ko-KR' });
+    expect(requestBody).toEqual({ storeProfileId: '11111111-1111-4111-8111-111111111111', recognizedText: '영업시간 변경', locale: 'ko-KR' });
     expect(JSON.stringify(requestBody)).not.toMatch(/audio|blob|authorization|token|secret|apiKey/i);
     expect(requestUrl).not.toContain('영업시간');
     expect(JSON.stringify(localStorage)).not.toContain('영업시간 변경');
@@ -55,11 +55,11 @@ describe('민감정보 경계', () => {
       storeProfileId: '11111111-1111-4111-8111-111111111111',
       briefText: '따뜻한 가게, 만두전골이 자랑이에요.',
       seedKeywords: ['만두전골'],
-      sourceReviewIds: ['review-001'],
+      sourceReviewIds: ['55555555-5555-4555-8555-555555555555'],
     });
     expect(JSON.stringify(body)).not.toContain(sensitiveReview);
     expect(await screen.findByRole('alert')).not.toHaveTextContent(sensitiveReview);
-    expect(window.location.href).not.toContain('review-001');
+    expect(window.location.href).not.toContain('55555555-5555-4555-8555-555555555555');
     expect(JSON.stringify(localStorage)).not.toContain(sensitiveReview);
   });
 

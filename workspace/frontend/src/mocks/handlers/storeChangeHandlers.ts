@@ -11,28 +11,16 @@ import {
 } from '@/mocks/fixtures/storeChangeFixtures';
 import { storeProfileFixture } from '@/mocks/fixtures/storeFixtures';
 import { getMockScenario, scenarioLatency } from '@/mocks/scenarios';
-import { trimmedText } from '@/services/contracts/common';
-import { patchStoreChangeRequestSchema } from '@/services/contracts/storeChange';
+import { createStoreChangeRequestSchema, patchStoreChangeRequestSchema } from '@/services/contracts/storeChange';
 import type { ProposalChange, StoreChangeApprovalResponse, StoreChangeProposalData } from '@/services/contracts/storeChange';
 
 const responseOptions = () => ({ headers: { 'X-Request-ID': nextRequestId() } });
 
 // This mock generates a structured proposal from free-form Korean text the same way the
-// real speech-recognition backend would (API Contract §4). `storeProfileId` is accepted as
-// an opaque string here (not UUID-validated) because the running app still passes a
-// placeholder, non-UUID fixture ID everywhere - migrating every shared fixture to real
-// UUIDs is Todo 5's job.
-const recognizedTextSchema = trimmedText(1, 500);
-
-function parseCreateBody(body: unknown): { storeProfileId: string; recognizedText: string; locale: string } | null {
-  if (typeof body !== 'object' || body === null) return null;
-  const record = body as Record<string, unknown>;
-  const recognizedText = recognizedTextSchema.safeParse(record.recognizedText);
-  if (!recognizedText.success) return null;
-  if (typeof record.storeProfileId !== 'string' || record.storeProfileId.length === 0) return null;
-  if (typeof record.locale !== 'string' || record.locale.length === 0) return null;
-  return { storeProfileId: record.storeProfileId, recognizedText: recognizedText.data, locale: record.locale };
-}
+// real speech-recognition backend would (API Contract §4). The request is parsed through
+// the same strict schema the client and real v0.2 contract share, so a non-UUID
+// storeProfileId, an unsupported locale, or an unknown field is rejected exactly like the
+// real backend would reject it.
 
 function parseCurrentBusinessHours(): { open: string; close: string } {
   const [open, close] = storeProfileFixture.businessHours.split('-');
@@ -131,12 +119,12 @@ export const storeChangeHandlers = [
   http.post('/api/v1/store-change-proposals', async ({ request }) => {
     if (getMockScenario() === 'network-error') return HttpResponse.error();
     await mockDelay(scenarioLatency());
-    const input = parseCreateBody(await request.json());
-    if (!input) return HttpResponse.json(errorEnvelope(storeChangeValidationErrorFixture), { status: 422, ...responseOptions() });
+    const parsed = createStoreChangeRequestSchema.safeParse(await request.json());
+    if (!parsed.success) return HttpResponse.json(errorEnvelope(storeChangeValidationErrorFixture), { status: 422, ...responseOptions() });
     currentProposal = {
       proposalId: STORE_CHANGE_PROPOSAL_ID,
-      recognizedTextMasked: maskRecognizedText(input.recognizedText),
-      changes: parseStoreChangeText(input.recognizedText),
+      recognizedTextMasked: maskRecognizedText(parsed.data.recognizedText),
+      changes: parseStoreChangeText(parsed.data.recognizedText),
       status: 'DRAFT',
     };
     return HttpResponse.json(successEnvelope(currentProposal), { status: 201, ...responseOptions() });

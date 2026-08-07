@@ -77,7 +77,7 @@ describe('SeoGenerationWizard mobile flow', () => {
       storeProfileId: '11111111-1111-4111-8111-111111111111',
       briefText: '만두전골의 깊은 국물 맛을 강조하고 싶어요.',
       seedKeywords: ['만두전골', '가족외식'],
-      sourceReviewIds: ['review-001'],
+      sourceReviewIds: ['55555555-5555-4555-8555-555555555555'],
     });
     expect(screen.getByRole('heading', { name: 'Google' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Naver' })).toBeInTheDocument();

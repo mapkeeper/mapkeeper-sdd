@@ -10,22 +10,10 @@ import {
   seoValidationErrorFixture,
 } from '@/mocks/fixtures/seoFixtures';
 import { getMockScenario, scenarioLatency } from '@/mocks/scenarios';
-import { seoCommonInputSchema } from '@/services/contracts/seo';
+import { createSeoGenerationRequestSchema, regenerateSeoGenerationRequestSchema } from '@/services/contracts/seo';
 import type { ApproveSeoGenerationResponse, ContentGenerationData } from '@/services/contracts/seo';
 
 const responseOptions = () => ({ headers: { 'X-Request-ID': nextRequestId() } });
-
-// `storeProfileId` / `sourceReviewIds` are accepted as opaque strings here (not
-// UUID-validated) because the running app still passes placeholder, non-UUID fixture
-// IDs everywhere - migrating every shared fixture to real UUIDs is Todo 5's job. The
-// part of the request this slice owns, `briefText` / `seedKeywords`, is validated
-// strictly against the same schema the client and the real v0.2 contract share.
-function parseCommonInput(body: unknown): { briefText: string; seedKeywords: string[] } | null {
-  if (typeof body !== 'object' || body === null) return null;
-  const record = body as Record<string, unknown>;
-  const parsed = seoCommonInputSchema.safeParse({ briefText: record.briefText, seedKeywords: record.seedKeywords });
-  return parsed.success ? parsed.data : null;
-}
 
 let currentGeneration: ContentGenerationData | null = null;
 interface ApprovalReplayEntry {
@@ -39,13 +27,11 @@ export const seoHandlers = [
   http.post('*/api/v1/seo/generations', async ({ request }) => {
     if (getMockScenario() === 'network-error') return HttpResponse.error();
     await mockDelay(scenarioLatency());
-    const body = await request.json();
-    const input = parseCommonInput(body);
-    const storeProfileId = typeof body === 'object' && body !== null ? (body as Record<string, unknown>).storeProfileId : undefined;
-    if (!input || typeof storeProfileId !== 'string' || storeProfileId.length === 0) {
+    const parsed = createSeoGenerationRequestSchema.safeParse(await request.json());
+    if (!parsed.success) {
       return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
     }
-    currentGeneration = buildGeneration(input.seedKeywords);
+    currentGeneration = buildGeneration(parsed.data.seedKeywords);
     return HttpResponse.json(successEnvelope(currentGeneration), { status: 201, ...responseOptions() });
   }),
 
@@ -58,13 +44,12 @@ export const seoHandlers = [
     if (currentGeneration.status !== 'DRAFT') {
       return HttpResponse.json(errorEnvelope(seoInvalidStateErrorFixture), { status: 409, ...responseOptions() });
     }
-    const body = await request.json();
-    const input = parseCommonInput(body);
-    if (!input) return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
+    const parsed = regenerateSeoGenerationRequestSchema.safeParse(await request.json());
+    if (!parsed.success) return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
     currentGeneration = {
       ...currentGeneration,
       revision: currentGeneration.revision + 1,
-      drafts: buildDrafts(input.seedKeywords),
+      drafts: buildDrafts(parsed.data.seedKeywords),
     };
     return HttpResponse.json(successEnvelope(currentGeneration), responseOptions());
   }),

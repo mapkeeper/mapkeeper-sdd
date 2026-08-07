@@ -17,7 +17,7 @@ async function createDraft(user: ReturnType<typeof userEvent.setup>, text = '영
 describe('StoreChangeWizard', () => {
   test('인식 텍스트로 구조화된 영업시간 변경안을 만들고 검토 화면에 형식화해 보여준다', async () => {
     const user = userEvent.setup();
-    render(<StoreChangeWizard storeProfileId="store-123" />);
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
     await createDraft(user, '영업시간을 오후 8시까지로 바꿔줘');
     expect(screen.getByText('09:00-22:00')).toBeInTheDocument();
     expect(screen.getByText('09:00-20:00')).toBeInTheDocument();
@@ -26,13 +26,13 @@ describe('StoreChangeWizard', () => {
 
   test('임시 휴무 기간과 대표 메뉴 변경이 각각 형식화되어 표시된다', async () => {
     const user = userEvent.setup();
-    const { unmount } = render(<StoreChangeWizard storeProfileId="store-123" />);
+    const { unmount } = render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
     await createDraft(user, '8월 15일부터 8월 17일까지 임시 휴무로 해줘');
     expect(await screen.findByText('2026-08-15 ~ 2026-08-17')).toBeInTheDocument();
     expect(screen.getByText('임시 휴무')).toBeInTheDocument();
     unmount();
 
-    render(<StoreChangeWizard storeProfileId="store-123" />);
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
     await createDraft(user, '대표 메뉴를 만두전골로 바꿔줘');
     expect(await screen.findByText('만두전골')).toBeInTheDocument();
     expect(screen.getByText('대표 메뉴')).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe('StoreChangeWizard', () => {
         });
       }),
     );
-    render(<StoreChangeWizard storeProfileId="store-123" />);
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
     await createDraft(user, '영업시간을 밤 10시까지로 바꿔줘');
 
     await user.click(screen.getByRole('button', { name: '변경안 수정' }));
@@ -84,7 +84,7 @@ describe('StoreChangeWizard', () => {
         timestamp,
       }, { status: 409 })),
     );
-    render(<StoreChangeWizard storeProfileId="store-123" />);
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
     await createDraft(user, '영업시간을 밤 10시까지로 바꿔줘');
 
     await user.click(screen.getByRole('button', { name: '변경안 수정' }));
@@ -109,7 +109,7 @@ describe('StoreChangeWizard', () => {
         }, { status: 409 });
       }),
     );
-    render(<StoreChangeWizard storeProfileId="store-123" />);
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
     await createDraft(user, '영업시간을 밤 10시까지로 바꿔줘');
     await user.click(screen.getByRole('button', { name: '변경안 거절' }));
 
@@ -129,7 +129,7 @@ describe('StoreChangeWizard', () => {
         timestamp,
       })),
     );
-    render(<StoreChangeWizard storeProfileId="store-123" />);
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
     await createDraft(user, '영업시간을 밤 10시까지로 바꿔줘');
     await user.click(screen.getByRole('button', { name: '변경안 거절' }));
 
@@ -162,7 +162,7 @@ describe('StoreChangeWizard', () => {
       }),
     );
     const onSyncHandoff = vi.fn();
-    render(<StoreChangeWizard storeProfileId="store-123" onSyncHandoff={onSyncHandoff} />);
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" onSyncHandoff={onSyncHandoff} />);
     await createDraft(user, '영업시간을 밤 10시까지로 바꿔줘');
     await user.click(screen.getByRole('button', { name: '승인 단계로 이동' }));
 
@@ -184,7 +184,7 @@ describe('StoreChangeWizard', () => {
   test('생성 요청이 네트워크 오류로 실패하면 가짜 성공 없이 오류 안내만 보여준다', async () => {
     const user = userEvent.setup();
     server.use(http.post('/api/v1/store-change-proposals', () => HttpResponse.error()));
-    render(<StoreChangeWizard storeProfileId="store-123" />);
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
     await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
     await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '영업시간을 밤 10시까지로 바꿔줘');
     await user.click(screen.getByRole('button', { name: '변경안 만들기' }));

@@ -18,7 +18,7 @@ describe('storeChangeApi', () => {
       http.post('/api/v1/store-change-proposals', async ({ request }) => {
         expect(request.headers.get('content-type')).toContain('application/json');
         expect(await request.json()).toEqual({
-          storeProfileId: 'store-123',
+          storeProfileId: '11111111-1111-4111-8111-111111111111',
           recognizedText: '영업시간을 밤 10시까지로 바꿔줘',
           locale: 'ko-KR',
         });
@@ -43,7 +43,7 @@ describe('storeChangeApi', () => {
     );
 
     const result = await createStoreChangeProposal({
-      storeProfileId: 'store-123',
+      storeProfileId: '11111111-1111-4111-8111-111111111111',
       recognizedText: '영업시간을 밤 10시까지로 바꿔줘',
       locale: 'ko-KR',
     });
@@ -69,7 +69,7 @@ describe('storeChangeApi', () => {
     );
 
     await expect(createStoreChangeProposal({
-      storeProfileId: 'store-123',
+      storeProfileId: '11111111-1111-4111-8111-111111111111',
       recognizedText: '영업시간 변경',
       locale: 'ko-KR',
     })).rejects.toThrow(ApiClientError);

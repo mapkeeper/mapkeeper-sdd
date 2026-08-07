@@ -35,10 +35,9 @@ function safeUserMessage(error: unknown): string {
   if (error.causeBody?.code === 'STALE_PROPOSAL') return '변경안이 그새 바뀌었어요. 새로고침 후 다시 시도해 주세요.';
   if (error.causeBody?.code === 'INVALID_STATE') return '이미 처리된 변경안이에요. 새로 만들어 주세요.';
   if (error.causeBody?.code === 'IDEMPOTENCY_CONFLICT') return '이전 승인 요청과 내용이 달라졌어요. 새로고침 후 다시 시도해 주세요.';
-  if (error.causeBody?.code === 'PERMISSION_DENIED' || error.status === 401 || error.status === 403) {
+  if (error.status === 401 || error.status === 403) {
     return '이 작업을 수행할 권한이 없습니다. 관리자에게 문의해 주세요.';
   }
-  if (error.causeBody?.code === 'API_TIMEOUT') return '처리 시간이 길어지고 있습니다. 잠시 후 다시 시도해 주세요.';
   if (error.status === 0) return '서버에 연결할 수 없습니다. 인터넷 연결을 확인해 주세요.';
   return '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
 }

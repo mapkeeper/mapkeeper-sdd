@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { server } from '@/mocks/server';
-import { apiRequest, apiRequestParsed, ApiClientError } from '@/services/api';
+import { apiRequestParsed, ApiClientError } from '@/services/api';
 import { apiEnvelopeSchema, platformTaskErrorSchema, apiErrorSchema } from '@/services/contracts/common';
 import {
   createStoreChangeResponseSchema,
@@ -377,7 +377,7 @@ describe('apiRequestParsed: strict boundary over the wire', () => {
     expect(JSON.stringify(apiError)).not.toContain('010-1234-5678');
   });
 
-  test('the legacy unchecked apiRequest path lets malformed data through, which apiRequestParsed now closes', async () => {
+  test('a malformed envelope (missing platformTasks) never reaches the caller as trusted data', async () => {
     server.use(
       http.get('/api/v1/sync-jobs/88888888-8888-4888-8888-888888888888', () =>
         HttpResponse.json({
@@ -389,11 +389,6 @@ describe('apiRequestParsed: strict boundary over the wire', () => {
         }),
       ),
     );
-
-    const legacy = await apiRequest<{ syncJobId: string; status: string }>(
-      '/api/v1/sync-jobs/88888888-8888-4888-8888-888888888888',
-    );
-    expect(legacy.status).toBe('PARTIAL_SUCCESS');
 
     await expect(
       apiRequestParsed(
