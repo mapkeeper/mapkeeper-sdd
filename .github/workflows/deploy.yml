@@ -120,6 +120,7 @@ jobs:
             docker compose up -d --no-build --remove-orphans
           curl --fail --retry 10 --retry-delay 2 --retry-connrefused \
             http://127.0.0.1:8000/health
+          frontend_endpoint=$(docker compose port frontend 8080)
           curl --fail --retry 10 --retry-delay 2 --retry-connrefused \
-            http://127.0.0.1:3000/healthz
+            "http://$frontend_endpoint/healthz"
           REMOTE
