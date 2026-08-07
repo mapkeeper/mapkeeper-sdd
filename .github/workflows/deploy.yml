@@ -96,7 +96,15 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
         run: |
           ssh "$DEPLOY_USER@$DEPLOY_HOST" 'mkdir -p "$HOME/mapkeeper"'
-          scp workspace/compose.yaml "$DEPLOY_USER@$DEPLOY_HOST:mapkeeper/compose.yaml"
+          scp workspace/compose.yaml "$DEPLOY_USER@$DEPLOY_HOST:mapkeeper/compose.yaml.next"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'REMOTE'
+          set -eu
+          cd "$HOME/mapkeeper"
+          if ! docker compose -f compose.yaml.next config --quiet; then
+            rm -f compose.yaml.next
+            exit 1
+          fi
+          REMOTE
 
       - name: Deploy and verify health
         env:
@@ -110,17 +118,79 @@ jobs:
             "docker login ghcr.io --username '${{ github.actor }}' --password-stdin"
           ssh "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- \
             "$BACKEND_IMAGE_REF" "$FRONTEND_IMAGE_REF" <<'REMOTE'
-          set -e
+          set -u
           backend_image_ref=$1
           frontend_image_ref=$2
           cd "$HOME/mapkeeper"
-          BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
-            docker compose pull backend frontend
-          BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
-            docker compose up -d --no-build --remove-orphans
-          curl --fail --retry 10 --retry-delay 2 --retry-connrefused \
-            http://127.0.0.1:8000/health
-          frontend_endpoint=$(docker compose port frontend 8080)
-          curl --fail --retry 10 --retry-delay 2 --retry-connrefused \
-            "http://$frontend_endpoint/healthz"
+
+          previous_backend_image=
+          previous_frontend_image=
+          if [ -f compose.yaml ]; then
+            backend_container_id=$(docker compose ps -q backend || true)
+            frontend_container_id=$(docker compose ps -q frontend || true)
+            if [ -n "$backend_container_id" ]; then
+              previous_backend_image=$(docker inspect \
+                --format '{{.Config.Image}}' "$backend_container_id")
+            fi
+            if [ -n "$frontend_container_id" ]; then
+              previous_frontend_image=$(docker inspect \
+                --format '{{.Config.Image}}' "$frontend_container_id")
+            fi
+            cp compose.yaml compose.pre-deploy.yaml
+          fi
+          mv compose.yaml.next compose.yaml
+
+          verify_health() {
+            curl --fail --retry 10 --retry-delay 2 --retry-connrefused \
+              http://127.0.0.1:8000/health || return 1
+            frontend_endpoint=$(docker compose port frontend 8080) || return 1
+            curl --fail --retry 10 --retry-delay 2 --retry-connrefused \
+              "http://$frontend_endpoint/healthz" || return 1
+          }
+
+          deploy_new_version() {
+            BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
+              docker compose pull backend frontend || return 1
+            BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
+              docker compose up -d --no-build --remove-orphans \
+                --wait --wait-timeout 90 || return 1
+            verify_health
+          }
+
+          rollback() {
+            if [ -z "$previous_backend_image" ] || \
+              [ -z "$previous_frontend_image" ] || \
+              [ ! -f compose.pre-deploy.yaml ]; then
+              echo "No previous successful deployment is available." >&2
+              return 1
+            fi
+
+            cp compose.pre-deploy.yaml compose.yaml || return 1
+            BACKEND_IMAGE="$previous_backend_image" \
+              FRONTEND_IMAGE="$previous_frontend_image" \
+              docker compose up -d --no-build --remove-orphans \
+                --wait --wait-timeout 90 || return 1
+            verify_health
+          }
+
+          if deploy_new_version; then
+            cp compose.yaml compose.last-successful.yaml
+            {
+              printf 'BACKEND_IMAGE=%s\n' "$backend_image_ref"
+              printf 'FRONTEND_IMAGE=%s\n' "$frontend_image_ref"
+            } > last-successful-images.env.tmp
+            mv last-successful-images.env.tmp last-successful-images.env
+            rm -f compose.pre-deploy.yaml
+            echo "Deployment succeeded."
+          else
+            deploy_status=$?
+            echo "Deployment failed; attempting rollback." >&2
+            if rollback; then
+              rm -f compose.pre-deploy.yaml
+              echo "Rollback succeeded." >&2
+            else
+              echo "Rollback failed." >&2
+            fi
+            exit "$deploy_status"
+          fi
           REMOTE
