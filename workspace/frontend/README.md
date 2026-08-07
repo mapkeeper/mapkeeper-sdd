@@ -4,7 +4,7 @@
 
 ## 요구 환경
 
-- Node.js 20 LTS
+- Node.js 24 LTS
 - npm
 - 음성 기능 사용 시 Web Speech API를 지원하는 브라우저
 - 실제 마이크 사용 시 HTTPS 또는 `localhost`, 브라우저 마이크 권한
