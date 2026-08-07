@@ -20,7 +20,8 @@
     "@vitejs/plugin-react": "latest",
     "msw": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "latest",
