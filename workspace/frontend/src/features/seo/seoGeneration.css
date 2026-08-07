@@ -82,6 +82,16 @@
 .bottom-split-actions .bottom-primary { background: #3182f6; color: #fff; }
 .bottom-secondary { background: #e5e8eb; color: #4e5968; }
 .seo-mobile-flow__alert { margin: 12px 24px 0; padding: 14px; border-radius: 14px; background: #fff0ee; color: #98231d; font-weight: 700; }
+.seo-common-input { display: grid; gap: 20px; padding: 24px; }
+.seo-common-input__field { display: grid; gap: 10px; }
+.seo-common-input__field > span { display: flex; align-items: center; justify-content: space-between; font-weight: 700; color: #1f57bd; }
+.seo-common-input__field > span > small { padding: 5px 8px; border-radius: 8px; background: #f2f4f6; color: #6b7280; font-size: 13px; font-weight: 600; }
+.seo-common-input__field textarea { width: 100%; min-height: 160px; padding: 20px; border: 0; border-radius: 20px; background: #fff; color: #191f28; box-shadow: 0 4px 20px rgba(0,0,0,.04); font: inherit; font-size: 18px; font-weight: 500; line-height: 1.6; resize: vertical; }
+.seo-common-input__notice { margin: 0; color: #98231d; font-size: 15px; font-weight: 600; }
+.seo-generation-result { display: grid; gap: 16px; padding: 24px; }
+.seo-generation-result__reject-link { min-height: 44px; padding: 8px 4px; border: 0; background: transparent; color: #6b7280; font: inherit; font-size: 15px; font-weight: 600; text-align: left; text-decoration: underline; justify-self: start; }
+.seo-generation-result__status { padding: 10px 14px; border-radius: 12px; background: #fff0ee; color: #98231d; font-weight: 700; }
+
 .result-content { text-align: center; }
 .result-content h1 { font-size: 24px; text-align: center; }
 .result-check { display: grid; width: 64px; height: 64px; margin: 10px auto 16px; place-items: center; border-radius: 50%; background: #10b981; color: #fff; font-size: 38px; font-weight: 700; }

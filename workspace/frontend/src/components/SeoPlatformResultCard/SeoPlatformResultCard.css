@@ -1,0 +1,51 @@
+.seo-platform-result-card {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 0;
+  border-radius: 20px;
+  background: #fff;
+  color: #191f28;
+  font-family: Pretendard, sans-serif;
+  font-size: 18px;
+  line-height: 1.6;
+  box-shadow: 0 4px 20px rgba(0,0,0,.04);
+}
+
+.seo-platform-result-card--google { box-shadow: inset 5px 0 #4285f4, 0 4px 20px rgba(0,0,0,.04); }
+.seo-platform-result-card--naver { box-shadow: inset 5px 0 #03c75a, 0 4px 20px rgba(0,0,0,.04); }
+.seo-platform-result-card--kakao { box-shadow: inset 5px 0 #fee500, 0 4px 20px rgba(0,0,0,.04); }
+
+.seo-platform-result-card__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.seo-platform-result-card__header h2 { margin: 0; font-family: Pretendard, sans-serif; font-size: 24px; font-weight: 700; line-height: 1.4; letter-spacing: -.5px; }
+
+.seo-platform-result-card__icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 50%;
+  background: #172033;
+  color: #fff;
+  font-weight: 900;
+}
+
+.seo-platform-result-card__preview {
+  min-height: 76px;
+  margin: 0;
+  padding: 20px;
+  border-radius: 12px;
+  background: #f8fafc;
+  font-size: 18px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.seo-platform-result-card__keywords strong,
+.seo-platform-result-card__rules strong { display: block; margin-bottom: 8px; }
+.seo-platform-result-card__rules ul { margin-bottom: 0; }

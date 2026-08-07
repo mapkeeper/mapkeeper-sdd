@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
-import { SeoDraftCard } from '@/components/SeoDraftCard/SeoDraftCard';
+import { SeoPlatformResultCard } from '@/components/SeoPlatformResultCard/SeoPlatformResultCard';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
 import { successSyncJobFixture } from '@/mocks/fixtures/syncJobFixtures';
 
@@ -20,22 +20,21 @@ describe('접근성 회귀', () => {
     expect((await axe(container)).violations).toEqual([]);
   });
 
-  test('UC2 플랫폼 카드는 접근 가능한 이름, 키보드 편집, 충분한 대비와 터치 영역을 갖는다', async () => {
-    const user = userEvent.setup();
+  test('UC2 읽기 전용 플랫폼 결과 카드는 접근 가능한 이름과 충분한 대비를 갖는다', async () => {
     const { container } = render(
-      <SeoDraftCard
-        draft={{ draftId: 'draft-001', platform: 'google', draftText: '구글 소개글', contentRules: ['정확한 정보'], status: 'DRAFT' }}
-        selected
-        onSelectionChange={vi.fn()}
-        onSave={vi.fn()}
-        onReject={vi.fn()}
+      <SeoPlatformResultCard
+        draft={{
+          draftId: '44444444-4444-4444-8444-444444444441',
+          platform: 'google',
+          draftText: '구글 소개글',
+          keywords: ['정확한정보'],
+          contentRules: ['정확한 정보'],
+        }}
       />,
     );
-    const edit = screen.getByRole('button', { name: 'Google 문구 수정' });
-    edit.focus();
-    await user.keyboard('{Enter}');
-    expect(screen.getByRole('textbox', { name: 'Google SEO 문구' })).toBeInTheDocument();
-    expect(Number.parseFloat(getComputedStyle(screen.getByRole('button', { name: 'Google 수정 저장' })).minHeight)).toBeGreaterThanOrEqual(56);
+    expect(screen.getByRole('heading', { name: 'Google' })).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect((await axe(container)).violations).toEqual([]);
   });
 

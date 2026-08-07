@@ -9,10 +9,18 @@ const sourceReviewIdsSchema = uniqueArray(
   'sourceReviewIds must not contain duplicates',
 );
 
-export const createSeoGenerationRequestSchema = z.strictObject({
-  storeProfileId: uuidSchema,
+// The part of the create/regenerate request that the user edits directly (API Contract
+// §5). Shared so the UI, the create request, and the regenerate request enforce the same
+// 500/5x30 limits from a single source of truth.
+export const seoCommonInputSchema = z.strictObject({
   briefText: trimmedText(1, 500),
   seedKeywords: seedKeywordsSchema,
+});
+export type SeoCommonInput = z.infer<typeof seoCommonInputSchema>;
+
+export const createSeoGenerationRequestSchema = z.strictObject({
+  storeProfileId: uuidSchema,
+  ...seoCommonInputSchema.shape,
   sourceReviewIds: sourceReviewIdsSchema.optional(),
 });
 export type CreateSeoGenerationRequest = z.infer<typeof createSeoGenerationRequestSchema>;
@@ -20,8 +28,7 @@ export type CreateSeoGenerationRequest = z.infer<typeof createSeoGenerationReque
 // Regenerate re-sends the common input only; it never carries `storeProfileId` or
 // per-draft fields (API Contract §5 "재생성·거절·승인").
 export const regenerateSeoGenerationRequestSchema = z.strictObject({
-  briefText: trimmedText(1, 500),
-  seedKeywords: seedKeywordsSchema,
+  ...seoCommonInputSchema.shape,
   sourceReviewIds: sourceReviewIdsSchema.optional(),
 });
 export type RegenerateSeoGenerationRequest = z.infer<typeof regenerateSeoGenerationRequestSchema>;

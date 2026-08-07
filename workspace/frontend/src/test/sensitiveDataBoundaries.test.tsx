@@ -34,7 +34,7 @@ describe('민감정보 경계', () => {
     const user = userEvent.setup();
     const sensitiveReview = sourceReviewFixtures[0]?.bodyMasked ?? '';
     let body: unknown;
-    server.use(http.post('/api/v1/seo/generations', async ({ request }) => {
+    server.use(http.post('*/api/v1/seo/generations', async ({ request }) => {
       body = await request.json();
       return HttpResponse.json({
         success: false,
@@ -44,18 +44,19 @@ describe('민감정보 경계', () => {
         timestamp: '2026-08-03T00:00:00Z',
       }, { status: 422 });
     }));
-    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} />);
+    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} />);
     await user.click(screen.getByRole('button', { name: '다음 (문구 만들기)' }));
-    await user.click(screen.getByRole('radio', { name: /매장 대표 소개글/ }));
-    await user.click(screen.getByRole('button', { name: '선택 완료' }));
-    for (const answer of ['따뜻한 가게', '친절함', '만두전골']) {
-      await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), answer);
-      await user.click(screen.getByRole('button', { name: '전송' }));
-      if (answer !== '만두전골') await new Promise((resolve) => window.setTimeout(resolve, 550));
-    }
-    await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
+    await user.type(screen.getByRole('textbox', { name: '공통 홍보 설명' }), '따뜻한 가게, 만두전골이 자랑이에요.');
+    await user.type(screen.getByRole('textbox', { name: '새 키워드' }), '만두전골');
+    await user.click(screen.getByRole('button', { name: '추가' }));
+    await user.click(screen.getByRole('button', { name: '문구 만들기' }));
 
-    expect(body).toEqual({ storeProfileId: 'store-123', sourceReviewIds: ['review-001'] });
+    expect(body).toEqual({
+      storeProfileId: '11111111-1111-4111-8111-111111111111',
+      briefText: '따뜻한 가게, 만두전골이 자랑이에요.',
+      seedKeywords: ['만두전골'],
+      sourceReviewIds: ['review-001'],
+    });
     expect(JSON.stringify(body)).not.toContain(sensitiveReview);
     expect(await screen.findByRole('alert')).not.toHaveTextContent(sensitiveReview);
     expect(window.location.href).not.toContain('review-001');

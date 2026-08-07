@@ -1,5 +1,6 @@
 import { ApiClientError, apiRequest } from '@/services/api';
-import type { ApproveSeoGenerationRequest, CreateSeoGenerationResponse, CreateStoreChangeResponse, GetSyncJobResponse, RetrySyncJobResponse, SeoApprovalResponse, StoreChangeApprovalResponse } from '@/services/api.types';
+import type { CreateStoreChangeResponse, GetSyncJobResponse, RetrySyncJobResponse, StoreChangeApprovalResponse } from '@/services/api.types';
+import type { ApproveSeoGenerationResponse, ContentGenerationData } from '@/services/contracts/seo';
 import { MOCK_TIMESTAMP } from '@/mocks/factories/envelopeFactory';
 import { setMockScenario } from '@/mocks/scenarios';
 
@@ -24,16 +25,24 @@ describe('API contract mocks', () => {
     expect(first.status).toBe('PROCESSING');
   });
 
-  test('UC2 returns one draft per platform and approves selected IDs', async () => {
-    const generated = await apiRequest<CreateSeoGenerationResponse>('/api/v1/seo/generations', {
-      method: 'POST', body: { storeProfileId: 'store-123', sourceReviewIds: ['review-001'] },
+  test('UC2 returns one draft per platform and approves the whole Generation with an empty body', async () => {
+    const generated = await apiRequest<ContentGenerationData>('/api/v1/seo/generations', {
+      method: 'POST',
+      body: {
+        storeProfileId: '11111111-1111-4111-8111-111111111111',
+        briefText: '만두전골의 깊은 국물 맛을 강조하고 싶어요.',
+        seedKeywords: ['만두전골'],
+      },
     });
     expect(generated.data.drafts.map(({ platform }) => platform)).toEqual(['google', 'naver', 'kakao']);
-    const approvalBody: ApproveSeoGenerationRequest = { draftIds: generated.data.drafts.map(({ draftId }) => draftId) };
-    const approved = await apiRequest<SeoApprovalResponse>('/api/v1/seo/generations/gen-001/approve', {
-      method: 'POST', headers: { 'Idempotency-Key': 'seo-key-001' }, body: approvalBody,
+    expect(generated.data.status).toBe('DRAFT');
+    expect(generated.data.revision).toBe(1);
+
+    const approved = await apiRequest<ApproveSeoGenerationResponse>(`/api/v1/seo/generations/${generated.data.generationId}/approve`, {
+      method: 'POST', headers: { 'Idempotency-Key': 'seo-key-001' },
     });
-    expect(approved.data.statusUrl).toBe('/api/v1/sync-jobs/job-001');
+    expect(approved.data.statusUrl).toBe('/api/v1/sync-jobs/66666666-6666-4666-8666-666666666666');
+    expect(approved.data.approvedPlatforms).toEqual(['google', 'naver', 'kakao']);
   });
 
   test('validation error follows the common failed envelope', async () => {
