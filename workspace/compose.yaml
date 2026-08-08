@@ -32,6 +32,10 @@ services:
       context: ./backend
     init: true
     restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      MVP_ACTOR_ID: ${MVP_ACTOR_ID:?MVP_ACTOR_ID is required}
+      DB_ECHO: ${DB_ECHO:-false}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     healthcheck:
