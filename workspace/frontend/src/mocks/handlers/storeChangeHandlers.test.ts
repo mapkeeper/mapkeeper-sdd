@@ -58,6 +58,16 @@ describe('parseStoreChangeText', () => {
     ]);
   });
 
+  test.each([
+    ['내일부터 사흘 쉴게', '2026-08-04', '2026-08-06'],
+    ['내일 이틀 휴무', '2026-08-04', '2026-08-05'],
+    ['모레 3일간 쉬어요', '2026-08-05', '2026-08-07'],
+  ])('%s를 기간 휴무로 해석한다', (text, startDate, endDate) => {
+    expect(parseStoreChangeText(text)).toEqual([
+      { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate, endDate } },
+    ]);
+  });
+
   test('다음 주는 월요일부터 일요일까지로 해석한다', () => {
     expect(parseStoreChangeText('다음 주 문 닫아')).toEqual([
       { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: '2026-08-10', endDate: '2026-08-16' } },

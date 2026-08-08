@@ -41,6 +41,21 @@ _MERIDIEM_GROUP: Final = r"(?P<meridiem>새벽|아침|오전|점심|오후|저�
 _CLOCK_GROUP: Final = r"(?P<hour>\d{1,2})\s*시(?:\s*(?P<minute>\d{1,2})\s*분)?"
 _TIME_PATTERN: Final = re.compile(_MERIDIEM_GROUP + _CLOCK_GROUP)
 _ISO_DATE_PATTERN: Final = re.compile(r"\d{4}-\d{2}-\d{2}")
+_KOREAN_DATE_PATTERN: Final = re.compile(
+    r"(?:(?P<year>\d{4})\s*년\s*)?(?P<month>\d{1,2})\s*월\s*(?P<day>\d{1,2})\s*일"
+)
+_DURATION_PATTERN: Final = re.compile(
+    r"(?:(?P<numeric>\d{1,2})\s*일(?:간|동안)?|(?P<word>하루|이틀|사흘|나흘|닷새|엿새|일주일))"
+)
+_DURATION_WORDS: Final = {
+    "하루": 1,
+    "이틀": 2,
+    "사흘": 3,
+    "나흘": 4,
+    "닷새": 5,
+    "엿새": 6,
+    "일주일": 7,
+}
 _NEXT_WEEKDAY_PATTERN: Final = re.compile(r"다음\s*주\s*(?P<weekday>[월화수목금토일])요일?")
 
 _HOURS_CONTEXT: Final = re.compile(r"영업|문\s*을?|마감|오픈|open|close|열|닫|시작|종료|폐점|개점")
@@ -160,6 +175,42 @@ def _resolve_relative_dates(text: str, today: date) -> tuple[date, date] | None:
     return None
 
 
+def _resolve_duration_dates(text: str, today: date) -> tuple[date, date] | None:
+    duration_match = _DURATION_PATTERN.search(text)
+    if duration_match is None:
+        return _resolve_relative_dates(text, today)
+    relative_dates = _resolve_relative_dates(text, today)
+    if relative_dates is None:
+        return None
+    days = (
+        int(duration_match.group("numeric"))
+        if duration_match.group("numeric") is not None
+        else _DURATION_WORDS[duration_match.group("word")]
+    )
+    if days < 1:
+        return None
+    start, _ = relative_dates
+    return start, start + timedelta(days=days - 1)
+
+
+def _parse_korean_dates(text: str, today: date) -> tuple[date, date] | None:
+    matches = list(_KOREAN_DATE_PATTERN.finditer(text))
+    if not matches or len(matches) > DATE_PAIR:
+        return None
+    dates: list[date] = []
+    for match in matches:
+        year = int(match.group("year") or today.year)
+        month = int(match.group("month"))
+        day = int(match.group("day"))
+        try:
+            dates.append(date(year, month, day))
+        except ValueError:
+            return None
+    if len(dates) == 1:
+        return dates[0], dates[0]
+    return dates[0], dates[1]
+
+
 def _parse_temporary_closure(
     text: str, profile: StoreProfile, today: date
 ) -> ProposalChange | None:
@@ -172,7 +223,7 @@ def _parse_temporary_closure(
         except ValueError:
             return None
     elif not found:
-        resolved = _resolve_relative_dates(text, today)
+        resolved = _parse_korean_dates(text, today) or _resolve_duration_dates(text, today)
         if resolved is None:
             return None
         start, end = resolved

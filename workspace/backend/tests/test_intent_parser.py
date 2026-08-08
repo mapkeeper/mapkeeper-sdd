@@ -134,9 +134,37 @@ def test_two_explicit_dates_become_a_closure_change() -> None:
 @pytest.mark.parametrize(
     ("sentence", "expected_start", "expected_end"),
     [
+        ("8월 15일 임시 휴무로 해줘", date(2026, 8, 15), date(2026, 8, 15)),
+        ("8월 15일부터 8월 17일까지 쉬어요", date(2026, 8, 15), date(2026, 8, 17)),
+        ("2026년 8월 15일부터 8월 17일까지 휴무", date(2026, 8, 15), date(2026, 8, 17)),
+    ],
+)
+def test_korean_dates_become_contract_date_ranges(
+    sentence: str,
+    expected_start: date,
+    expected_end: date,
+) -> None:
+    # Given: a closure request using Korean month and day words.
+    # When: the parser resolves it against the current year.
+    changes = parse_intent(sentence, make_profile(), today=date(2026, 8, 3))
+
+    # Then: the dates are converted to validated contract dates.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, TemporaryClosureChange)
+    assert change.proposed_value.start_date == expected_start
+    assert change.proposed_value.end_date == expected_end
+
+
+@pytest.mark.parametrize(
+    ("sentence", "expected_start", "expected_end"),
+    [
         ("다음 주쯤 쉬어요", date(2026, 8, 10), date(2026, 8, 16)),
         ("내일 휴무예요", date(2026, 8, 4), date(2026, 8, 4)),
         ("내일 하루 쉴게", date(2026, 8, 4), date(2026, 8, 4)),
+        ("내일부터 사흘 쉴게", date(2026, 8, 4), date(2026, 8, 6)),
+        ("내일 이틀 휴무", date(2026, 8, 4), date(2026, 8, 5)),
+        ("모레 3일간 쉬어요", date(2026, 8, 5), date(2026, 8, 7)),
         ("다음 주 화요일 문 닫아", date(2026, 8, 11), date(2026, 8, 11)),
     ],
 )

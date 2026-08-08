@@ -53,6 +53,12 @@ function toIsoDate(month: string, day: string): string {
   return `${CLOSURE_YEAR}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
+function addMockDays(dateText: string, days: number): string {
+  const date = new Date(`${dateText}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function parseClosureChange(text: string): ProposalChange | null {
   const range = text.match(/(\d{1,2})월\s*(\d{1,2})일\s*부터\s*(?:(\d{1,2})월\s*)?(\d{1,2})일/);
   if (range) {
@@ -73,23 +79,33 @@ function parseClosureChange(text: string): ProposalChange | null {
     return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: date, endDate: date } };
   }
   const nextWeekday = text.match(/다음\s*주\s*([월화수목금토일])요일?/);
+  const duration = text.match(/(?:(\d{1,2})\s*일(?:간|동안)?|하루|이틀|사흘|나흘|닷새|엿새|일주일)/);
+  const durationDays = duration
+    ? duration[1]
+      ? Number(duration[1])
+      : ({ 하루: 1, 이틀: 2, 사흘: 3, 나흘: 4, 닷새: 5, 엿새: 6, 일주일: 7 }[duration[0]] ?? 0)
+    : 0;
   if (nextWeekday?.[1]) {
     const weekdayOffset = '월화수목금토일'.indexOf(nextWeekday[1]);
     const day = String(10 + weekdayOffset).padStart(2, '0');
-    return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: `2026-08-${day}`, endDate: `2026-08-${day}` } };
+    const startDate = `2026-08-${day}`;
+    const endDate = durationDays > 0 ? addMockDays(startDate, durationDays - 1) : startDate;
+    return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate, endDate } };
   }
   const relativeDate = text.match(/오늘|내일|모레|다음\s*주/)?.[0];
   if (!relativeDate) return null;
+  let startDate: string;
   if (relativeDate === '오늘') {
-    return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: '2026-08-03', endDate: '2026-08-03' } };
+    startDate = '2026-08-03';
+  } else if (relativeDate === '내일') {
+    startDate = '2026-08-04';
+  } else if (relativeDate === '모레') {
+    startDate = '2026-08-05';
+  } else {
+    startDate = '2026-08-10';
   }
-  if (relativeDate === '내일') {
-    return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: '2026-08-04', endDate: '2026-08-04' } };
-  }
-  if (relativeDate === '모레') {
-    return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: '2026-08-05', endDate: '2026-08-05' } };
-  }
-  return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: '2026-08-10', endDate: '2026-08-16' } };
+  const endDate = durationDays > 0 ? addMockDays(startDate, durationDays - 1) : relativeDate === '다음 주' ? '2026-08-16' : startDate;
+  return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate, endDate } };
 }
 
 function parseMenuChange(text: string, currentValue: string): ProposalChange | null {
