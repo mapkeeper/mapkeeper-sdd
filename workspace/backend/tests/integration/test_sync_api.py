@@ -4,7 +4,7 @@ The API runs on its own event loop, so these checks commit their fixtures and cl
 them up afterwards instead of sharing the test's session.
 """
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Sequence
 from dataclasses import dataclass
 from typing import Final
 from uuid import UUID, uuid4
@@ -37,6 +37,9 @@ pytestmark = pytest.mark.asyncio
 
 FAILURE_MESSAGE: Final = "플랫폼 서버에 일시적인 문제가 있습니다."
 
+# Store profiles the running test created, so teardown deletes only those.
+_CREATED_PROFILES: list[list[UUID]] = []
+
 
 @dataclass(frozen=True)
 class SeededJob:
@@ -62,21 +65,29 @@ async def api(
     engine = create_async_engine(integration_database_url, poolclass=NullPool)
     monkeypatch.setattr("mapkeeper.db.session.get_engine", lambda: engine)
 
-    await _reset(integration_database_url)
+    created: list[UUID] = []
+    _CREATED_PROFILES.append(created)
     try:
         yield integration_database_url
     finally:
-        await _reset(integration_database_url)
+        _ = _CREATED_PROFILES.pop()
+        await _delete(integration_database_url, created)
         await engine.dispose()
         get_session_factory.cache_clear()
 
 
-async def _reset(url: str) -> None:
+async def _delete(url: str, profile_ids: Sequence[UUID]) -> None:
+    """Remove only the rows this module created, so a parallel run is unaffected."""
+    if not profile_ids:
+        return
     engine = create_async_engine(url, poolclass=NullPool)
     try:
         async with engine.begin() as connection:
-            _ = await connection.execute(text("DELETE FROM sync_job"))
-            _ = await connection.execute(text("DELETE FROM store_profile"))
+            for statement in (
+                "DELETE FROM sync_job WHERE store_profile_id = ANY(:ids)",
+                "DELETE FROM store_profile WHERE id = ANY(:ids)",
+            ):
+                _ = await connection.execute(text(statement), {"ids": list(profile_ids)})
     finally:
         await engine.dispose()
 
@@ -115,6 +126,8 @@ async def seed_failed_job(url: str, *, retryable: bool) -> SeededJob:
                 else:
                     task.status = PlatformSyncTaskStatus.SUCCESS
             job.status = SyncJobStatus.PARTIAL_SUCCESS
+            if _CREATED_PROFILES:
+                _CREATED_PROFILES[-1].append(profile.id)
             return SeededJob(job_id=job.id, store_profile_id=profile.id)
     finally:
         await engine.dispose()
