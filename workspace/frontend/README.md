@@ -44,12 +44,23 @@ VITE_MOCK_SCENARIO=default
 MSW service worker는 로컬 개발에서만 사용하며 `VITE_API_MOCKING=false`일 때 로드되지 않습니다.
 mock 모드에서는 Vite의 `/api` 백엔드 프록시가 비활성화되고, `VITE_API_BASE_URL` 값이 있더라도 API 요청은 service worker가 제어하는 same-origin `/api` 경로를 사용합니다. 미등록 `/api` 요청은 실제 네트워크로 우회하지 않고 오류로 보고됩니다.
 
+## 세 가지 연동 모드
+
+프론트엔드는 서로 다른 트랜스포트를 쓰는 세 가지 모드를 지원합니다. 코드 경로(`apiRequestParsed`, 서비스 래퍼)는 모드와 무관하게 동일합니다.
+
+1. **Mock 개발/배포 (기본값)** — `VITE_API_MOCKING=true`. MSW service worker가 same-origin `/api`를 가로챕니다. 로컬 개발과 자동 배포(`.github/workflows/deploy.yml`)의 기본값이며, 실제 v0.2 백엔드가 나오기 전까지 유지합니다.
+2. **로컬 mock-off contract transport (필수 검증)** — MSW 없이 실제 TCP로 `apiRequestParsed`가 계약을 검증합니다.
+   - 자동화: `npm run test:transport` — `node:http`로 띄운 임시 v0.2 계약 stub에 실제 HTTP 요청을 보내 UC1/UC2/Sync 흐름과 실패 케이스(비 JSON 응답, 손상된 envelope, 409, 422, 연결 끊김, timeout)를 검증합니다.
+   - 수동 스모크: 터미널 두 개에서 각각 `npm run stub:contract`(포트 8000의 계약 stub)와 `VITE_API_MOCKING=false npm run dev -- --host 127.0.0.1`을 실행한 뒤, 브라우저에서 상대 경로 `/api/v1/...` 요청이 Vite 프록시를 거쳐 stub에 도달하는지, service worker가 등록되지 않는지 확인합니다.
+3. **실제 백엔드 v0.2 (외부 opt-in 게이트)** — `VITE_API_BASE_URL`에 도달 가능한 백엔드 주소를, `VITE_STORE_PROFILE_ID`에 유효한 UUID를 설정합니다(선택적으로 리뷰 UUID도). 현재 배포된 백엔드는 `/health`만 제공하는 상태이므로 이 모드는 **NOT RUN: health-only backend lacks v0.2 endpoints**로 기록합니다 — `/health` 통과를 API 계약 완료로 해석하지 않습니다.
+
 ## 실제 백엔드로 전환
 
 ```dotenv
 VITE_API_BASE_URL=http://localhost:8000
 VITE_API_MOCKING=false
 VITE_MOCK_SCENARIO=default
+VITE_STORE_PROFILE_ID=11111111-1111-4111-8111-111111111111
 ```
 
 같은 origin에서 Vite `/api` proxy를 사용하려면 `VITE_API_BASE_URL`을 비워 둡니다. 백엔드는 `specs/001-local-seo-generation/contracts/api-contract.md`의 공통 envelope와 endpoint를 준수해야 합니다. 컴포넌트는 mock 모듈이나 시나리오에 따라 API 동작을 분기하지 않습니다.
@@ -60,6 +71,7 @@ VITE_MOCK_SCENARIO=default
 npm run lint
 npm run typecheck
 npm run test:run
+npm run test:transport
 npm run build
 ```
 
