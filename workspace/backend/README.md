@@ -40,6 +40,20 @@ uv run --locked alembic upgrade head --sql  # DB 연결 없이 SQL만 확인
 
 `--sql` 오프라인 모드는 DB 접속 없이 생성될 DDL을 그대로 출력한다.
 
+## Seed
+
+migration 이후 시연용 매장 하나와 마스킹 완료 리뷰 세 건을 넣는다.
+
+```bash
+uv run --locked python -m mapkeeper.db.seed
+```
+
+고정 UUID를 사용하므로 여러 번 실행해도 중복되지 않는다. 이미 있으면 아무것도 쓰지 않는다.
+UC1과 UC2를 서로 없이도 시연할 수 있는 최소 데이터다.
+
+seed에는 고객 PII와 Secret 원문이 없다. `platformAccountRefs`에는 공개 계정 ID와
+`sm://` 참조만 넣고 OAuth Token이나 API Secret은 저장하지 않는다.
+
 ## API 계약
 
 `openapi.json`이 프론트엔드에 전달하는 단일 계약이다. schema나 route를 바꾸면 다시 생성한다.

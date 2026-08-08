@@ -25,8 +25,11 @@ EXPECTED_TABLES: Final = frozenset(
         "local_seo_content",
         "sync_job",
         "platform_sync_task",
+        "source_review",
     }
 )
+# SourceReview is write-once: the Data Model gives it createdAt only.
+TABLES_WITH_UPDATED_AT: Final = EXPECTED_TABLES - {"source_review"}
 
 
 PROPOSAL_SOURCE_BRANCH: Final = """source_type = 'STORE_CHANGE_PROPOSAL'
@@ -313,6 +316,7 @@ def test_sync_source_type_covers_both_use_cases() -> None:
         ("sync_job", "store_change_proposal_id", "store_change_proposal", "RESTRICT"),
         ("sync_job", "content_generation_id", "content_generation", "RESTRICT"),
         ("platform_sync_task", "sync_job_id", "sync_job", "CASCADE"),
+        ("source_review", "store_profile_id", "store_profile", "CASCADE"),
     ],
 )
 def test_foreign_keys_follow_the_data_model_hierarchy(
@@ -329,10 +333,34 @@ def test_foreign_keys_follow_the_data_model_hierarchy(
 
 
 @pytest.mark.parametrize("table_name", sorted(EXPECTED_TABLES))
-@pytest.mark.parametrize("column", ["created_at", "updated_at"])
-def test_every_table_records_server_side_timestamps(table_name: str, column: str) -> None:
+def test_every_table_records_when_a_row_was_created(table_name: str) -> None:
     # Given: one mapped table.
 
-    # When / Then: both timestamps are timezone-aware and filled by PostgreSQL.
-    definition = _column_definition(table_name, column)
+    # When / Then: creation time is timezone-aware and filled by PostgreSQL.
+    definition = _column_definition(table_name, "created_at")
     assert definition == "TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL"
+
+
+@pytest.mark.parametrize("table_name", sorted(TABLES_WITH_UPDATED_AT))
+def test_every_mutable_table_records_when_a_row_changed(table_name: str) -> None:
+    # Given: one table whose rows can change after insert.
+
+    # When / Then: modification time is timezone-aware and filled by PostgreSQL.
+    definition = _column_definition(table_name, "updated_at")
+    assert definition == "TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL"
+
+
+def test_source_review_is_write_once() -> None:
+    # Given: the SourceReview table.
+    columns = frozenset(_table("source_review").columns.keys())
+
+    # When / Then: a masked review is never edited, so it carries no updatedAt.
+    assert "updated_at" not in columns
+    assert columns == {"id", "store_profile_id", "body_masked", "created_at"}
+
+
+def test_source_review_stores_only_masked_text() -> None:
+    # Given: the SourceReview table.
+
+    # When / Then: the column name states that raw customer text never lands here.
+    assert _column_definition("source_review", "body_masked") == "TEXT NOT NULL"

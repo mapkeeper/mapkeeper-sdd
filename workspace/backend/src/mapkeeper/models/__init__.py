@@ -9,6 +9,7 @@ from mapkeeper.models.enums import (
     SyncJobStatus,
     SyncSourceType,
 )
+from mapkeeper.models.review import SourceReview
 from mapkeeper.models.store import StoreChangeProposal, StoreProfile
 from mapkeeper.models.sync import PlatformSyncTask, SyncJob
 
@@ -22,6 +23,7 @@ __all__ = [
     "PlatformSyncTask",
     "PlatformSyncTaskStatus",
     "ProposalStatus",
+    "SourceReview",
     "StoreChangeProposal",
     "StoreProfile",
     "SyncJob",

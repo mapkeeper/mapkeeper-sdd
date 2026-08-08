@@ -20,6 +20,7 @@ from mapkeeper.models import (
 )
 
 INITIAL_REVISION: Final = "0001"
+HEAD_REVISION: Final = "0002"
 ENUM_TYPES: Final = {
     "platform": Platform,
     "proposal_status": ProposalStatus,
@@ -73,8 +74,10 @@ def test_the_schema_has_a_single_migration_head(backend_root: Path) -> None:
     heads = script_directory.get_heads()
 
     # Then: one linear history exists, starting from the initial revision.
-    assert list(heads) == [INITIAL_REVISION]
+    assert list(heads) == [HEAD_REVISION]
     assert script_directory.get_revision(INITIAL_REVISION).down_revision is None
+    revisions = list(script_directory.walk_revisions())
+    assert len({revision.revision for revision in revisions}) == len(revisions)
 
 
 def test_upgrade_runs_against_an_empty_database(upgrade_sql: str) -> None:
@@ -86,6 +89,7 @@ def test_upgrade_runs_against_an_empty_database(upgrade_sql: str) -> None:
     assert "CREATE TABLE alembic_version" in upgrade_sql
     assert "INSERT INTO alembic_version (version_num)" in upgrade_sql
     assert f"('{INITIAL_REVISION}')" in upgrade_sql
+    assert f"version_num='{HEAD_REVISION}'" in upgrade_sql
 
 
 @pytest.mark.parametrize("table_name", sorted(Base.metadata.tables))
