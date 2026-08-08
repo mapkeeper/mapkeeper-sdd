@@ -4,11 +4,13 @@ from dataclasses import dataclass
 from typing import Final, Protocol
 from uuid import uuid4
 
+from mapkeeper.adapters.gemini_seo import GeminiSEOGenerator, HttpGeminiModelClient
 from mapkeeper.api.schemas.seo import (
     ContentGenerationInput,
     PlatformContentResult,
     normalize_keywords,
 )
+from mapkeeper.core.config import get_settings
 from mapkeeper.models import Platform, StoreProfile
 
 PLATFORM_RULES: Final[dict[Platform, tuple[str, str]]] = {
@@ -64,8 +66,21 @@ class DeterministicSEOStub:
 
 
 def get_seo_generator() -> SEOContentGenerator:
-    """Return the deterministic generator until Gemini HTTP integration is available."""
-    return DeterministicSEOStub()
+    """Return the Gemini generator when a key is configured, otherwise the stub.
+
+    The stub is kept rather than removed: without a key the UC2 flow still runs
+    offline, and a demo does not depend on an external service being reachable.
+    """
+    settings = get_settings()
+    if settings.gemini_api_key is None:
+        return DeterministicSEOStub()
+    return GeminiSEOGenerator(
+        HttpGeminiModelClient(
+            api_key=settings.gemini_api_key.get_secret_value(),
+            model=settings.gemini_model,
+            timeout_seconds=settings.gemini_timeout_seconds,
+        )
+    )
 
 
-__all__ = ["SEOContentGenerator", "get_seo_generator"]
+__all__ = ["DeterministicSEOStub", "SEOContentGenerator", "get_seo_generator"]

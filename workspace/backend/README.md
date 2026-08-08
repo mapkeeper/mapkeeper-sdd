@@ -11,6 +11,8 @@ FastAPI 애플리케이션과 API Contract v0.2 기준 Pydantic schema, PostgreS
 | `DATABASE_URL` | PostgreSQL DSN. `postgresql+asyncpg://` 드라이버만 허용한다. |
 | `DB_ECHO` | SQL 로깅 여부. 기본값은 `false`다. |
 | `MVP_ACTOR_ID` | 승인 주체 UUID. 로그인 없는 MVP에서 `approvedBy`로 사용한다. 요청 Body에서 받지 않는다. |
+| `GEMINI_API_KEY` | 선택. 없으면 UC2 문구 생성이 결정적 stub으로 동작한다. |
+| `GEMINI_MODEL` | 기본 `gemini-2.5-flash`. |
 | `TEST_DATABASE_URL` | `tests/integration`이 사용하는 빈 DB. 없으면 해당 테스트를 건너뛴다. |
 
 PostgreSQL은 Proxmox의 별도 LXC를 사용하며 Compose에 DB 컨테이너를 추가하지 않는다.
@@ -100,6 +102,20 @@ IDEMPOTENCY_CONFLICT`다. 같은 요청인지는 SHA-256으로 판별한다.
   다시 시도한다. 성공한 플랫폼은 절대 다시 실행하지 않는다.
 - **재시작 복구** — BackgroundTasks는 프로세스 재시작을 넘기지 못하므로, 기동 시
   `PROCESSING`·`RETRYING`으로 남은 Task를 재시도 가능한 `FAILED`로 정리한다.
+
+## UC2 문구 생성
+
+`GEMINI_API_KEY`가 있으면 Gemini를 호출하고, 없으면 결정적 stub이 동작한다.
+시연이 외부 서비스 가용성에 묶이지 않도록 폴백을 유지한다.
+
+- 한 번의 호출로 3사 결과를 함께 받는다. 무료 티어 rate limit(분당 5~15회) 때문이다.
+- 모델 출력은 저장 전에 `PlatformContentResult` schema로 재검증한다. 길이·키워드
+  개수·플랫폼 커버리지를 지키지 않으면 거절한다.
+- 프롬프트에는 마스킹된 값만 들어간다. 실패 메시지는 provider·endpoint·key를
+  드러내지 않는다.
+
+⚠️ 무료 티어는 전송 데이터가 Google의 제품 개선에 사용될 수 있다. 실제 매장
+데이터로 운영하려면 유료 티어를 검토한다.
 
 ## API 계약
 

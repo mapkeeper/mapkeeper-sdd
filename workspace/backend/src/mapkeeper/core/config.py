@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import ClassVar, Final
 from uuid import UUID
 
-from pydantic import PostgresDsn, field_validator
+from pydantic import PostgresDsn, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ASYNC_POSTGRES_SCHEME: Final = "postgresql+asyncpg"
@@ -26,7 +26,11 @@ class Settings(BaseSettings):
     # MVP has no login. Approvals are attributed to this fixed actor, never to a
     # value taken from the request body.
     mvp_actor_id: UUID
-    gemini_api_key: str | None = None
+    # Optional. Without it the SEO generation falls back to a deterministic stub,
+    # so the UC2 flow runs offline.
+    gemini_api_key: SecretStr | None = None
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_timeout_seconds: float = 20.0
 
     @field_validator("database_url")
     @classmethod
