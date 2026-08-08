@@ -4,7 +4,6 @@ The handler bodies arrive in T225 and T227~T234, so every contract route answers
 for now. These checks pin the routing, the path parameter names and the header rules.
 """
 
-from collections.abc import Iterator
 from typing import Final
 
 import pytest
@@ -55,9 +54,9 @@ DECLARED_ROUTES: Final = (
     ),
     ("post", f"/api/v1/seo/generations/{GENERATION_ID}/reject", None, None),
     ("post", f"/api/v1/seo/generations/{GENERATION_ID}/approve", None, "approve-2"),
-    ("get", f"/api/v1/sync-jobs/{SYNC_JOB_ID}", None, None),
-    ("post", f"/api/v1/sync-jobs/{SYNC_JOB_ID}/retry", None, None),
 )
+# The sync-jobs endpoints are implemented and need a database, so their behaviour
+# lives in tests/integration/test_sync_api.py rather than in this placeholder sweep.
 APPROVE_PATHS: Final = (
     f"/api/v1/store-change-proposals/{PROPOSAL_ID}/approve",
     f"/api/v1/seo/generations/{GENERATION_ID}/approve",
@@ -65,10 +64,9 @@ APPROVE_PATHS: Final = (
 
 
 @pytest.fixture(scope="module")
-def client() -> Iterator[TestClient]:
-    """Return a client for the assembled application."""
-    with TestClient(app) as test_client:
-        yield test_client
+def client() -> TestClient:
+    """Return a client that does not run startup, which needs no database."""
+    return TestClient(app)
 
 
 @pytest.mark.parametrize(("method", "path", "body", "key"), DECLARED_ROUTES)
@@ -152,8 +150,8 @@ def test_the_request_id_header_is_accepted(client: TestClient) -> None:
     # Given: a client supplying its own trace id.
 
     # When: any contract route is called with it.
-    response = client.get(
-        f"/api/v1/sync-jobs/{SYNC_JOB_ID}",
+    response = client.post(
+        f"/api/v1/store-change-proposals/{PROPOSAL_ID}/reject",
         headers={"X-Request-ID": "trace-1234"},
     )
 

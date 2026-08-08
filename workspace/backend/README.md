@@ -73,6 +73,20 @@ IDEMPOTENCY_CONFLICT`다. 같은 요청인지는 SHA-256으로 판별한다.
 
 재생성으로 revision이 올라가면 같은 키라도 다른 요청이 된다.
 
+## 플랫폼 동기화
+
+승인 결과는 `SyncJob` 하나와 플랫폼별 `PlatformSyncTask` 세 개로 처리한다.
+
+- **Adapter 경계** — 외부 플랫폼은 `adapters/`의 Protocol을 통해서만 호출한다. 실패는
+  6개 계약 오류 코드 중 하나로 정규화되며, 벤더 응답·토큰·서명은 밖으로 나오지 않는다.
+  timeout·429·5xx만 재시도 가능하다.
+- **현재 어댑터** — Google·Naver·Kakao 클라이언트가 아직 없어 `AcceptingAdapter`가
+  외부 호출 없이 성공을 반환한다. 실제 어댑터는 `adapters/registry.py`에서 교체한다.
+- **재시도** — 실패했고 재시도 가능한 플랫폼만, 최대 3회, 2·4·8초 지수 백오프로
+  다시 시도한다. 성공한 플랫폼은 절대 다시 실행하지 않는다.
+- **재시작 복구** — BackgroundTasks는 프로세스 재시작을 넘기지 못하므로, 기동 시
+  `PROCESSING`·`RETRYING`으로 남은 Task를 재시도 가능한 `FAILED`로 정리한다.
+
 ## API 계약
 
 `openapi.json`이 프론트엔드에 전달하는 단일 계약이다. schema나 route를 바꾸면 다시 생성한다.

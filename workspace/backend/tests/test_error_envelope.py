@@ -1,6 +1,5 @@
 """Every failure leaves the API in the envelope the contract publishes."""
 
-from collections.abc import Iterator
 from typing import Final
 
 import pytest
@@ -20,17 +19,15 @@ from mapkeeper.core.errors import (
 )
 from mapkeeper.main import app
 from mapkeeper.models.enums import ApiErrorCode
-
-from .jsonassert import body_of, obj, text_of
+from tests.jsonassert import body_of, obj, text_of
 
 SYNC_JOB_ID: Final = "66666666-6666-4666-8666-666666666666"
 
 
 @pytest.fixture(scope="module")
-def client() -> Iterator[TestClient]:
-    """Return a client for the assembled application."""
-    with TestClient(app) as test_client:
-        yield test_client
+def client() -> TestClient:
+    """Return a client that does not run startup, which needs no database."""
+    return TestClient(app)
 
 
 def test_a_validation_failure_uses_the_response_envelope(client: TestClient) -> None:
@@ -82,7 +79,7 @@ def test_an_unimplemented_route_still_answers_in_the_envelope(client: TestClient
     # Given: a route declared for the contract but not yet built.
 
     # When: it is called.
-    response = client.get(f"/api/v1/sync-jobs/{SYNC_JOB_ID}")
+    response = client.post(f"/api/v1/store-change-proposals/{SYNC_JOB_ID}/reject")
 
     # Then: the transitional 501 is honest and still machine-readable.
     assert response.status_code == status.HTTP_501_NOT_IMPLEMENTED

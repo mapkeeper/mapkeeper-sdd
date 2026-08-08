@@ -1,7 +1,6 @@
 """T218: every request is traceable and no sensitive value reaches a log or a response."""
 
 import logging
-from collections.abc import Iterator
 from typing import Final
 from uuid import UUID, uuid4
 
@@ -26,14 +25,15 @@ from mapkeeper.core.logging import (
 from mapkeeper.main import app
 
 SYNC_JOB_ID: Final = "66666666-6666-4666-8666-666666666666"
-STATUS_PATH: Final = f"/api/v1/sync-jobs/{SYNC_JOB_ID}"
+PROPOSAL_ID: Final = "22222222-2222-4222-8222-222222222222"
+# A route whose handler is still a placeholder, so tracing is checked without a database.
+TRACED_PATH: Final = f"/api/v1/store-change-proposals/{PROPOSAL_ID}/reject"
 
 
 @pytest.fixture(scope="module")
-def client() -> Iterator[TestClient]:
-    """Return a client for the assembled application."""
-    with TestClient(app) as test_client:
-        yield test_client
+def client() -> TestClient:
+    """Return a client that does not run startup, which needs no database."""
+    return TestClient(app)
 
 
 def test_the_server_generates_a_trace_id_when_the_client_sends_none(
@@ -42,7 +42,7 @@ def test_the_server_generates_a_trace_id_when_the_client_sends_none(
     # Given: a client that does not trace its own requests.
 
     # When: it calls the API.
-    response = client.get(STATUS_PATH)
+    response = client.post(TRACED_PATH)
 
     # Then: the server hands back the id it will have logged against.
     assert response.headers[REQUEST_ID_HEADER]
@@ -53,7 +53,7 @@ def test_a_client_trace_id_is_returned_unchanged(client: TestClient) -> None:
     supplied = "trace-abc.123:xyz"
 
     # When: it calls the API.
-    response = client.get(STATUS_PATH, headers={REQUEST_ID_HEADER: supplied})
+    response = client.post(TRACED_PATH, headers={REQUEST_ID_HEADER: supplied})
 
     # Then: both sides can correlate on the same value.
     assert response.headers[REQUEST_ID_HEADER] == supplied
@@ -76,7 +76,7 @@ def test_an_unsafe_client_trace_id_is_replaced_rather_than_echoed(
     # Given: a trace id that is too long, malformed or trying to inject a header.
 
     # When: it is sent to the API.
-    response = client.get(STATUS_PATH, headers={REQUEST_ID_HEADER: hostile})
+    response = client.post(TRACED_PATH, headers={REQUEST_ID_HEADER: hostile})
 
     # Then: the server answers with a generated id instead of reflecting the input.
     returned = response.headers[REQUEST_ID_HEADER]
@@ -99,8 +99,8 @@ def test_two_requests_receive_different_generated_trace_ids(client: TestClient) 
     # Given: two untraced requests.
 
     # When: both are answered.
-    first = client.get(STATUS_PATH).headers[REQUEST_ID_HEADER]
-    second = client.get(STATUS_PATH).headers[REQUEST_ID_HEADER]
+    first = client.post(TRACED_PATH).headers[REQUEST_ID_HEADER]
+    second = client.post(TRACED_PATH).headers[REQUEST_ID_HEADER]
 
     # Then: one operator search never mixes two requests together.
     assert first != second

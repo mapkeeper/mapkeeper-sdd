@@ -108,6 +108,7 @@ branch = true
 exclude_lines = [
     "pragma: no cover",
     "if __name__ == .__main__.:",
+    "^\\s*\\.\\.\\.$",
     "if TYPE_CHECKING:",
     "if typing.TYPE_CHECKING:",
     "raise NotImplementedError",

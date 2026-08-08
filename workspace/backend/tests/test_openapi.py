@@ -6,8 +6,7 @@ import pytest
 from mapkeeper.core.json_types import JsonObject
 from mapkeeper.models.enums import ApiErrorCode, Platform, PlatformErrorCode
 from mapkeeper.openapi import build_openapi, default_output_path, main, render_openapi
-
-from .jsonassert import arr, number_of, obj, strings_of, text_of
+from tests.jsonassert import arr, number_of, obj, strings_of, text_of
 
 CONTRACT_ENDPOINTS: Final[tuple[tuple[str, str, str], ...]] = (
     ("post", "/api/v1/store-change-proposals", "201"),

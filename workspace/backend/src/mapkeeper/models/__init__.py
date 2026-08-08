@@ -1,9 +1,11 @@
 from mapkeeper.models.base import Base
 from mapkeeper.models.content import ContentGeneration, LocalSEOContent
 from mapkeeper.models.enums import (
+    ApiErrorCode,
     ApiResponseStatus,
     ContentGenerationStatus,
     Platform,
+    PlatformErrorCode,
     PlatformSyncTaskStatus,
     ProposalStatus,
     SyncJobStatus,
@@ -14,12 +16,14 @@ from mapkeeper.models.store import StoreChangeProposal, StoreProfile
 from mapkeeper.models.sync import PlatformSyncTask, SyncJob
 
 __all__ = [
+    "ApiErrorCode",
     "ApiResponseStatus",
     "Base",
     "ContentGeneration",
     "ContentGenerationStatus",
     "LocalSEOContent",
     "Platform",
+    "PlatformErrorCode",
     "PlatformSyncTask",
     "PlatformSyncTaskStatus",
     "ProposalStatus",
