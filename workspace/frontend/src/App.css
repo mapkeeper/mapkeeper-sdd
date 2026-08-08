@@ -12,6 +12,13 @@
 html, body, #root { min-height: 100%; margin: 0; }
 body { background: #f2f4f6; }
 body, button, input, textarea, select { font-family: Pretendard, sans-serif; }
+/* Korean line-breaking (320/375/768 CJK QA): keep-all avoids splitting a Korean word
+   (eojeol) mid-syllable at narrow widths; overflow-wrap is the fallback for a single
+   unbreakable token (e.g. a long URL) that would otherwise overflow the viewport. */
+:where(h1, h2, h3, p, span, strong, small, button, a, label, li, legend) {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
 .app-viewport {
   min-height: 100dvh;
   color: var(--text-primary);

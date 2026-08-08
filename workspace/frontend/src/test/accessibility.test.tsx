@@ -4,7 +4,7 @@ import { axe } from 'jest-axe';
 import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
 import { SeoPlatformResultCard } from '@/components/SeoPlatformResultCard/SeoPlatformResultCard';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
-import { successSyncJobFixture } from '@/mocks/fixtures/syncJobFixtures';
+import { SYNC_JOB_ID, successSyncJobFixture } from '@/mocks/fixtures/syncJobFixtures';
 
 describe('접근성 회귀', () => {
   test('UC1 음성 입력은 키보드, live region, 큰 터치 영역을 제공한다', async () => {
@@ -40,7 +40,7 @@ describe('접근성 회귀', () => {
 
   test('동기화 현황은 스크린리더 진행률과 reduced-motion 규칙을 제공한다', async () => {
     const { container } = render(
-      <SyncStatusDashboard syncJobId="job-001" initialJob={successSyncJobFixture} autoPoll={false} />,
+      <SyncStatusDashboard syncJobId={SYNC_JOB_ID} initialJob={successSyncJobFixture} autoPoll={false} />,
     );
     expect(screen.getByLabelText('동기화 진행률')).toHaveAttribute('value', '3');
     expect(screen.getByLabelText('플랫폼 동기화 현황')).toHaveAttribute('data-reduced-motion-safe', 'true');

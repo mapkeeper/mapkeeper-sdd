@@ -1,6 +1,6 @@
 # Mapkeeper AI Frontend
 
-5060 소상공인을 위한 매장정보 변경(UC1), 5단계 모바일 로컬 SEO 문구 생성(UC2), Google/Naver/Kakao 동기화 현황을 제공하는 React/Vite 프론트엔드입니다.
+5060 소상공인을 위한 매장정보 변경(UC1), 4단계 모바일 로컬 SEO 문구 생성(UC2), Google/Naver/Kakao 동기화 현황을 제공하는 React/Vite 프론트엔드입니다.
 
 ## 요구 환경
 
@@ -63,7 +63,22 @@ VITE_MOCK_SCENARIO=default
 VITE_STORE_PROFILE_ID=11111111-1111-4111-8111-111111111111
 ```
 
-같은 origin에서 Vite `/api` proxy를 사용하려면 `VITE_API_BASE_URL`을 비워 둡니다. 백엔드는 `specs/001-local-seo-generation/contracts/api-contract.md`의 공통 envelope와 endpoint를 준수해야 합니다. 컴포넌트는 mock 모듈이나 시나리오에 따라 API 동작을 분기하지 않습니다.
+같은 origin에서 Vite `/api` proxy를 사용하려면 `VITE_API_BASE_URL`을 비워 둡니다. 컴포넌트는 mock 모듈이나 시나리오에 따라 API 동작을 분기하지 않습니다.
+
+백엔드는 API Contract v0.2의 공통 envelope(§1)와 다음 10개 endpoint만 구현하면 됩니다. 개별 Draft PATCH·선택 승인이나 SyncJob 취소처럼 이 목록에 없는 endpoint는 만들지 않습니다.
+
+| 기능 | 메서드와 경로 | HTTP |
+| --- | --- | ---: |
+| UC1 생성 | `POST /api/v1/store-change-proposals` | 201 |
+| UC1 수정 | `PATCH /api/v1/store-change-proposals/{proposalId}` | 200 |
+| UC1 거절 | `POST /api/v1/store-change-proposals/{proposalId}/reject` | 200 |
+| UC1 승인 | `POST /api/v1/store-change-proposals/{proposalId}/approve` | 202 |
+| UC2 생성 | `POST /api/v1/seo/generations` | 201 |
+| UC2 전체 재생성 | `POST /api/v1/seo/generations/{generationId}/regenerate` | 200 |
+| UC2 전체 거절 | `POST /api/v1/seo/generations/{generationId}/reject` | 200 |
+| UC2 전체 승인 | `POST /api/v1/seo/generations/{generationId}/approve` | 202 |
+| SyncJob 상태 조회 | `GET /api/v1/sync-jobs/{syncJobId}` | 200 |
+| SyncJob 재시도 | `POST /api/v1/sync-jobs/{syncJobId}/retry` | 202 |
 
 ## 검증 명령
 
@@ -112,12 +127,11 @@ npm run test:run -- src/test/mvpFlows.test.tsx
 
 ## UC2 모바일 단계 흐름
 
-UC2는 한 화면에 한 단계만 표시합니다.
+UC2는 한 화면에 한 단계만 표시하며, 개별 Draft가 아니라 `ContentGeneration` 전체를 다룹니다.
 
-1. 리뷰 AI 요약, 키워드, 분석 건수 확인
-2. 대표 소개글 또는 가게 소식 목적 선택
-3. 세 가지 AI 인터뷰 질문에 답변
-4. 추천 소개글과 해시태그 수정 후 명시적 업로드
-5. Google/Naver/Kakao 반영 상태 및 재시도 확인
+1. **SUMMARY** — 리뷰 AI 요약, 키워드, 분석 건수 확인
+2. **COMMON_INPUT** — 공통 홍보 설명(`briefText`)과 핵심 키워드(`seedKeywords`, 1~5개) 입력
+3. **RESULT** — Google·Naver·Kakao 세 결과를 읽기 전용으로 확인하고 재생성·거절·승인 중 하나를 선택 (재생성은 공통 입력을 수정해 3사 결과 전체를 새 `revision`으로 교체, 승인은 Body 없이 Generation 전체를 한 번에 승인)
+4. **SYNC** — 승인 후 발급된 SyncJob의 Google/Naver/Kakao 반영 상태와 재시도 확인
 
-목적과 인터뷰 답변은 브라우저 세션에서만 사용합니다. 기존 API에는 마스킹 리뷰 ID, 수정된 draft text, 승인할 draft ID만 전달합니다.
+플랫폼별 개별 Draft 선택·수정·승인 UI는 없습니다. 승인 요청에는 `draftIds`나 `approvedPlatforms`를 보내지 않으며, `approvedPlatforms`는 서버가 승인 응답에만 포함하는 값입니다.
