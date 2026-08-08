@@ -25,8 +25,7 @@ from mapkeeper.core.logging import (
 from mapkeeper.main import app
 
 SYNC_JOB_ID: Final = "66666666-6666-4666-8666-666666666666"
-# A route whose handler is still a placeholder, so tracing is checked without a database.
-TRACED_PATH: Final = f"/api/v1/seo/generations/{SYNC_JOB_ID}/reject"
+TRACED_PATH: Final = "/api/v1/seo/generations/not-a-uuid/approve"
 
 
 @pytest.fixture(scope="module")

@@ -75,17 +75,6 @@ def test_a_malformed_json_body_is_reported_as_a_validation_error(client: TestCli
     assert text_of(error["code"]) == ApiErrorCode.VALIDATION_ERROR.value
 
 
-def test_an_unimplemented_route_still_answers_in_the_envelope(client: TestClient) -> None:
-    # Given: a route declared for the contract but not yet built.
-
-    # When: it is called.
-    response = client.post(f"/api/v1/seo/generations/{SYNC_JOB_ID}/reject")
-
-    # Then: the transitional 501 is honest and still machine-readable.
-    assert response.status_code == status.HTTP_501_NOT_IMPLEMENTED
-    assert body_of(response.text)["success"] is False
-
-
 @pytest.mark.parametrize(
     ("error", "expected_status", "expected_code"),
     [

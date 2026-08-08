@@ -1134,7 +1134,7 @@
   "paths": {
     "/api/v1/seo/generations": {
       "post": {
-        "description": "Take one common input and produce exactly one Google, Naver and Kakao result.",
+        "description": "Take one common input and produce exactly one result per platform.",
         "operationId": "create_generation_api_v1_seo_generations_post",
         "parameters": [
           {
@@ -1226,7 +1226,7 @@
     },
     "/api/v1/seo/generations/{generationId}/approve": {
       "post": {
-        "description": "Approve every platform result at once. The request body carries no per-draft ids.",
+        "description": "Commit whole-generation approval before queuing synchronization.",
         "operationId": "approve_generation_api_v1_seo_generations__generationId__approve_post",
         "parameters": [
           {
@@ -1352,7 +1352,7 @@
     },
     "/api/v1/seo/generations/{generationId}/regenerate": {
       "post": {
-        "description": "Atomically replace all platform results and increment revision. DRAFT only.",
+        "description": "Replace all platform results and increment revision on a DRAFT.",
         "operationId": "regenerate_generation_api_v1_seo_generations__generationId__regenerate_post",
         "parameters": [
           {

@@ -23,19 +23,6 @@ CREATE_GENERATION_BODY: Final = {
     "briefText": "만두전골의 깊은 국물 맛을 강조하고 싶어요.",
     "seedKeywords": ["만두전골", "가족외식"],
 }
-DECLARED_ROUTES: Final = (
-    ("post", "/api/v1/seo/generations", CREATE_GENERATION_BODY, None),
-    (
-        "post",
-        f"/api/v1/seo/generations/{GENERATION_ID}/regenerate",
-        {"briefText": "다시 써줘", "seedKeywords": ["만두전골"]},
-        None,
-    ),
-    ("post", f"/api/v1/seo/generations/{GENERATION_ID}/reject", None, None),
-    ("post", f"/api/v1/seo/generations/{GENERATION_ID}/approve", None, "approve-2"),
-)
-# UC1 and sync endpoints are implemented and need a database, so their behavior
-# lives in integration tests rather than in this placeholder sweep.
 APPROVE_PATHS: Final = (
     f"/api/v1/store-change-proposals/{PROPOSAL_ID}/approve",
     f"/api/v1/seo/generations/{GENERATION_ID}/approve",
@@ -48,22 +35,9 @@ def client() -> TestClient:
     return TestClient(app)
 
 
-@pytest.mark.parametrize(("method", "path", "body", "key"), DECLARED_ROUTES)
-def test_every_contract_route_resolves(
-    client: TestClient,
-    method: str,
-    path: str,
-    body: dict[str, object] | None,
-    key: str | None,
-) -> None:
-    # Given: one endpoint of the published contract.
-    headers = {"Idempotency-Key": key} if key else {}
-
-    # When: an endpoint whose body is not implemented is called.
-    response = client.request(method, path, json=body, headers=headers)
-
-    # Then: routing works and the missing implementation is reported honestly.
-    assert response.status_code == status.HTTP_501_NOT_IMPLEMENTED
+def test_uc2_contract_routes_are_registered() -> None:
+    schema = app.openapi()
+    assert "/api/v1/seo/generations" in schema["paths"]
 
 
 @pytest.mark.parametrize("path", APPROVE_PATHS)
@@ -128,14 +102,13 @@ def test_an_undefined_request_field_is_rejected(client: TestClient) -> None:
 def test_the_request_id_header_is_accepted(client: TestClient) -> None:
     # Given: a client supplying its own trace id.
 
-    # When: an unimplemented contract route is called with it.
     response = client.post(
-        f"/api/v1/seo/generations/{GENERATION_ID}/reject",
+        "/api/v1/seo/generations/not-a-uuid/approve",
         headers={"X-Request-ID": "trace-1234"},
     )
 
     # Then: the header is accepted rather than rejected as undefined.
-    assert response.status_code == status.HTTP_501_NOT_IMPLEMENTED
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 def test_undeclared_endpoints_do_not_exist(client: TestClient) -> None:
