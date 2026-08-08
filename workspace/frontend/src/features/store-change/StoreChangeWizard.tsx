@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ProposalEditor } from '@/components/ProposalEditor/ProposalEditor';
 import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import type { ProposalChange } from '@/services/contracts/storeChange';
+import { isVoiceCancellation } from '@/services/voiceIntent';
 import { fieldLabels, formatChangeValue } from '@/features/store-change/proposalFormat';
 import { useStoreChangeFlow } from '@/features/store-change/useStoreChangeFlow';
 import type { StoreChangeSyncHandoff } from '@/features/store-change/useStoreChangeFlow';
@@ -17,13 +18,13 @@ export interface StoreChangeWizardProps {
 }
 
 export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChangeWizardProps) {
-  const speech = useSpeechRecognition();
   const [step, setStep] = useState<WizardStep>('INPUT');
   const [manualText, setManualText] = useState('');
   const [draftNote, setDraftNote] = useState<string | null>(null);
   const [isDraftPreparing, setDraftPreparing] = useState(false);
   const [editedChanges, setEditedChanges] = useState<ProposalChange[]>([]);
   const [handoff, setHandoff] = useState<StoreChangeSyncHandoff | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const submittedTranscriptRef = useRef('');
   const flow = useStoreChangeFlow(storeProfileId, (nextHandoff) => {
     setHandoff(nextHandoff);
@@ -36,6 +37,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
     if (!normalizedText || isDraftPreparing) return;
     setDraftPreparing(true);
     setDraftNote(null);
+    setVoiceNotice(null);
     try {
       const [proposal] = await Promise.all([
         flow.create(normalizedText),
@@ -49,12 +51,28 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
     }
   }, [flow, isDraftPreparing]);
 
-  useEffect(() => {
-    if (speech.state !== 'RECOGNIZED' || !speech.recognizedText) return;
-    if (submittedTranscriptRef.current === speech.recognizedText) return;
-    submittedTranscriptRef.current = speech.recognizedText;
-    void prepareDraft(speech.recognizedText);
-  }, [prepareDraft, speech.recognizedText, speech.state]);
+  const handleRecognized = useCallback((recognizedText: string): boolean => {
+    if (submittedTranscriptRef.current === recognizedText) return false;
+    submittedTranscriptRef.current = recognizedText;
+    if (isVoiceCancellation(recognizedText)) {
+      submittedTranscriptRef.current = '';
+      flow.clear();
+      setManualText('');
+      setDraftNote(null);
+      setVoiceNotice('음성 요청을 취소했어요. 처음부터 다시 말씀해 주세요.');
+      setStep('INPUT');
+      return true;
+    }
+    void prepareDraft(recognizedText);
+    return false;
+  }, [flow, prepareDraft]);
+
+  const speech = useSpeechRecognition(handleRecognized);
+  const startSpeech = speech.start;
+  const startVoice = useCallback(() => {
+    submittedTranscriptRef.current = '';
+    startSpeech();
+  }, [startSpeech]);
 
   const submitManual = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -96,6 +114,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
     <main className="store-change-wizard">
       <p className="store-change-wizard__progress">매장정보 변경 · 현재 단계</p>
       {flow.errorMessage ? <div className="store-change-wizard__alert" role="alert">{flow.errorMessage}</div> : null}
+      {voiceNotice ? <div className="store-change-wizard__alert" role="status">{voiceNotice}</div> : null}
 
       {step === 'INPUT' ? (
         <section className="store-change-wizard__step">
@@ -104,7 +123,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
             state={speech.state}
             recognizedText={speech.recognizedText}
             error={speech.error}
-            onStart={speech.start}
+            onStart={startVoice}
             onManualSubmit={(text) => {
               setManualText(text);
               setStep('MANUAL');

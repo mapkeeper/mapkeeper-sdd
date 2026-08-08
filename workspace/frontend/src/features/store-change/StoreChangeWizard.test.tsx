@@ -4,6 +4,29 @@ import { HttpResponse, http } from 'msw';
 import { server } from '@/mocks/server';
 import { StoreChangeWizard } from '@/features/store-change/StoreChangeWizard';
 
+class FakeSpeechRecognition {
+  static instance: FakeSpeechRecognition | null = null;
+
+  lang = '';
+  continuous = false;
+  interimResults = false;
+  onstart: (() => void) | null = null;
+  onresult: ((event: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null = null;
+  onerror: ((event: { error: string }) => void) | null = null;
+  onend: (() => void) | null = null;
+  start = vi.fn(() => this.onstart?.());
+  stop = vi.fn();
+  abort = vi.fn();
+
+  constructor() {
+    FakeSpeechRecognition.instance = this;
+  }
+
+  recognize(transcript: string): void {
+    this.onresult?.({ results: [{ 0: { transcript } }] });
+  }
+}
+
 const proposalId = '22222222-2222-4222-8222-222222222222';
 const timestamp = '2026-08-03T00:00:00Z';
 
@@ -15,6 +38,27 @@ async function createDraft(user: ReturnType<typeof userEvent.setup>, text = '영
 }
 
 describe('StoreChangeWizard', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'SpeechRecognition');
+    Reflect.deleteProperty(window, 'webkitSpeechRecognition');
+    FakeSpeechRecognition.instance = null;
+  });
+
+  test.each(['취소', '아니야.'])('취소 발화 %s는 API를 호출하지 않고 처음 화면으로 돌아간다', async (transcript) => {
+    // Given: 음성 입력 화면에서 브라우저 음성 인식을 사용할 수 있다
+    // When: 사용자가 취소 발화를 한다
+    // Then: 변경안 API를 호출하지 않고 취소 안내와 초기 화면을 보여준다
+    Object.defineProperty(window, 'SpeechRecognition', { configurable: true, value: FakeSpeechRecognition });
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '음성 인식 시작' }));
+    FakeSpeechRecognition.instance?.recognize(transcript);
+
+    expect(await screen.findByText('음성 요청을 취소했어요. 처음부터 다시 말씀해 주세요.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '음성 인식 시작' })).toBeInTheDocument();
+    expect(screen.queryByText('AI가 변경안을 작성 중입니다...')).not.toBeInTheDocument();
+  });
+
   test('인식 텍스트로 구조화된 영업시간 변경안을 만들고 검토 화면에 형식화해 보여준다', async () => {
     const user = userEvent.setup();
     render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);

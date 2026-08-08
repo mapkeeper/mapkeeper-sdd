@@ -17,7 +17,7 @@ export interface SpeechRecognitionState {
   reset(): void;
 }
 
-export function useSpeechRecognition(): SpeechRecognitionState {
+export function useSpeechRecognition(onRecognized?: (recognizedText: string) => boolean | void): SpeechRecognitionState {
   const constructor = getSpeechRecognitionConstructor();
   const [state, setState] = useState<VoiceUiState>('IDLE');
   const [recognizedText, setRecognizedText] = useState('');
@@ -58,6 +58,14 @@ export function useSpeechRecognition(): SpeechRecognitionState {
       receivedResultRef.current = true;
       setRecognizedText(transcript);
       setState('RECOGNIZED');
+      const shouldReset = onRecognized?.(transcript) ?? false;
+      if (shouldReset) {
+        release(true);
+        setRecognizedText('');
+        setError(null);
+        setState('IDLE');
+        return;
+      }
       recognition.stop();
     };
     recognition.onerror = (event) => {
@@ -76,7 +84,7 @@ export function useSpeechRecognition(): SpeechRecognitionState {
       setError('start-failed');
       setState('FAILED');
     }
-  }, [release]);
+  }, [onRecognized, release]);
 
   const stop = useCallback(() => {
     recognitionRef.current?.stop();
