@@ -4,7 +4,10 @@ import re
 from datetime import date
 from typing import Final, Protocol
 
-from mapkeeper.adapters.gemini_proposal import GeminiProposalStructurer
+from mapkeeper.adapters.gemini_proposal import (
+    DeterministicFirstGenerator,
+    GeminiProposalStructurer,
+)
 from mapkeeper.adapters.gemini_seo import HttpGeminiModelClient
 from mapkeeper.api.schemas.store_change import (
     BusinessHoursChange,
@@ -138,11 +141,13 @@ def get_gemini_generator() -> GeminiProposalGenerator:
     """
     settings = get_settings()
     if settings.gemini_api_key is None:
-        return DeterministicGeminiStub()
-    return GeminiProposalStructurer(
-        HttpGeminiModelClient(
-            api_key=settings.gemini_api_key.get_secret_value(),
-            model=settings.gemini_model,
-            timeout_seconds=settings.gemini_timeout_seconds,
+        return DeterministicFirstGenerator(DeterministicGeminiStub())
+    return DeterministicFirstGenerator(
+        GeminiProposalStructurer(
+            HttpGeminiModelClient(
+                api_key=settings.gemini_api_key.get_secret_value(),
+                model=settings.gemini_model,
+                timeout_seconds=settings.gemini_timeout_seconds,
+            )
         )
     )

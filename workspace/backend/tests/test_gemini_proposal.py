@@ -8,11 +8,13 @@ import pytest
 
 from mapkeeper.adapters.gemini import DeterministicGeminiStub, get_gemini_generator
 from mapkeeper.adapters.gemini_proposal import (
+    DeterministicFirstGenerator,
     GeminiProposalStructurer,
     UnsupportedChangeError,
     build_proposal_prompt,
     parse_changes,
 )
+from mapkeeper.adapters.gemini_seo import GENERATION_TIMEOUT_MESSAGE, GeminiTimeoutError
 from mapkeeper.api.schemas.store_change import BusinessHoursChange
 from mapkeeper.core.config import get_settings
 from mapkeeper.models import StoreProfile
@@ -139,8 +141,10 @@ def test_without_a_key_the_rule_based_stub_is_used() -> None:
     # Given: no GEMINI_API_KEY.
     get_settings.cache_clear()
 
-    # When / Then: UC1 still works offline.
-    assert isinstance(get_gemini_generator(), DeterministicGeminiStub)
+    # When / Then: UC1 still works offline, behind the deterministic parser.
+    generator = get_gemini_generator()
+    assert isinstance(generator, DeterministicFirstGenerator)
+    assert isinstance(generator.fallback, DeterministicGeminiStub)
 
 
 def test_with_a_key_the_gemini_structurer_is_used(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -148,8 +152,10 @@ def test_with_a_key_the_gemini_structurer_is_used(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-real")
     get_settings.cache_clear()
 
-    # When / Then: the same Protocol is satisfied by the model-backed structurer.
-    assert isinstance(get_gemini_generator(), GeminiProposalStructurer)
+    # When / Then: the parser still runs first; the model is only the fallback.
+    generator = get_gemini_generator()
+    assert isinstance(generator, DeterministicFirstGenerator)
+    assert isinstance(generator.fallback, GeminiProposalStructurer)
 
 
 @pytest.mark.asyncio
@@ -176,3 +182,76 @@ async def test_the_stub_changes_the_side_of_the_day_that_was_spoken(
     assert isinstance(change, BusinessHoursChange)
     assert change.proposed_value.open == expected_open
     assert change.proposed_value.close == expected_close
+
+
+# --- routing between the parser and the model ---------------------------------
+
+
+class CountingClient:
+    """Model client that records how many times it was asked to generate."""
+
+    def __init__(self, response: str) -> None:
+        """Start with no calls recorded."""
+        self.response: str = response
+        self.calls: int = 0
+
+    async def generate(self, prompt: str) -> str:
+        """Count the call and return the scripted response."""
+        _ = prompt
+        self.calls += 1
+        return self.response
+
+
+class TimingOutClient:
+    """Model client that always times out."""
+
+    async def generate(self, prompt: str) -> str:
+        """Fail the way a slow model does."""
+        _ = prompt
+        raise GeminiTimeoutError
+
+
+@pytest.mark.asyncio
+async def test_a_sentence_the_parser_understands_never_reaches_the_model() -> None:
+    # Given: a plain rename the deterministic parser handles.
+    client = CountingClient(hours_output("10:00", "22:00"))
+    generator = DeterministicFirstGenerator(GeminiProposalStructurer(client))
+
+    # When: the sentence is structured.
+    (change,) = await generator.generate("메뉴를 고기 만두로 바꿔줘", make_profile())
+
+    # Then: the user waits for no model round trip, so no timeout is possible.
+    assert client.calls == 0
+    assert change.proposed_value == "고기 만두"
+
+
+@pytest.mark.asyncio
+async def test_a_sentence_the_parser_declines_falls_back_to_the_model() -> None:
+    # Given: a sentence phrased in a way no rule covers.
+    client = CountingClient(hours_output("10:00", "22:00"))
+    generator = DeterministicFirstGenerator(GeminiProposalStructurer(client))
+
+    # When: the sentence is structured.
+    (change,) = await generator.generate("내가 내일 가게 문 좀 늦게 열까 하는데", make_profile())
+
+    # Then: the model reads what the parser could not.
+    assert client.calls == 1
+    assert isinstance(change, BusinessHoursChange)
+
+
+@pytest.mark.asyncio
+async def test_a_model_timeout_is_reported_as_a_retryable_failure() -> None:
+    # Given: a sentence that needs the model, and a model that does not answer.
+    generator = DeterministicFirstGenerator(GeminiProposalStructurer(TimingOutClient()))
+
+    # When: the sentence is structured.
+    with pytest.raises(GeminiTimeoutError) as caught:
+        _ = await generator.generate("내가 내일 가게 문 좀 늦게 열까 하는데", make_profile())
+
+    # Then: the contract's existing envelope carries a safe, actionable message.
+    error = caught.value
+    assert error.retryable is True
+    assert error.code.value == "INTERNAL_SERVER_ERROR"
+    assert error.message == GENERATION_TIMEOUT_MESSAGE
+    for leak in ("gemini", "timeout", "http"):
+        assert leak not in error.message.lower()

@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # Optional. Without it the SEO generation falls back to a deterministic stub,
     # so the UC2 flow runs offline.
     gemini_api_key: SecretStr | None = None
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3-flash-preview"
     gemini_timeout_seconds: float = 20.0
 
     @field_validator("database_url")

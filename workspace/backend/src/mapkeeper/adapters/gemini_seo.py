@@ -37,6 +37,7 @@ logger = get_logger(__name__)
 
 GEMINI_ENDPOINT: Final = "https://generativelanguage.googleapis.com/v1beta/models"
 GENERATION_FAILED_MESSAGE: Final = "문구를 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
+GENERATION_TIMEOUT_MESSAGE: Final = "처리 시간이 지연되고 있어요. 다시 시도해 주세요."
 MAX_SOURCE_REVIEWS: Final = 10
 
 PLATFORM_GUIDANCE: Final[dict[Platform, str]] = {
@@ -52,6 +53,18 @@ _results_adapter: TypeAdapter[tuple[PlatformContentResult, ...]] = TypeAdapter(
 
 class GeminiGenerationError(MapKeeperError):
     """Generation could not be completed. The caller sees a safe message."""
+
+
+class GeminiTimeoutError(GeminiGenerationError):
+    """The model did not answer in time.
+
+    Reported through the contract's existing envelope with ``retryable`` set, so a
+    slow turn reads as "try again" rather than as an unexplained internal failure.
+    """
+
+    def __init__(self) -> None:
+        """Report the fixed delay message as a retryable failure."""
+        super().__init__(GENERATION_TIMEOUT_MESSAGE, retryable=True)
 
 
 class GeminiModelClient(Protocol):
@@ -186,6 +199,10 @@ class HttpGeminiModelClient:
                 response = await client.post(
                     url, headers={"x-goog-api-key": self.api_key}, json=body
                 )
+        except httpx.TimeoutException as exc:
+            # A slow model is worth retrying; an unexplained 500 is not actionable.
+            logger.warning("gemini request timed out after %ss", self.timeout_seconds)
+            raise GeminiTimeoutError from exc
         except httpx.HTTPError as exc:
             logger.warning("gemini request failed: %s", type(exc).__name__)
             raise GeminiGenerationError(GENERATION_FAILED_MESSAGE) from exc

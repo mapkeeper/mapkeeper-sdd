@@ -15,6 +15,7 @@ from typing import Final
 from pydantic import TypeAdapter, ValidationError
 
 from mapkeeper.adapters.gemini_seo import GeminiModelClient, strip_code_fence
+from mapkeeper.adapters.intent import parse_intent
 from mapkeeper.api.schemas.store_change import (
     MENU_NAME_MAX_LENGTH,
     ProposalChange,
@@ -24,6 +25,7 @@ from mapkeeper.core.json_types import JsonValue
 from mapkeeper.core.logging import get_logger
 from mapkeeper.models import StoreProfile
 from mapkeeper.models.enums import ApiErrorCode
+from mapkeeper.protocols import GeminiProposalGenerator
 
 logger = get_logger(__name__)
 
@@ -105,6 +107,30 @@ def parse_changes(raw: str) -> tuple[ProposalChange, ...]:
     except ValidationError as exc:
         logger.warning("gemini proposal failed contract validation: %s", exc.error_count())
         raise UnsupportedChangeError(UNSUPPORTED_CHANGE_MESSAGE) from exc
+
+
+@dataclass(frozen=True, slots=True)
+class DeterministicFirstGenerator:
+    """Answer clear sentences locally and hand the rest to the model.
+
+    The parser is tried first because most UC1 sentences are ordinary and a model
+    round trip on those is latency the user waits through — and a timeout there
+    turns a trivial rename into a failed request. The parser returns None rather
+    than guessing, so anything it cannot read still reaches the model unchanged.
+    """
+
+    fallback: GeminiProposalGenerator
+
+    async def generate(
+        self,
+        masked_text: str,
+        profile: StoreProfile,
+    ) -> tuple[ProposalChange, ...]:
+        """Return the parser's changes, or the model's when the parser declines."""
+        parsed = parse_intent(masked_text, profile)
+        if parsed is not None:
+            return parsed
+        return await self.fallback.generate(masked_text, profile)
 
 
 @dataclass(frozen=True, slots=True)
