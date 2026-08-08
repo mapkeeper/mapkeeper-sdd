@@ -132,20 +132,35 @@ def test_two_explicit_dates_become_a_closure_change() -> None:
 
 
 @pytest.mark.parametrize(
-    "sentence",
+    ("sentence", "expected_start", "expected_end"),
     [
-        "다음 주쯤 쉬어요",
-        "내일 휴무예요",
-        "이번 달 15일부터 쉴게요",
-        "2026-08-15 부터 휴무입니다",
+        ("다음 주쯤 쉬어요", date(2026, 8, 10), date(2026, 8, 16)),
+        ("내일 휴무예요", date(2026, 8, 4), date(2026, 8, 4)),
+        ("다음 주 화요일 문 닫아", date(2026, 8, 11), date(2026, 8, 11)),
     ],
 )
-def test_an_unresolvable_closure_date_is_never_guessed(sentence: str) -> None:
-    # Given: a closure request whose dates cannot be pinned down.
+def test_supported_relative_closure_dates_are_resolved(
+    sentence: str,
+    expected_start: date,
+    expected_end: date,
+) -> None:
+    # Given: a closure request with a supported relative date.
+    # When: the parser resolves it against a known current date.
+    changes = parse_intent(sentence, make_profile(), today=date(2026, 8, 3))
 
-    # When / Then: the parser declines so the sentence reaches Gemini or a 422,
-    # rather than inventing a date the user never said.
-    assert parse_intent(sentence, make_profile()) is None
+    # Then: the relative expression becomes an exact contract date range.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, TemporaryClosureChange)
+    assert change.proposed_value.start_date == expected_start
+    assert change.proposed_value.end_date == expected_end
+
+
+@pytest.mark.parametrize("sentence", ["이번 달 15일부터 쉴게요", "2026-08-15 부터 휴무입니다"])
+def test_an_incomplete_closure_date_is_never_guessed(sentence: str) -> None:
+    # Given: a closure request whose dates cannot be pinned down.
+    # When / Then: the parser declines rather than inventing a date.
+    assert parse_intent(sentence, make_profile(), today=date(2026, 8, 3)) is None
 
 
 def test_a_closure_ending_before_it_starts_is_not_parsed_deterministically() -> None:

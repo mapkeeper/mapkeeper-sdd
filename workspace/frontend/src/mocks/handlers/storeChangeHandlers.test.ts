@@ -46,6 +46,23 @@ describe('parseStoreChangeText', () => {
     ]);
   });
 
+  test.each([
+    ['오늘 문 닫아', '2026-08-03'],
+    ['내일 문 닫아', '2026-08-04'],
+    ['모레 문 닫아', '2026-08-05'],
+    ['다음 주 화요일 문 닫아', '2026-08-11'],
+  ])('%s를 고정된 목업 기준일의 날짜로 해석한다', (text, expectedDate) => {
+    expect(parseStoreChangeText(text)).toEqual([
+      { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: expectedDate, endDate: expectedDate } },
+    ]);
+  });
+
+  test('다음 주는 월요일부터 일요일까지로 해석한다', () => {
+    expect(parseStoreChangeText('다음 주 문 닫아')).toEqual([
+      { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: '2026-08-10', endDate: '2026-08-16' } },
+    ]);
+  });
+
   test('대표 메뉴 변경을 해석한다', () => {
     expect(parseStoreChangeText('대표 메뉴를 만두전골로 바꿔줘')).toEqual([
       { field: 'representativeMenuName', currentValue: '비빔밥', proposedValue: '만두전골' },

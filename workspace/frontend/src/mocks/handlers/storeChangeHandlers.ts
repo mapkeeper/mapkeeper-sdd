@@ -66,11 +66,30 @@ function parseClosureChange(text: string): ProposalChange | null {
     }
   }
   const single = text.match(/(\d{1,2})월\s*(\d{1,2})일/);
-  if (!single) return null;
-  const [, month, day] = single;
-  if (!month || !day) return null;
-  const date = toIsoDate(month, day);
-  return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: date, endDate: date } };
+  if (single) {
+    const [, month, day] = single;
+    if (!month || !day) return null;
+    const date = toIsoDate(month, day);
+    return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: date, endDate: date } };
+  }
+  const nextWeekday = text.match(/다음\s*주\s*([월화수목금토일])요일?/);
+  if (nextWeekday?.[1]) {
+    const weekdayOffset = '월화수목금토일'.indexOf(nextWeekday[1]);
+    const day = String(10 + weekdayOffset).padStart(2, '0');
+    return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: `2026-08-${day}`, endDate: `2026-08-${day}` } };
+  }
+  const relativeDate = text.match(/오늘|내일|모레|다음\s*주/)?.[0];
+  if (!relativeDate) return null;
+  if (relativeDate === '오늘') {
+    return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: '2026-08-03', endDate: '2026-08-03' } };
+  }
+  if (relativeDate === '내일') {
+    return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: '2026-08-04', endDate: '2026-08-04' } };
+  }
+  if (relativeDate === '모레') {
+    return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: '2026-08-05', endDate: '2026-08-05' } };
+  }
+  return { field: 'temporaryClosure', currentValue: null, proposedValue: { startDate: '2026-08-10', endDate: '2026-08-16' } };
 }
 
 function parseMenuChange(text: string, currentValue: string): ProposalChange | null {
@@ -85,7 +104,7 @@ export function parseStoreChangeText(recognizedText: string): ProposalChange[] {
   if (/영업\s*시간|시까지|시부터/.test(text)) {
     return [parseBusinessHoursChange(text, parseCurrentBusinessHours())];
   }
-  if (/휴무|쉬(?:어요|겠습니다|는\s*날)/.test(text)) {
+  if (/휴무|쉬(?:어요|겠습니다|는\s*날)|문\s*닫|마감/.test(text)) {
     const change = parseClosureChange(text);
     return change ? [change] : [];
   }

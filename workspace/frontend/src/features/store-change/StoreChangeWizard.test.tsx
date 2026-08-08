@@ -66,7 +66,7 @@ describe('StoreChangeWizard', () => {
     const user = userEvent.setup();
     render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
     await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
-    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '내일 문 닫아');
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '문 닫아');
     await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
 
     expect(await screen.findByRole('heading', { name: '조금만 더 알려주세요' })).toBeInTheDocument();
@@ -85,13 +85,27 @@ describe('StoreChangeWizard', () => {
     render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: '음성 인식 시작' }));
-    FakeSpeechRecognition.instance?.recognize('내일 문 닫아');
+    FakeSpeechRecognition.instance?.recognize('문 닫아');
     expect(await screen.findByRole('heading', { name: '조금만 더 알려주세요' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '음성 인식 시작' }));
     FakeSpeechRecognition.instance?.recognize('8월 15일 하루 종일 임시 휴무');
 
     expect(await screen.findByText('2026-08-15 ~ 2026-08-15')).toBeInTheDocument();
+  });
+
+  test('상대 날짜가 포함된 음성 요청은 재질문 없이 휴무 변경안을 만든다', async () => {
+    // Given: 음성 인식 화면에서 내일 휴무 요청을 한다
+    // When: 시스템이 상대 날짜를 해석한다
+    // Then: 날짜 재질문 없이 내일 날짜의 휴무 변경안을 만든다
+    Object.defineProperty(window, 'SpeechRecognition', { configurable: true, value: FakeSpeechRecognition });
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '음성 인식 시작' }));
+    FakeSpeechRecognition.instance?.recognize('내일 문 닫아');
+
+    expect(await screen.findByText('2026-08-04 ~ 2026-08-04')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '조금만 더 알려주세요' })).not.toBeInTheDocument();
   });
 
   test('인식 텍스트로 구조화된 영업시간 변경안을 만들고 검토 화면에 형식화해 보여준다', async () => {

@@ -12,8 +12,9 @@ prefers ``None`` over a value the sentence did not clearly state.
 """
 
 import re
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Final
+from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 
@@ -40,11 +41,14 @@ _MERIDIEM_GROUP: Final = r"(?P<meridiem>새벽|아침|오전|점심|오후|저�
 _CLOCK_GROUP: Final = r"(?P<hour>\d{1,2})\s*시(?:\s*(?P<minute>\d{1,2})\s*분)?"
 _TIME_PATTERN: Final = re.compile(_MERIDIEM_GROUP + _CLOCK_GROUP)
 _ISO_DATE_PATTERN: Final = re.compile(r"\d{4}-\d{2}-\d{2}")
+_NEXT_WEEKDAY_PATTERN: Final = re.compile(r"다음\s*주\s*(?P<weekday>[월화수목금토일])요일?")
 
 _HOURS_CONTEXT: Final = re.compile(r"영업|문\s*을?|마감|오픈|open|close|열|닫|시작|종료|폐점|개점")
 _OPENING_WORDS: Final = re.compile(r"열|오픈|시작|개점")
 _CLOSING_WORDS: Final = re.compile(r"닫|마감|종료|폐점|까지")
-_CLOSURE_WORDS: Final = re.compile(r"휴무|휴일|쉬")
+_CLOSURE_WORDS: Final = re.compile(r"휴무|휴일|쉬|문\s*(?:을\s*)?닫|마감")
+_SEOUL_TIMEZONE: Final = ZoneInfo("Asia/Seoul")
+_WEEKDAY_INDEX: Final = {"월": 0, "화": 1, "수": 2, "목": 3, "금": 4, "토": 5, "일": 6}
 
 # Hours that read as the second half of the day when spoken with these words.
 _AFTERNOON_MERIDIEMS: Final = frozenset({"오후", "저녁", "밤"})
@@ -134,20 +138,45 @@ def _parse_business_hours(text: str, profile: StoreProfile) -> ProposalChange | 
     )
 
 
-def _parse_temporary_closure(text: str, profile: StoreProfile) -> ProposalChange | None:
-    """Read a dated closure, or None when the dates are not both explicit.
+def _resolve_relative_dates(text: str, today: date) -> tuple[date, date] | None:
+    weekday_match = _NEXT_WEEKDAY_PATTERN.search(text)
+    if weekday_match is not None:
+        next_monday = today - timedelta(days=today.weekday()) + timedelta(days=7)
+        resolved = next_monday + timedelta(days=_WEEKDAY_INDEX[weekday_match.group("weekday")])
+        return resolved, resolved
 
-    Relative wording such as "다음 주" carries no date this parser can resolve, so
-    it declines instead of choosing one.
-    """
+    if re.search(r"다음\s*주", text) is not None:
+        next_monday = today - timedelta(days=today.weekday()) + timedelta(days=7)
+        return next_monday, next_monday + timedelta(days=6)
+
+    if re.search(r"이번\s*주", text) is not None:
+        monday = today - timedelta(days=today.weekday())
+        return monday, monday + timedelta(days=6)
+
+    for keyword, offset in (("오늘", 0), ("내일", 1), ("모레", 2)):
+        if keyword in text:
+            resolved = today + timedelta(days=offset)
+            return resolved, resolved
+    return None
+
+
+def _parse_temporary_closure(
+    text: str, profile: StoreProfile, today: date
+) -> ProposalChange | None:
     if _CLOSURE_WORDS.search(text) is None:
         return None
     found = [match.group() for match in _ISO_DATE_PATTERN.finditer(text)]
-    if len(found) != DATE_PAIR:
-        return None
-    try:
-        start, end = (date.fromisoformat(value) for value in found)
-    except ValueError:
+    if len(found) == DATE_PAIR:
+        try:
+            start, end = (date.fromisoformat(value) for value in found)
+        except ValueError:
+            return None
+    elif not found:
+        resolved = _resolve_relative_dates(text, today)
+        if resolved is None:
+            return None
+        start, end = resolved
+    else:
         return None
     if end < start:
         return None
@@ -165,12 +194,18 @@ def _parse_temporary_closure(text: str, profile: StoreProfile) -> ProposalChange
     )
 
 
-def parse_intent(masked_text: str, profile: StoreProfile) -> tuple[ProposalChange, ...] | None:
+def parse_intent(
+    masked_text: str,
+    profile: StoreProfile,
+    today: date | None = None,
+) -> tuple[ProposalChange, ...] | None:
     """Turn a clear sentence into validated changes without calling a model.
 
     Args:
         masked_text: The recognized sentence, already stripped of customer PII.
         profile: The store the change applies to, used for every currentValue.
+        today: Reference date for relative expressions, primarily for deterministic
+            tests. Defaults to the current date in the service's Seoul timezone.
 
     Returns:
         The changes the sentence plainly states, or None when it should be read by
@@ -181,10 +216,19 @@ def parse_intent(masked_text: str, profile: StoreProfile) -> tuple[ProposalChang
         return None
 
     # Menu first: "메뉴를 …로 바꿔줘" can contain a word the hours branch reacts to.
-    for read in (_parse_menu, _parse_temporary_closure, _parse_business_hours):
-        change = read(text, profile)
-        if change is not None:
-            return (change,)
+    menu = _parse_menu(text, profile)
+    if menu is not None:
+        return (menu,)
+    closure = _parse_temporary_closure(
+        text,
+        profile,
+        today if today is not None else datetime.now(_SEOUL_TIMEZONE).date(),
+    )
+    if closure is not None:
+        return (closure,)
+    hours = _parse_business_hours(text, profile)
+    if hours is not None:
+        return (hours,)
     return None
 
 
