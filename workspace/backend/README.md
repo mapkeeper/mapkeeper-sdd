@@ -12,7 +12,7 @@ FastAPI 애플리케이션과 API Contract v0.2 기준 Pydantic schema, PostgreS
 | `DB_ECHO` | SQL 로깅 여부. 기본값은 `false`다. |
 | `MVP_ACTOR_ID` | 승인 주체 UUID. 로그인 없는 MVP에서 `approvedBy`로 사용한다. 요청 Body에서 받지 않는다. |
 | `GEMINI_API_KEY` | 선택. 없으면 UC2 문구 생성이 결정적 stub으로 동작한다. |
-| `GEMINI_MODEL` | 기본 `gemini-2.5-flash`. |
+| `GEMINI_MODEL` | 기본 `gemini-3-flash-preview`. |
 | `TEST_DATABASE_URL` | `tests/integration`이 사용하는 빈 DB. 없으면 해당 테스트를 건너뛴다. |
 
 PostgreSQL은 Proxmox의 별도 LXC를 사용하며 Compose에 DB 컨테이너를 추가하지 않는다.
