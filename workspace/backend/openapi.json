@@ -1,0 +1,2276 @@
+{
+  "components": {
+    "schemas": {
+      "ApiEnvelope_ContentGenerationApprovalResponse_": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentGenerationApprovalResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiResponseStatus"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "status",
+          "data",
+          "error",
+          "timestamp"
+        ],
+        "title": "ApiEnvelope[ContentGenerationApprovalResponse]",
+        "type": "object"
+      },
+      "ApiEnvelope_ContentGenerationResponse_": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentGenerationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiResponseStatus"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "status",
+          "data",
+          "error",
+          "timestamp"
+        ],
+        "title": "ApiEnvelope[ContentGenerationResponse]",
+        "type": "object"
+      },
+      "ApiEnvelope_StoreChangeProposalApprovalResponse_": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoreChangeProposalApprovalResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiResponseStatus"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "status",
+          "data",
+          "error",
+          "timestamp"
+        ],
+        "title": "ApiEnvelope[StoreChangeProposalApprovalResponse]",
+        "type": "object"
+      },
+      "ApiEnvelope_StoreChangeProposalResponse_": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoreChangeProposalResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiResponseStatus"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "status",
+          "data",
+          "error",
+          "timestamp"
+        ],
+        "title": "ApiEnvelope[StoreChangeProposalResponse]",
+        "type": "object"
+      },
+      "ApiEnvelope_SyncJobRetryResponse_": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncJobRetryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiResponseStatus"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "status",
+          "data",
+          "error",
+          "timestamp"
+        ],
+        "title": "ApiEnvelope[SyncJobRetryResponse]",
+        "type": "object"
+      },
+      "ApiEnvelope_SyncJobStatusResponse_": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncJobStatusResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiResponseStatus"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "status",
+          "data",
+          "error",
+          "timestamp"
+        ],
+        "title": "ApiEnvelope[SyncJobStatusResponse]",
+        "type": "object"
+      },
+      "ApiError": {
+        "additionalProperties": false,
+        "description": "Safe error body returned at the MapKeeper API boundary.",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ApiErrorCode"
+          },
+          "details": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ValidationDetail"
+            },
+            "title": "Details",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "retryable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retryable"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ApiError",
+        "type": "object"
+      },
+      "ApiErrorCode": {
+        "description": "Error raised by the MapKeeper API itself, never by an external platform.",
+        "enum": [
+          "MALFORMED_REQUEST",
+          "VALIDATION_ERROR",
+          "RESOURCE_NOT_FOUND",
+          "INVALID_STATE",
+          "STALE_PROPOSAL",
+          "IDEMPOTENCY_CONFLICT",
+          "NO_RETRYABLE_TASKS",
+          "REQUEST_RATE_LIMITED",
+          "INTERNAL_SERVER_ERROR"
+        ],
+        "title": "ApiErrorCode",
+        "type": "string"
+      },
+      "ApiResponseStatus": {
+        "description": "API request processing status.",
+        "enum": [
+          "SUCCESS",
+          "PROCESSING",
+          "FAILED"
+        ],
+        "title": "ApiResponseStatus",
+        "type": "string"
+      },
+      "BusinessHoursChange": {
+        "additionalProperties": false,
+        "description": "Typed business-hours proposal change.",
+        "properties": {
+          "currentValue": {
+            "$ref": "#/components/schemas/BusinessHoursValue"
+          },
+          "field": {
+            "const": "businessHours",
+            "title": "Field",
+            "type": "string"
+          },
+          "proposedValue": {
+            "$ref": "#/components/schemas/BusinessHoursValue"
+          }
+        },
+        "required": [
+          "field",
+          "currentValue",
+          "proposedValue"
+        ],
+        "title": "BusinessHoursChange",
+        "type": "object"
+      },
+      "BusinessHoursValue": {
+        "additionalProperties": false,
+        "description": "Opening and closing time in 24-hour HH:mm form.",
+        "properties": {
+          "close": {
+            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Close",
+            "type": "string"
+          },
+          "open": {
+            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Open",
+            "type": "string"
+          }
+        },
+        "required": [
+          "open",
+          "close"
+        ],
+        "title": "BusinessHoursValue",
+        "type": "object"
+      },
+      "ContentGenerationApprovalResponse": {
+        "additionalProperties": false,
+        "description": "Generation approval and synchronization handoff.",
+        "properties": {
+          "approvedPlatforms": {
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Approvedplatforms",
+            "type": "array"
+          },
+          "generationId": {
+            "format": "uuid",
+            "title": "Generationid",
+            "type": "string"
+          },
+          "generationStatus": {
+            "$ref": "#/components/schemas/ContentGenerationStatus"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SyncJobStatus"
+          },
+          "statusUrl": {
+            "minLength": 1,
+            "title": "Statusurl",
+            "type": "string"
+          },
+          "syncJobId": {
+            "format": "uuid",
+            "title": "Syncjobid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generationId",
+          "generationStatus",
+          "approvedPlatforms",
+          "syncJobId",
+          "status",
+          "statusUrl"
+        ],
+        "title": "ContentGenerationApprovalResponse",
+        "type": "object"
+      },
+      "ContentGenerationResponse": {
+        "additionalProperties": false,
+        "description": "Generation-level state and its three platform results.",
+        "properties": {
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformContentResult"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Drafts",
+            "type": "array"
+          },
+          "generationId": {
+            "format": "uuid",
+            "title": "Generationid",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ContentGenerationStatus"
+          }
+        },
+        "required": [
+          "generationId",
+          "status",
+          "revision",
+          "drafts"
+        ],
+        "title": "ContentGenerationResponse",
+        "type": "object"
+      },
+      "ContentGenerationStatus": {
+        "description": "SEO content generation lifecycle status.",
+        "enum": [
+          "DRAFT",
+          "APPROVED",
+          "REJECTED"
+        ],
+        "title": "ContentGenerationStatus",
+        "type": "string"
+      },
+      "CreateContentGenerationRequest": {
+        "additionalProperties": false,
+        "description": "Request to create one three-platform content generation.",
+        "properties": {
+          "briefText": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Brieftext",
+            "type": "string"
+          },
+          "seedKeywords": {
+            "items": {
+              "maxLength": 30,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Seedkeywords",
+            "type": "array"
+          },
+          "sourceReviewIds": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcereviewids"
+          },
+          "storeProfileId": {
+            "format": "uuid",
+            "title": "Storeprofileid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "briefText",
+          "seedKeywords",
+          "storeProfileId"
+        ],
+        "title": "CreateContentGenerationRequest",
+        "type": "object"
+      },
+      "CreateStoreChangeProposalRequest": {
+        "additionalProperties": false,
+        "description": "Recognized text submitted to create a store change proposal.",
+        "properties": {
+          "locale": {
+            "const": "ko-KR",
+            "title": "Locale",
+            "type": "string"
+          },
+          "recognizedText": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Recognizedtext",
+            "type": "string"
+          },
+          "storeProfileId": {
+            "format": "uuid",
+            "title": "Storeprofileid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "storeProfileId",
+          "recognizedText",
+          "locale"
+        ],
+        "title": "CreateStoreChangeProposalRequest",
+        "type": "object"
+      },
+      "ErrorEnvelope": {
+        "additionalProperties": false,
+        "description": "Failure envelope: ``success`` is false, ``data`` is null and ``error`` is set.",
+        "properties": {
+          "data": {
+            "title": "Data",
+            "type": "null"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiResponseStatus"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "status",
+          "data",
+          "error",
+          "timestamp"
+        ],
+        "title": "ErrorEnvelope",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "description": "Health endpoint response.",
+        "properties": {
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "PatchStoreChangeProposalRequest": {
+        "additionalProperties": false,
+        "description": "Validated proposal changes replacing the current draft changes.",
+        "properties": {
+          "changes": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "businessHours": "#/components/schemas/BusinessHoursChange",
+                  "representativeMenuName": "#/components/schemas/RepresentativeMenuNameChange",
+                  "temporaryClosure": "#/components/schemas/TemporaryClosureChange"
+                },
+                "propertyName": "field"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/BusinessHoursChange"
+                },
+                {
+                  "$ref": "#/components/schemas/TemporaryClosureChange"
+                },
+                {
+                  "$ref": "#/components/schemas/RepresentativeMenuNameChange"
+                }
+              ]
+            },
+            "minItems": 1,
+            "title": "Changes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "changes"
+        ],
+        "title": "PatchStoreChangeProposalRequest",
+        "type": "object"
+      },
+      "Platform": {
+        "description": "Supported external business profile platform.",
+        "enum": [
+          "google",
+          "naver",
+          "kakao"
+        ],
+        "title": "Platform",
+        "type": "string"
+      },
+      "PlatformContentResult": {
+        "additionalProperties": false,
+        "description": "Generated copy and keywords for exactly one platform.",
+        "properties": {
+          "contentRules": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Contentrules",
+            "type": "array"
+          },
+          "draftId": {
+            "format": "uuid",
+            "title": "Draftid",
+            "type": "string"
+          },
+          "draftText": {
+            "maxLength": 750,
+            "minLength": 1,
+            "title": "Drafttext",
+            "type": "string"
+          },
+          "keywords": {
+            "items": {
+              "maxLength": 30,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Keywords",
+            "type": "array"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          }
+        },
+        "required": [
+          "draftId",
+          "platform",
+          "draftText",
+          "keywords",
+          "contentRules"
+        ],
+        "title": "PlatformContentResult",
+        "type": "object"
+      },
+      "PlatformErrorCode": {
+        "description": "Normalized failure reported by one external platform adapter.",
+        "enum": [
+          "API_TIMEOUT",
+          "RATE_LIMITED",
+          "PLATFORM_SERVER_ERROR",
+          "AUTHENTICATION_ERROR",
+          "PERMISSION_DENIED",
+          "PLATFORM_VALIDATION_ERROR"
+        ],
+        "title": "PlatformErrorCode",
+        "type": "string"
+      },
+      "PlatformSyncTaskStatus": {
+        "description": "Single-platform synchronization status.",
+        "enum": [
+          "PENDING",
+          "PROCESSING",
+          "SUCCESS",
+          "FAILED",
+          "RETRYING"
+        ],
+        "title": "PlatformSyncTaskStatus",
+        "type": "string"
+      },
+      "PlatformTaskError": {
+        "additionalProperties": false,
+        "description": "Normalized failure reported by one external platform.",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/PlatformErrorCode"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "retryable": {
+            "title": "Retryable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable",
+          "platform"
+        ],
+        "title": "PlatformTaskError",
+        "type": "object"
+      },
+      "PlatformTaskStatus": {
+        "additionalProperties": false,
+        "description": "Execution state of exactly one platform within a synchronization job.",
+        "properties": {
+          "attemptCount": {
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Attemptcount",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlatformTaskError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PlatformSyncTaskStatus"
+          }
+        },
+        "required": [
+          "platform",
+          "status",
+          "attemptCount"
+        ],
+        "title": "PlatformTaskStatus",
+        "type": "object"
+      },
+      "ProposalStatus": {
+        "description": "Store change proposal lifecycle status.",
+        "enum": [
+          "DRAFT",
+          "APPROVED",
+          "REJECTED"
+        ],
+        "title": "ProposalStatus",
+        "type": "string"
+      },
+      "RegenerateContentGenerationRequest": {
+        "additionalProperties": false,
+        "description": "Updated common input used to replace all platform results.",
+        "properties": {
+          "briefText": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Brieftext",
+            "type": "string"
+          },
+          "seedKeywords": {
+            "items": {
+              "maxLength": 30,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Seedkeywords",
+            "type": "array"
+          },
+          "sourceReviewIds": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcereviewids"
+          }
+        },
+        "required": [
+          "briefText",
+          "seedKeywords"
+        ],
+        "title": "RegenerateContentGenerationRequest",
+        "type": "object"
+      },
+      "RepresentativeMenuNameChange": {
+        "additionalProperties": false,
+        "description": "Typed representative-menu proposal change.",
+        "properties": {
+          "currentValue": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Currentvalue",
+            "type": "string"
+          },
+          "field": {
+            "const": "representativeMenuName",
+            "title": "Field",
+            "type": "string"
+          },
+          "proposedValue": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Proposedvalue",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "currentValue",
+          "proposedValue"
+        ],
+        "title": "RepresentativeMenuNameChange",
+        "type": "object"
+      },
+      "StoreChangeProposalApprovalResponse": {
+        "additionalProperties": false,
+        "description": "Proposal approval and synchronization handoff.",
+        "properties": {
+          "proposalId": {
+            "format": "uuid",
+            "title": "Proposalid",
+            "type": "string"
+          },
+          "proposalStatus": {
+            "$ref": "#/components/schemas/ProposalStatus"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SyncJobStatus"
+          },
+          "statusUrl": {
+            "minLength": 1,
+            "title": "Statusurl",
+            "type": "string"
+          },
+          "syncJobId": {
+            "format": "uuid",
+            "title": "Syncjobid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposalId",
+          "proposalStatus",
+          "syncJobId",
+          "status",
+          "statusUrl"
+        ],
+        "title": "StoreChangeProposalApprovalResponse",
+        "type": "object"
+      },
+      "StoreChangeProposalResponse": {
+        "additionalProperties": false,
+        "description": "Store change proposal returned for review.",
+        "properties": {
+          "changes": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "businessHours": "#/components/schemas/BusinessHoursChange",
+                  "representativeMenuName": "#/components/schemas/RepresentativeMenuNameChange",
+                  "temporaryClosure": "#/components/schemas/TemporaryClosureChange"
+                },
+                "propertyName": "field"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/BusinessHoursChange"
+                },
+                {
+                  "$ref": "#/components/schemas/TemporaryClosureChange"
+                },
+                {
+                  "$ref": "#/components/schemas/RepresentativeMenuNameChange"
+                }
+              ]
+            },
+            "minItems": 1,
+            "title": "Changes",
+            "type": "array"
+          },
+          "proposalId": {
+            "format": "uuid",
+            "title": "Proposalid",
+            "type": "string"
+          },
+          "recognizedTextMasked": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Recognizedtextmasked",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProposalStatus"
+          }
+        },
+        "required": [
+          "proposalId",
+          "recognizedTextMasked",
+          "changes",
+          "status"
+        ],
+        "title": "StoreChangeProposalResponse",
+        "type": "object"
+      },
+      "SyncJobRetryResponse": {
+        "additionalProperties": false,
+        "description": "Platforms accepted for another attempt after a retryable failure.",
+        "properties": {
+          "retryingPlatforms": {
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Retryingplatforms",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SyncJobStatus"
+          },
+          "statusUrl": {
+            "minLength": 1,
+            "title": "Statusurl",
+            "type": "string"
+          },
+          "syncJobId": {
+            "format": "uuid",
+            "title": "Syncjobid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "syncJobId",
+          "status",
+          "retryingPlatforms",
+          "statusUrl"
+        ],
+        "title": "SyncJobRetryResponse",
+        "type": "object"
+      },
+      "SyncJobStatus": {
+        "description": "Aggregate three-platform synchronization status.",
+        "enum": [
+          "PENDING",
+          "PROCESSING",
+          "PARTIAL_SUCCESS",
+          "SUCCESS",
+          "FAILED",
+          "RETRYING"
+        ],
+        "title": "SyncJobStatus",
+        "type": "string"
+      },
+      "SyncJobStatusResponse": {
+        "additionalProperties": false,
+        "description": "Aggregate job status with per-platform detail.",
+        "properties": {
+          "platformTasks": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformTaskStatus"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Platformtasks",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SyncJobStatus"
+          },
+          "syncJobId": {
+            "format": "uuid",
+            "title": "Syncjobid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "syncJobId",
+          "status",
+          "platformTasks"
+        ],
+        "title": "SyncJobStatusResponse",
+        "type": "object"
+      },
+      "TemporaryClosureChange": {
+        "additionalProperties": false,
+        "description": "Typed temporary-closure proposal change.",
+        "properties": {
+          "currentValue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemporaryClosureValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "field": {
+            "const": "temporaryClosure",
+            "title": "Field",
+            "type": "string"
+          },
+          "proposedValue": {
+            "$ref": "#/components/schemas/TemporaryClosureValue"
+          }
+        },
+        "required": [
+          "field",
+          "currentValue",
+          "proposedValue"
+        ],
+        "title": "TemporaryClosureChange",
+        "type": "object"
+      },
+      "TemporaryClosureValue": {
+        "additionalProperties": false,
+        "description": "Inclusive temporary closure date range.",
+        "properties": {
+          "endDate": {
+            "format": "date",
+            "title": "Enddate",
+            "type": "string"
+          },
+          "startDate": {
+            "format": "date",
+            "title": "Startdate",
+            "type": "string"
+          }
+        },
+        "required": [
+          "startDate",
+          "endDate"
+        ],
+        "title": "TemporaryClosureValue",
+        "type": "object"
+      },
+      "ValidationDetail": {
+        "additionalProperties": false,
+        "description": "Machine-readable validation failure for one request field.",
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "reason"
+        ],
+        "title": "ValidationDetail",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "MapKeeper MVP v0.2. JSON fields are camelCase, ids are UUID strings and timestamps are UTC ISO 8601. Undefined request and response fields are rejected.",
+    "title": "MapKeeper API",
+    "version": "0.2.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/seo/generations": {
+      "post": {
+        "description": "Take one common input and produce exactly one Google, Naver and Kakao result.",
+        "operationId": "create_generation_api_v1_seo_generations_post",
+        "parameters": [
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContentGenerationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_ContentGenerationResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Generate one result for each of the three platforms",
+        "tags": [
+          "seo"
+        ]
+      }
+    },
+    "/api/v1/seo/generations/{generationId}/approve": {
+      "post": {
+        "description": "Approve every platform result at once. The request body carries no per-draft ids.",
+        "operationId": "approve_generation_api_v1_seo_generations__generationId__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "generationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Generationid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required on every approval. Same actor and key with the same approval target replays the existing SyncJob; a different target is 409 IDEMPOTENCY_CONFLICT.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "Required on every approval. Same actor and key with the same approval target replays the existing SyncJob; a different target is 409 IDEMPOTENCY_CONFLICT.",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_ContentGenerationApprovalResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No resource matches the requested id. error.code is one of: RESOURCE_NOT_FOUND."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The requested transition cannot be performed in the current state. error.code is one of: INVALID_STATE, STALE_PROPOSAL, IDEMPOTENCY_CONFLICT, NO_RETRYABLE_TASKS."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Approve a whole DRAFT generation and start synchronization",
+        "tags": [
+          "seo"
+        ]
+      }
+    },
+    "/api/v1/seo/generations/{generationId}/regenerate": {
+      "post": {
+        "description": "Atomically replace all platform results and increment revision. DRAFT only.",
+        "operationId": "regenerate_generation_api_v1_seo_generations__generationId__regenerate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "generationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Generationid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateContentGenerationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_ContentGenerationResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No resource matches the requested id. error.code is one of: RESOURCE_NOT_FOUND."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The requested transition cannot be performed in the current state. error.code is one of: INVALID_STATE, STALE_PROPOSAL, IDEMPOTENCY_CONFLICT, NO_RETRYABLE_TASKS."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Replace all three results of a DRAFT generation",
+        "tags": [
+          "seo"
+        ]
+      }
+    },
+    "/api/v1/seo/generations/{generationId}/reject": {
+      "post": {
+        "description": "Move the whole generation to REJECTED. The request has no body.",
+        "operationId": "reject_generation_api_v1_seo_generations__generationId__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "generationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Generationid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_ContentGenerationResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No resource matches the requested id. error.code is one of: RESOURCE_NOT_FOUND."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The requested transition cannot be performed in the current state. error.code is one of: INVALID_STATE, STALE_PROPOSAL, IDEMPOTENCY_CONFLICT, NO_RETRYABLE_TASKS."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Reject a whole DRAFT generation",
+        "tags": [
+          "seo"
+        ]
+      }
+    },
+    "/api/v1/store-change-proposals": {
+      "post": {
+        "description": "Turn recognized speech into a masked, structured DRAFT proposal.",
+        "operationId": "create_proposal_api_v1_store_change_proposals_post",
+        "parameters": [
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStoreChangeProposalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_StoreChangeProposalResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Create a store change proposal",
+        "tags": [
+          "store-change"
+        ]
+      }
+    },
+    "/api/v1/store-change-proposals/{proposalId}": {
+      "patch": {
+        "description": "Replace the full change list. A stale currentValue is 409 STALE_PROPOSAL.",
+        "operationId": "patch_proposal_api_v1_store_change_proposals__proposalId__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposalId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposalid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchStoreChangeProposalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_StoreChangeProposalResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No resource matches the requested id. error.code is one of: RESOURCE_NOT_FOUND."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The requested transition cannot be performed in the current state. error.code is one of: INVALID_STATE, STALE_PROPOSAL, IDEMPOTENCY_CONFLICT, NO_RETRYABLE_TASKS."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Replace the changes of a DRAFT proposal",
+        "tags": [
+          "store-change"
+        ]
+      }
+    },
+    "/api/v1/store-change-proposals/{proposalId}/approve": {
+      "post": {
+        "description": "Approve the proposal and create one SyncJob with three platform tasks atomically.",
+        "operationId": "approve_proposal_api_v1_store_change_proposals__proposalId__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposalId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposalid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required on every approval. Same actor and key with the same approval target replays the existing SyncJob; a different target is 409 IDEMPOTENCY_CONFLICT.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "Required on every approval. Same actor and key with the same approval target replays the existing SyncJob; a different target is 409 IDEMPOTENCY_CONFLICT.",
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_StoreChangeProposalApprovalResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No resource matches the requested id. error.code is one of: RESOURCE_NOT_FOUND."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The requested transition cannot be performed in the current state. error.code is one of: INVALID_STATE, STALE_PROPOSAL, IDEMPOTENCY_CONFLICT, NO_RETRYABLE_TASKS."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Approve a DRAFT proposal and start synchronization",
+        "tags": [
+          "store-change"
+        ]
+      }
+    },
+    "/api/v1/store-change-proposals/{proposalId}/reject": {
+      "post": {
+        "description": "Move a DRAFT proposal to REJECTED. The request has no body.",
+        "operationId": "reject_proposal_api_v1_store_change_proposals__proposalId__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposalId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposalid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_StoreChangeProposalResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No resource matches the requested id. error.code is one of: RESOURCE_NOT_FOUND."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The requested transition cannot be performed in the current state. error.code is one of: INVALID_STATE, STALE_PROPOSAL, IDEMPOTENCY_CONFLICT, NO_RETRYABLE_TASKS."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Reject a DRAFT proposal",
+        "tags": [
+          "store-change"
+        ]
+      }
+    },
+    "/api/v1/sync-jobs/{syncJobId}": {
+      "get": {
+        "description": "Report job progress. A failed platform still returns 200 with status SUCCESS.",
+        "operationId": "get_sync_job_api_v1_sync_jobs__syncJobId__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "syncJobId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Syncjobid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_SyncJobStatusResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No resource matches the requested id. error.code is one of: RESOURCE_NOT_FOUND."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Read the aggregate job status and per-platform detail",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/api/v1/sync-jobs/{syncJobId}/retry": {
+      "post": {
+        "description": "Retry retryable failures only. No retryable task is 409 NO_RETRYABLE_TASKS.",
+        "operationId": "retry_sync_job_api_v1_sync_jobs__syncJobId__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "syncJobId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Syncjobid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_SyncJobRetryResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No resource matches the requested id. error.code is one of: RESOURCE_NOT_FOUND."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The requested transition cannot be performed in the current state. error.code is one of: INVALID_STATE, STALE_PROPOSAL, IDEMPOTENCY_CONFLICT, NO_RETRYABLE_TASKS."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Retry only the retryable failed platforms",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Return the current service health.",
+        "operationId": "get_health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Health",
+        "tags": [
+          "system"
+        ]
+      }
+    }
+  }
+}

@@ -1,11 +1,22 @@
 from datetime import datetime
-from typing import ClassVar, Final, Generic, Self, TypeVar
+from typing import Annotated, ClassVar, Final, Generic, Self, TypeVar
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
 from pydantic.alias_generators import to_camel
 from pydantic_core import PydanticCustomError
 
-from mapkeeper.models.enums import ApiResponseStatus
+from mapkeeper.models.enums import ApiErrorCode, ApiResponseStatus
+
+IDEMPOTENCY_KEY_MAX_LENGTH: Final = 128
+IDEMPOTENCY_KEY_PATTERN: Final = r"^[A-Za-z0-9._:-]+$"
+IdempotencyKey = Annotated[
+    str,
+    StringConstraints(
+        min_length=1,
+        max_length=IDEMPOTENCY_KEY_MAX_LENGTH,
+        pattern=IDEMPOTENCY_KEY_PATTERN,
+    ),
+]
 
 INVALID_SUCCESS_ENVELOPE: Final = "invalid_success_envelope"
 INVALID_SUCCESS_ENVELOPE_MESSAGE: Final = (
@@ -39,7 +50,7 @@ class ValidationDetail(ApiSchema):
 class ApiError(ApiSchema):
     """Safe error body returned at the MapKeeper API boundary."""
 
-    code: str
+    code: ApiErrorCode
     message: str
     details: tuple[ValidationDetail, ...] = ()
     retryable: bool | None = None
@@ -70,3 +81,7 @@ class ApiEnvelope(ApiSchema, Generic[DataT]):
                 INVALID_FAILURE_ENVELOPE_MESSAGE,
             )
         return self
+
+
+class ErrorEnvelope(ApiEnvelope[None]):
+    """Failure envelope: ``success`` is false, ``data`` is null and ``error`` is set."""

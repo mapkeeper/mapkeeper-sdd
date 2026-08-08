@@ -6,9 +6,20 @@ from pydantic import Field, StringConstraints, model_validator
 from pydantic_core import PydanticCustomError
 
 from mapkeeper.api.schemas.common import ApiSchema
-from mapkeeper.models.enums import ProposalStatus
+from mapkeeper.models.enums import ProposalStatus, SyncJobStatus
+
+RECOGNIZED_TEXT_MAX_LENGTH: Final = 500
+MENU_NAME_MAX_LENGTH: Final = 50
 
 NonEmptyText = Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
+RecognizedText = Annotated[
+    str,
+    StringConstraints(min_length=1, max_length=RECOGNIZED_TEXT_MAX_LENGTH, strip_whitespace=True),
+]
+MenuName = Annotated[
+    str,
+    StringConstraints(min_length=1, max_length=MENU_NAME_MAX_LENGTH, strip_whitespace=True),
+]
 HourMinute = Annotated[
     str,
     StringConstraints(pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$", strict=True),
@@ -60,8 +71,8 @@ class RepresentativeMenuNameChange(ApiSchema):
     """Typed representative-menu proposal change."""
 
     field: Literal["representativeMenuName"]
-    current_value: NonEmptyText
-    proposed_value: NonEmptyText
+    current_value: MenuName
+    proposed_value: MenuName
 
 
 ProposalChange = Annotated[
@@ -74,7 +85,7 @@ class CreateStoreChangeProposalRequest(ApiSchema):
     """Recognized text submitted to create a store change proposal."""
 
     store_profile_id: UUID
-    recognized_text: NonEmptyText
+    recognized_text: RecognizedText
     locale: Literal["ko-KR"]
 
 
@@ -88,6 +99,16 @@ class StoreChangeProposalResponse(ApiSchema):
     """Store change proposal returned for review."""
 
     proposal_id: UUID
-    recognized_text_masked: NonEmptyText
+    recognized_text_masked: RecognizedText
     changes: Annotated[tuple[ProposalChange, ...], Field(min_length=1)]
     status: ProposalStatus
+
+
+class StoreChangeProposalApprovalResponse(ApiSchema):
+    """Proposal approval and synchronization handoff."""
+
+    proposal_id: UUID
+    proposal_status: ProposalStatus
+    sync_job_id: UUID
+    status: SyncJobStatus
+    status_url: NonEmptyText
