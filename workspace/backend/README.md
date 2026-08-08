@@ -10,9 +10,25 @@ FastAPI 애플리케이션과 API Contract v0.2 기준 Pydantic schema, PostgreS
 |---|---|
 | `DATABASE_URL` | PostgreSQL DSN. `postgresql+asyncpg://` 드라이버만 허용한다. |
 | `DB_ECHO` | SQL 로깅 여부. 기본값은 `false`다. |
+| `TEST_DATABASE_URL` | `tests/integration`이 사용하는 빈 DB. 없으면 해당 테스트를 건너뛴다. |
 
 PostgreSQL은 Proxmox의 별도 LXC를 사용하며 Compose에 DB 컨테이너를 추가하지 않는다.
 설정은 지연 로딩이므로 `DATABASE_URL`이 없어도 `/health`는 동작한다.
+
+⚠️ `TEST_DATABASE_URL`은 반드시 버려도 되는 빈 DB를 가리켜야 한다. 해당 DB에는
+migration이 적용되고 테스트가 데이터를 쓴다.
+
+## 개발 환경 DB 접속
+
+DB LXC(`192.168.219.43`)는 개발 PC와 다른 네트워크에 있어 Proxmox 호스트를 경유한다.
+
+```bash
+ssh -N -L 15432:192.168.219.43:5432 root@pve   # 별도 터미널에서 유지
+```
+
+터널을 띄운 상태에서 `DATABASE_URL`의 host를 `127.0.0.1:15432`로 지정한다.
+백엔드를 같은 네트워크(`192.168.219.0/24`)에 배포하는 경우에는 터널 없이
+LXC IP로 직접 접속한다.
 
 ## Migration
 
