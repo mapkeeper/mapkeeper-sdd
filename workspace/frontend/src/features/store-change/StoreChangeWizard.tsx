@@ -4,13 +4,15 @@ import { ProposalEditor } from '@/components/ProposalEditor/ProposalEditor';
 import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import type { ProposalChange } from '@/services/contracts/storeChange';
+import type { ClarificationRequest } from '@/services/clarification';
+import { clarificationFor } from '@/services/clarification';
 import { isVoiceCancellation } from '@/services/voiceIntent';
 import { fieldLabels, formatChangeValue } from '@/features/store-change/proposalFormat';
 import { useStoreChangeFlow } from '@/features/store-change/useStoreChangeFlow';
 import type { StoreChangeSyncHandoff } from '@/features/store-change/useStoreChangeFlow';
 import './storeChange.css';
 
-type WizardStep = 'INPUT' | 'MANUAL' | 'REVIEW' | 'EDIT' | 'CONFIRM' | 'REJECTED' | 'SYNC';
+type WizardStep = 'INPUT' | 'MANUAL' | 'CLARIFY' | 'REVIEW' | 'EDIT' | 'CONFIRM' | 'REJECTED' | 'SYNC';
 
 export interface StoreChangeWizardProps {
   storeProfileId: string;
@@ -25,6 +27,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
   const [editedChanges, setEditedChanges] = useState<ProposalChange[]>([]);
   const [handoff, setHandoff] = useState<StoreChangeSyncHandoff | null>(null);
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  const [clarification, setClarification] = useState<ClarificationRequest | null>(null);
   const submittedTranscriptRef = useRef('');
   const flow = useStoreChangeFlow(storeProfileId, (nextHandoff) => {
     setHandoff(nextHandoff);
@@ -35,9 +38,18 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
   const prepareDraft = useCallback(async (text: string) => {
     const normalizedText = text.trim();
     if (!normalizedText || isDraftPreparing) return;
+    const clarificationRequest = clarificationFor(normalizedText);
+    if (clarificationRequest) {
+      setClarification(clarificationRequest);
+      setManualText('');
+      setVoiceNotice(null);
+      setStep('CLARIFY');
+      return;
+    }
     setDraftPreparing(true);
     setDraftNote(null);
     setVoiceNotice(null);
+    setClarification(null);
     try {
       const [proposal] = await Promise.all([
         flow.create(normalizedText),
@@ -57,15 +69,24 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
     if (isVoiceCancellation(recognizedText)) {
       submittedTranscriptRef.current = '';
       flow.clear();
+      setClarification(null);
       setManualText('');
       setDraftNote(null);
       setVoiceNotice('음성 요청을 취소했어요. 처음부터 다시 말씀해 주세요.');
       setStep('INPUT');
       return true;
     }
+    if (clarification) {
+      void prepareDraft(`${clarification.originalText} ${recognizedText}`);
+      return true;
+    }
+    if (clarificationFor(recognizedText)) {
+      void prepareDraft(recognizedText);
+      return true;
+    }
     void prepareDraft(recognizedText);
     return false;
-  }, [flow, prepareDraft]);
+  }, [clarification, flow, prepareDraft]);
 
   const speech = useSpeechRecognition(handleRecognized);
   const startSpeech = speech.start;
@@ -77,6 +98,12 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
   const submitManual = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     await prepareDraft(manualText);
+  };
+
+  const submitClarification = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!clarification || !manualText.trim()) return;
+    await prepareDraft(`${clarification.originalText} ${manualText}`);
   };
 
   const beginEdit = () => {
@@ -152,6 +179,36 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
               {flow.isCreating ? '만드는 중…' : '변경안 만들기'}
             </button>
           </form>
+        </section>
+      ) : null}
+
+      {step === 'CLARIFY' && clarification ? (
+        <section className="store-change-wizard__step">
+          <h1>조금만 더 알려주세요</h1>
+          <p role="status">{clarification.prompt}</p>
+          <VoicePanel
+            state={speech.state}
+            recognizedText={speech.recognizedText}
+            error={speech.error}
+            onStart={startVoice}
+            onManualSubmit={setManualText}
+          />
+          <form className="store-change-wizard__form" onSubmit={submitClarification}>
+            <label htmlFor="store-change-clarification">추가로 알려줄 내용</label>
+            <textarea
+              id="store-change-clarification"
+              value={manualText}
+              onChange={(event) => setManualText(event.target.value)}
+              rows={3}
+              required
+            />
+            <button type="submit" disabled={!manualText.trim()}>변경안 만들기</button>
+          </form>
+          <button className="store-change-wizard__secondary" type="button" onClick={() => {
+            setClarification(null);
+            setManualText('');
+            setStep('INPUT');
+          }}>처음으로 돌아가기</button>
         </section>
       ) : null}
 

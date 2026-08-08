@@ -59,6 +59,41 @@ describe('StoreChangeWizard', () => {
     expect(screen.queryByText('AI가 변경안을 작성 중입니다...')).not.toBeInTheDocument();
   });
 
+  test('필수 휴무 날짜가 없으면 재질문하고 추가 답변으로 변경안을 만든다', async () => {
+    // Given: 날짜가 빠진 휴무 요청을 입력한다
+    // When: 시스템이 필요한 정보를 재질문하고 날짜를 추가로 입력한다
+    // Then: 원래 요청과 추가 답변을 합쳐 휴무 변경안을 만든다
+    const user = userEvent.setup();
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '내일 문 닫아');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+
+    expect(await screen.findByRole('heading', { name: '조금만 더 알려주세요' })).toBeInTheDocument();
+    expect(screen.getByText('휴무 날짜가 필요해요. “8월 15일 하루 종일 임시 휴무”처럼 정확한 날짜를 말씀해 주세요.')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('추가로 알려줄 내용'), '8월 15일 하루 종일 임시 휴무');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+
+    expect(await screen.findByText('2026-08-15 ~ 2026-08-15')).toBeInTheDocument();
+  });
+
+  test('음성 재질문에 날짜로 답하면 휴무 변경안을 만든다', async () => {
+    // Given: 음성 인식 화면에서 날짜가 빠진 휴무 요청을 했다
+    // When: 재질문에 음성으로 날짜를 답한다
+    // Then: 두 발화를 합쳐 휴무 변경안을 만든다
+    Object.defineProperty(window, 'SpeechRecognition', { configurable: true, value: FakeSpeechRecognition });
+    render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '음성 인식 시작' }));
+    FakeSpeechRecognition.instance?.recognize('내일 문 닫아');
+    expect(await screen.findByRole('heading', { name: '조금만 더 알려주세요' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '음성 인식 시작' }));
+    FakeSpeechRecognition.instance?.recognize('8월 15일 하루 종일 임시 휴무');
+
+    expect(await screen.findByText('2026-08-15 ~ 2026-08-15')).toBeInTheDocument();
+  });
+
   test('인식 텍스트로 구조화된 영업시간 변경안을 만들고 검토 화면에 형식화해 보여준다', async () => {
     const user = userEvent.setup();
     render(<StoreChangeWizard storeProfileId="11111111-1111-4111-8111-111111111111" />);
