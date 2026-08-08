@@ -104,7 +104,7 @@ export function parseStoreChangeText(recognizedText: string): ProposalChange[] {
   if (/영업\s*시간|시까지|시부터/.test(text)) {
     return [parseBusinessHoursChange(text, parseCurrentBusinessHours())];
   }
-  if (/휴무|쉬(?:어요|겠습니다|는\s*날)|문\s*닫|마감/.test(text)) {
+  if (/휴무|쉬(?:어요|겠습니다|는\s*날)|쉴|문\s*닫|마감/.test(text)) {
     const change = parseClosureChange(text);
     return change ? [change] : [];
   }

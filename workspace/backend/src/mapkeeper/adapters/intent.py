@@ -46,7 +46,7 @@ _NEXT_WEEKDAY_PATTERN: Final = re.compile(r"다음\s*주\s*(?P<weekday>[월화�
 _HOURS_CONTEXT: Final = re.compile(r"영업|문\s*을?|마감|오픈|open|close|열|닫|시작|종료|폐점|개점")
 _OPENING_WORDS: Final = re.compile(r"열|오픈|시작|개점")
 _CLOSING_WORDS: Final = re.compile(r"닫|마감|종료|폐점|까지")
-_CLOSURE_WORDS: Final = re.compile(r"휴무|휴일|쉬|문\s*(?:을\s*)?닫|마감")
+_CLOSURE_WORDS: Final = re.compile(r"휴무|휴일|쉬|쉴|문\s*(?:을\s*)?닫|마감")
 _SEOUL_TIMEZONE: Final = ZoneInfo("Asia/Seoul")
 _WEEKDAY_INDEX: Final = {"월": 0, "화": 1, "수": 2, "목": 3, "금": 4, "토": 5, "일": 6}
 

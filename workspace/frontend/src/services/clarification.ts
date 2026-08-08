@@ -1,4 +1,4 @@
-const closureIntent = /임시\s*휴무|휴무|휴일|쉬|문\s*닫|마감/;
+const closureIntent = /임시\s*휴무|휴무|휴일|쉬|쉴|문\s*닫|마감/;
 const explicitDate = /(?:\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}\s*월\s*\d{1,2}\s*일)/;
 const relativeDate = /오늘|내일|모레|이번\s*주|다음\s*주/;
 

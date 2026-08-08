@@ -136,6 +136,7 @@ def test_two_explicit_dates_become_a_closure_change() -> None:
     [
         ("다음 주쯤 쉬어요", date(2026, 8, 10), date(2026, 8, 16)),
         ("내일 휴무예요", date(2026, 8, 4), date(2026, 8, 4)),
+        ("내일 하루 쉴게", date(2026, 8, 4), date(2026, 8, 4)),
         ("다음 주 화요일 문 닫아", date(2026, 8, 11), date(2026, 8, 11)),
     ],
 )
