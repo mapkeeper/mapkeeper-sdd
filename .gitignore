@@ -9,3 +9,7 @@ __pycache__/
 *.py[cod]
 coverage.xml
 htmlcov/
+
+# Local AI agent plans and project-specific instructions
+/.omo/
+/.claude/
