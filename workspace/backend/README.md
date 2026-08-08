@@ -110,3 +110,19 @@ uv run --locked ruff check .
 uv run --locked basedpyright
 uv run --locked pytest --cov=mapkeeper --cov-report=term-missing
 ```
+
+## CI 검증
+
+GitHub Actions의 Backend quality gate는 PostgreSQL 16 서비스 컨테이너를 띄우고
+`DATABASE_URL`, `TEST_DATABASE_URL`, `MVP_ACTOR_ID`를 테스트 전용 값으로 주입한다.
+그 다음 `uv run --locked alembic upgrade head`로 빈 데이터베이스를 준비한 뒤
+포맷·린트·타입 검사와 전체 테스트를 실행한다. 현재 커버리지 기준은 90%다.
+
+로컬에서 배포 환경을 확인할 때는 PostgreSQL LXC 터널을 유지한 상태로 다음 명령을
+순서대로 실행한다.
+
+```bash
+uv run --locked alembic upgrade head
+uv run --locked python -m mapkeeper.db.seed
+uv run --locked pytest --cov=mapkeeper --cov-report=term-missing
+```
