@@ -7,6 +7,7 @@ from mapkeeper.api.schemas.seo import (
     ContentGenerationApprovalResponse,
     ContentGenerationResponse,
     CreateContentGenerationRequest,
+    PlatformContentResult,
 )
 
 STORE_PROFILE_ID = UUID("11111111-1111-4111-8111-111111111111")
@@ -202,3 +203,135 @@ def test_generation_approval_accepts_all_platforms() -> None:
 
     # Then: the response hands off one pending SyncJob.
     assert response.sync_job_id == UUID("77777777-7777-4777-8777-777777777777")
+
+
+def test_seed_keywords_drop_a_leading_hash_and_collapse_duplicates() -> None:
+    # Given: keywords typed with hashes and repeats, as the UI presents them.
+    request = CreateContentGenerationRequest.model_validate(
+        {
+            "storeProfileId": "11111111-1111-4111-8111-111111111111",
+            "briefText": "만두전골을 알리고 싶어요.",
+            "seedKeywords": ["#만두전골", " 가족외식 ", "만두전골", "#가족외식"],
+        }
+    )
+
+    # When / Then: hashes are stripped and the first occurrence order is kept.
+    assert request.seed_keywords == ("만두전골", "가족외식")
+
+
+def test_seed_keywords_reject_more_than_five_distinct_values() -> None:
+    # Given: six distinct keywords.
+    payload = {
+        "storeProfileId": "11111111-1111-4111-8111-111111111111",
+        "briefText": "만두전골을 알리고 싶어요.",
+        "seedKeywords": ["가", "나", "다", "라", "마", "바"],
+    }
+
+    # When / Then: the contract caps user keywords at five.
+    with pytest.raises(ValidationError):
+        _ = CreateContentGenerationRequest.model_validate(payload)
+
+
+def test_seed_keywords_reject_a_list_that_normalizes_to_nothing() -> None:
+    # Given: keywords that are empty once trimmed and de-hashed.
+    payload = {
+        "storeProfileId": "11111111-1111-4111-8111-111111111111",
+        "briefText": "만두전골을 알리고 싶어요.",
+        "seedKeywords": ["#", "   "],
+    }
+
+    # When / Then: an empty result fails the minimum count.
+    with pytest.raises(ValidationError):
+        _ = CreateContentGenerationRequest.model_validate(payload)
+
+
+def test_brief_text_is_capped_at_five_hundred_characters() -> None:
+    # Given: a brief one character over the limit.
+    payload = {
+        "storeProfileId": "11111111-1111-4111-8111-111111111111",
+        "briefText": "가" * 501,
+        "seedKeywords": ["만두전골"],
+    }
+
+    # When / Then: the contract limit is enforced at the boundary.
+    with pytest.raises(ValidationError):
+        _ = CreateContentGenerationRequest.model_validate(payload)
+
+
+def test_source_review_ids_reject_duplicates_and_overflow() -> None:
+    # Given: a repeated review reference.
+    base = {
+        "storeProfileId": "11111111-1111-4111-8111-111111111111",
+        "briefText": "만두전골을 알리고 싶어요.",
+        "seedKeywords": ["만두전골"],
+    }
+    repeated = "55555555-5555-4555-8555-555555555555"
+
+    # When / Then: duplicates and more than ten references are both refused.
+    with pytest.raises(ValidationError):
+        _ = CreateContentGenerationRequest.model_validate(
+            {**base, "sourceReviewIds": [repeated, repeated]}
+        )
+    with pytest.raises(ValidationError):
+        _ = CreateContentGenerationRequest.model_validate(
+            {
+                **base,
+                "sourceReviewIds": [
+                    f"5555555{i:04d}-5555-4555-8555-555555555555" for i in range(11)
+                ],
+            }
+        )
+
+
+def test_keywords_that_are_not_a_list_fall_through_to_field_validation() -> None:
+    # Given: a single string where the contract requires an array of keywords.
+    payload = {
+        "storeProfileId": "11111111-1111-4111-8111-111111111111",
+        "briefText": "만두전골을 알리고 싶어요.",
+        "seedKeywords": "만두전골",
+    }
+
+    # When / Then: normalization does not silently accept a bare string.
+    with pytest.raises(ValidationError):
+        _ = CreateContentGenerationRequest.model_validate(payload)
+
+
+def test_platform_keywords_are_normalized_like_user_keywords() -> None:
+    # Given: a generated result whose keywords arrive with hashes and repeats.
+    payload = {
+        "generationId": "33333333-3333-4333-8333-333333333333",
+        "status": "DRAFT",
+        "revision": 1,
+        "drafts": [
+            {
+                "draftId": f"44444444-4444-4444-8444-44444444444{index}",
+                "platform": platform,
+                "draftText": f"{platform}용 소개글",
+                "keywords": ["#만두전골", "만두전골", " 가족외식 "],
+                "contentRules": ["team-defined-rule"],
+            }
+            for index, platform in enumerate(("google", "naver", "kakao"), start=1)
+        ],
+    }
+
+    # When: the generation response is validated.
+    response = ContentGenerationResponse.model_validate(payload)
+
+    # Then: every platform stores clean, de-duplicated keywords.
+    for draft in response.drafts:
+        assert draft.keywords == ("만두전골", "가족외식")
+
+
+def test_platform_keywords_that_are_not_a_list_fall_through_to_field_validation() -> None:
+    # Given: a generated result whose keywords arrive as a bare string.
+    payload = {
+        "draftId": "44444444-4444-4444-8444-444444444441",
+        "platform": "google",
+        "draftText": "Google용 소개글",
+        "keywords": "만두전골",
+        "contentRules": ["team-defined-google-rule"],
+    }
+
+    # When / Then: normalization does not silently accept a bare string.
+    with pytest.raises(ValidationError):
+        _ = PlatformContentResult.model_validate(payload)

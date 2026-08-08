@@ -5,6 +5,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from mapkeeper.api.schemas.store_change import (
     BusinessHoursChange,
+    CreateStoreChangeProposalRequest,
     PatchStoreChangeProposalRequest,
     ProposalChange,
     RepresentativeMenuNameChange,
@@ -91,5 +92,35 @@ def test_proposal_change_rejects_an_unapproved_field() -> None:
     }
 
     # When / Then: the discriminated union rejects the field.
+    with pytest.raises(ValidationError):
+        _ = PatchStoreChangeProposalRequest.model_validate(payload)
+
+
+def test_recognized_text_is_capped_at_five_hundred_characters() -> None:
+    # Given: a recognized sentence one character over the contract limit.
+    payload = {
+        "storeProfileId": "11111111-1111-4111-8111-111111111111",
+        "recognizedText": "가" * 501,
+        "locale": "ko-KR",
+    }
+
+    # When / Then: the boundary is enforced at the API edge.
+    with pytest.raises(ValidationError):
+        _ = CreateStoreChangeProposalRequest.model_validate(payload)
+
+
+def test_representative_menu_name_is_capped_at_fifty_characters() -> None:
+    # Given: a proposed menu name one character over the contract limit.
+    payload = {
+        "changes": [
+            {
+                "field": "representativeMenuName",
+                "currentValue": "아메리카노",
+                "proposedValue": "가" * 51,
+            }
+        ]
+    }
+
+    # When / Then: the menu limit is enforced before anything is stored.
     with pytest.raises(ValidationError):
         _ = PatchStoreChangeProposalRequest.model_validate(payload)

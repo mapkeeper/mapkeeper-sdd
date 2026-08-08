@@ -5,10 +5,9 @@ from sqlalchemy import CheckConstraint, Date, ForeignKey, String, Text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column
 
+from mapkeeper.core.json_types import JsonObject, JsonValue
 from mapkeeper.models.base import (
     Base,
-    JsonObject,
-    JsonValue,
     TableArgs,
     TimestampMixin,
     TimestampTz,

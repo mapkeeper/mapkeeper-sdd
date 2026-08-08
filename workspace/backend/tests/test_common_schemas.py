@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from mapkeeper.api.schemas.common import ApiEnvelope, ApiError
 from mapkeeper.models.enums import (
+    ApiErrorCode,
     ApiResponseStatus,
     ContentGenerationStatus,
     PlatformSyncTaskStatus,
@@ -81,7 +82,7 @@ def test_failure_envelope_serializes_the_contract_shape() -> None:
         success=False,
         status=ApiResponseStatus.FAILED,
         data=None,
-        error=ApiError(code="VALIDATION_ERROR", message="invalid input"),
+        error=ApiError(code=ApiErrorCode.VALIDATION_ERROR, message="invalid input"),
         timestamp=timestamp,
     )
 

@@ -13,9 +13,9 @@ from sqlalchemy import (
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from mapkeeper.core.json_types import JsonValue
 from mapkeeper.models.base import (
     Base,
-    JsonValue,
     TableArgs,
     TimestampMixin,
     TimestampTz,

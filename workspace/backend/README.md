@@ -40,6 +40,20 @@ uv run --locked alembic upgrade head --sql  # DB 연결 없이 SQL만 확인
 
 `--sql` 오프라인 모드는 DB 접속 없이 생성될 DDL을 그대로 출력한다.
 
+## API 계약
+
+`openapi.json`이 프론트엔드에 전달하는 단일 계약이다. schema나 route를 바꾸면 다시 생성한다.
+
+```bash
+uv run --locked python -m mapkeeper.openapi
+```
+
+`tests/test_openapi.py`가 커밋된 파일과 앱이 서빙하는 문서를 비교하므로,
+재생성을 잊으면 테스트가 실패한다.
+
+v0.2 엔드포인트 10개는 모두 선언돼 있으나 핸들러 본문은 아직 없다.
+호출하면 `501 Not Implemented`를 반환하며 T225와 T227~T234에서 구현한다.
+
 ## 검사
 
 ```bash

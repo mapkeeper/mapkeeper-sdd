@@ -12,8 +12,6 @@ if TYPE_CHECKING:
 
 EnumT = TypeVar("EnumT", bound=StrEnum)
 
-JsonValue: TypeAlias = "str | int | float | bool | list[JsonValue] | dict[str, JsonValue] | None"
-JsonObject: TypeAlias = "dict[str, JsonValue]"
 TableArgs: TypeAlias = "tuple[SchemaItem, ...]"
 
 NAMING_CONVENTION: Final[dict[str, str]] = {
