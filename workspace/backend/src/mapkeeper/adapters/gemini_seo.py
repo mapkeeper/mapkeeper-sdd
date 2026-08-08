@@ -111,7 +111,8 @@ def build_prompt(
 ]"""
 
 
-def _strip_code_fence(raw: str) -> str:
+def strip_code_fence(raw: str) -> str:
+    """Remove a markdown code fence the model may have wrapped its JSON in."""
     text = raw.strip()
     if not text.startswith("```"):
         return text
@@ -133,7 +134,7 @@ def parse_results(raw: str) -> tuple[PlatformContentResult, ...]:
         GeminiGenerationError: the output was not usable.
     """
     try:
-        payload = _load_json(_strip_code_fence(raw))
+        payload = _load_json(strip_code_fence(raw))
     except json.JSONDecodeError as exc:
         logger.warning("gemini returned output that is not JSON: %s", exc)
         raise GeminiGenerationError(GENERATION_FAILED_MESSAGE) from exc

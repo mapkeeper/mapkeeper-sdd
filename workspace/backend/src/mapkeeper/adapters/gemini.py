@@ -4,6 +4,8 @@ import re
 from datetime import date
 from typing import Final, Protocol
 
+from mapkeeper.adapters.gemini_proposal import GeminiProposalStructurer
+from mapkeeper.adapters.gemini_seo import HttpGeminiModelClient
 from mapkeeper.api.schemas.store_change import (
     BusinessHoursChange,
     BusinessHoursValue,
@@ -12,6 +14,7 @@ from mapkeeper.api.schemas.store_change import (
     TemporaryClosureChange,
     TemporaryClosureValue,
 )
+from mapkeeper.core.config import get_settings
 from mapkeeper.core.errors import MapKeeperError
 from mapkeeper.models import StoreProfile
 from mapkeeper.models.enums import ApiErrorCode
@@ -23,6 +26,7 @@ MAX_12_HOUR_CLOCK: Final = 12
 MAX_24_HOUR_CLOCK: Final = 23
 _TIME_PATTERN: Final = re.compile(r"(?:(오전|오후)\s*)?(\d{1,2})(?:시(?:(\d{1,2})분?)?|:(\d{2}))")
 _DATE_PATTERN: Final = re.compile(r"(\d{4}-\d{2}-\d{2})")
+_OPENING_WORDS: Final = re.compile(r"(?:문\s*을?\s*)?(?:열|오픈|시작)")
 _MENU_PREFIX: Final = re.compile(r"^.*?대표\s*메뉴(?:를|은|는)?\s*")
 _MENU_SUFFIX: Final = re.compile(r"\s*(?:로|으로)?\s*(?:바꿔줘|변경해줘|변경해|바꿔|변경)\s*$")
 
@@ -58,13 +62,19 @@ class DeterministicGeminiStub:
             match = _TIME_PATTERN.search(masked_text)
             if match is None:
                 raise invalid_change_error()
-            close = _to_hour_minute(match)
+            spoken = _to_hour_minute(match)
             current = BusinessHoursValue.model_validate(profile.business_hours)
+            # Which side of the day was spoken about. Saying nothing means closing
+            # time, which is what "몇 시까지" asks about.
+            if _OPENING_WORDS.search(masked_text):
+                proposed = BusinessHoursValue(open=spoken, close=current.close)
+            else:
+                proposed = BusinessHoursValue(open=current.open, close=spoken)
             return (
                 BusinessHoursChange(
                     field="businessHours",
                     current_value=current,
-                    proposed_value=BusinessHoursValue(open=current.open, close=close),
+                    proposed_value=proposed,
                 ),
             )
         if "휴무" in lowered or "휴일" in lowered:
@@ -121,5 +131,18 @@ def _to_hour_minute(match: re.Match[str]) -> str:
 
 
 def get_gemini_generator() -> GeminiProposalGenerator:
-    """Return the offline substitute; a future HTTP client plugs in here."""
-    return DeterministicGeminiStub()
+    """Return the Gemini structurer when a key is configured, otherwise the stub.
+
+    The stub only matches three keywords and a clock regex, so anything phrased
+    differently is refused. It stays as the offline fallback.
+    """
+    settings = get_settings()
+    if settings.gemini_api_key is None:
+        return DeterministicGeminiStub()
+    return GeminiProposalStructurer(
+        HttpGeminiModelClient(
+            api_key=settings.gemini_api_key.get_secret_value(),
+            model=settings.gemini_model,
+            timeout_seconds=settings.gemini_timeout_seconds,
+        )
+    )
