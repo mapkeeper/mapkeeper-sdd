@@ -3,9 +3,11 @@ from typing import Final
 
 import pytest
 
-from mapkeeper.core.json_types import JsonObject, JsonValue
+from mapkeeper.core.json_types import JsonObject
 from mapkeeper.models.enums import ApiErrorCode, Platform, PlatformErrorCode
 from mapkeeper.openapi import build_openapi, default_output_path, main, render_openapi
+
+from .jsonassert import arr, number_of, obj, strings_of, text_of
 
 CONTRACT_ENDPOINTS: Final[tuple[tuple[str, str, str], ...]] = (
     ("post", "/api/v1/store-change-proposals", "201"),
@@ -32,36 +34,6 @@ BODYLESS_ENDPOINTS: Final = (
 )
 CONTRACT_ERROR_STATUSES: Final = frozenset({"400", "404", "409", "422", "429", "500"})
 IDEMPOTENCY_KEY_PATTERN: Final = r"^[A-Za-z0-9._:-]+$"
-
-
-def obj(value: JsonValue) -> JsonObject:
-    """Narrow a JSON value to an object."""
-    assert isinstance(value, dict), f"expected an object, got {type(value).__name__}"
-    return value
-
-
-def arr(value: JsonValue) -> list[JsonValue]:
-    """Narrow a JSON value to an array."""
-    assert isinstance(value, list), f"expected an array, got {type(value).__name__}"
-    return value
-
-
-def text_of(value: JsonValue) -> str:
-    """Narrow a JSON value to a string."""
-    assert isinstance(value, str), f"expected a string, got {type(value).__name__}"
-    return value
-
-
-def number_of(value: JsonValue) -> float:
-    """Narrow a JSON value to a number. JSON Schema bounds may be rendered as floats."""
-    assert not isinstance(value, bool), "expected a number, got bool"
-    assert isinstance(value, int | float), f"expected a number, got {type(value).__name__}"
-    return value
-
-
-def strings_of(value: JsonValue) -> list[str]:
-    """Narrow a JSON value to an array of strings."""
-    return [text_of(item) for item in arr(value)]
 
 
 @pytest.fixture(scope="module")

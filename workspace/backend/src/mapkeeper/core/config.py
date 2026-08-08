@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import ClassVar, Final
+from uuid import UUID
 
 from pydantic import PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,6 +23,9 @@ class Settings(BaseSettings):
 
     database_url: PostgresDsn
     db_echo: bool = False
+    # MVP has no login. Approvals are attributed to this fixed actor, never to a
+    # value taken from the request body.
+    mvp_actor_id: UUID
 
     @field_validator("database_url")
     @classmethod

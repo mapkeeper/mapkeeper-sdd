@@ -5,7 +5,10 @@ from typing import ClassVar, Literal
 from fastapi import FastAPI
 from pydantic import BaseModel, ConfigDict
 
+from mapkeeper.api.error_handlers import install_error_handlers
+from mapkeeper.api.middleware import request_id_middleware
 from mapkeeper.api.router import api_router
+from mapkeeper.core.logging import configure_logging
 from mapkeeper.db.session import dispose_engine
 
 
@@ -19,7 +22,8 @@ class HealthResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
-    """Release pooled database connections when the service stops."""
+    """Set up request logging on start and release pooled connections on stop."""
+    configure_logging()
     yield
     await dispose_engine()
 
@@ -33,6 +37,8 @@ app = FastAPI(
     ),
     lifespan=lifespan,
 )
+_ = app.middleware("http")(request_id_middleware)
+install_error_handlers(app)
 app.include_router(api_router)
 
 

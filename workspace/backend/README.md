@@ -10,6 +10,7 @@ FastAPI 애플리케이션과 API Contract v0.2 기준 Pydantic schema, PostgreS
 |---|---|
 | `DATABASE_URL` | PostgreSQL DSN. `postgresql+asyncpg://` 드라이버만 허용한다. |
 | `DB_ECHO` | SQL 로깅 여부. 기본값은 `false`다. |
+| `MVP_ACTOR_ID` | 승인 주체 UUID. 로그인 없는 MVP에서 `approvedBy`로 사용한다. 요청 Body에서 받지 않는다. |
 | `TEST_DATABASE_URL` | `tests/integration`이 사용하는 빈 DB. 없으면 해당 테스트를 건너뛴다. |
 
 PostgreSQL은 Proxmox의 별도 LXC를 사용하며 Compose에 DB 컨테이너를 추가하지 않는다.
@@ -53,6 +54,24 @@ UC1과 UC2를 서로 없이도 시연할 수 있는 최소 데이터다.
 
 seed에는 고객 PII와 Secret 원문이 없다. `platformAccountRefs`에는 공개 계정 ID와
 `sm://` 참조만 넣고 OAuth Token이나 API Secret은 저장하지 않는다.
+
+## 요청 추적과 멱등성
+
+모든 응답은 `X-Request-ID`를 돌려준다. 클라이언트가 보내지 않았거나 값이 길거나
+허용 문자를 벗어나면 서버가 새로 만들어 사용한다. 반사하지 않는다.
+
+로그 한 줄마다 이 값이 들어가므로 요청 → SyncJob → PlatformSyncTask를 한 번의
+검색으로 따라갈 수 있다. `Idempotency-Key` 전체 값은 로그에 남기지 않고
+12자 fingerprint로만 기록한다.
+
+승인 멱등성은 `approvedBy + Idempotency-Key`로 관리한다. 같은 요청이면 기존
+SyncJob을 그대로 돌려주고, 같은 키가 다른 승인 대상에 쓰이면 `409
+IDEMPOTENCY_CONFLICT`다. 같은 요청인지는 SHA-256으로 판별한다.
+
+- UC1: proposal id + 승인되는 changes
+- UC2: generation id + 승인되는 revision
+
+재생성으로 revision이 올라가면 같은 키라도 다른 요청이 된다.
 
 ## API 계약
 

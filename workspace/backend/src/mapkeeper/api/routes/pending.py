@@ -5,13 +5,9 @@ contract. The bodies arrive in T227~T229 (UC1), T232~T234 (UC2) and T225 (status
 retry); until then a call reports 501 instead of pretending to succeed.
 """
 
-from typing import Final, Never
+from typing import Never
 
-from fastapi import HTTPException, status
-
-NOT_IMPLEMENTED_DETAIL: Final = (
-    "Declared for the MapKeeper v0.2 contract; the implementation is not delivered yet."
-)
+from mapkeeper.core.errors import NotImplementedYetError
 
 
 def not_implemented(*_contract_arguments: object) -> Never:
@@ -20,7 +16,4 @@ def not_implemented(*_contract_arguments: object) -> Never:
     The route's declared parameters are passed in and discarded so the published
     contract stays complete while the handler body is still missing.
     """
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail=NOT_IMPLEMENTED_DETAIL,
-    )
+    raise NotImplementedYetError
