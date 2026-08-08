@@ -5,7 +5,11 @@ description = "MapKeeper backend service"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
+    "alembic>=1.16,<2",
+    "asyncpg>=0.30,<1",
     "fastapi>=0.116,<1",
+    "pydantic-settings>=2.10,<3",
+    "sqlalchemy[asyncio]>=2.0.40,<3",
     "uvicorn[standard]>=0.35,<1",
 ]
 
@@ -14,6 +18,7 @@ dev = [
     "basedpyright>=1.31,<2",
     "httpx2>=2.7,<3",
     "pytest>=8.4,<10",
+    "pytest-asyncio>=1,<2",
     "pytest-cov>=6,<8",
     "ruff>=0.12,<1",
 ]
@@ -63,6 +68,8 @@ unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["ARG", "D", "PLR2004", "S101", "SLF001"]
+# Alembic loads env.py and each revision by path, so they are not importable packages.
+"alembic/**/*.py" = ["INP001"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -90,6 +97,8 @@ minversion = "8.0"
 testpaths = ["tests"]
 addopts = ["-ra", "--strict-config", "--strict-markers"]
 filterwarnings = ["error"]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
 source = ["src"]
