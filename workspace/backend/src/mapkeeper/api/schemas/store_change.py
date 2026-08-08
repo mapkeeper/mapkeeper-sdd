@@ -26,6 +26,8 @@ HourMinute = Annotated[
 ]
 INVALID_TEMPORARY_CLOSURE_RANGE: Final = "invalid_temporary_closure_range"
 INVALID_TEMPORARY_CLOSURE_RANGE_MESSAGE: Final = "endDate must be on or after startDate"
+DUPLICATE_CHANGE_FIELD_CODE: Final = "duplicate_change_field"
+DUPLICATE_CHANGE_FIELD_MESSAGE: Final = "changes must contain each field at most once"
 
 
 class BusinessHoursValue(ApiSchema):
@@ -93,6 +95,17 @@ class PatchStoreChangeProposalRequest(ApiSchema):
     """Validated proposal changes replacing the current draft changes."""
 
     changes: Annotated[tuple[ProposalChange, ...], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def _reject_duplicate_fields(self) -> Self:
+        """Require each supported store field to appear at most once."""
+        fields = tuple(change.field for change in self.changes)
+        if len(fields) != len(set(fields)):
+            raise PydanticCustomError(
+                DUPLICATE_CHANGE_FIELD_CODE,
+                DUPLICATE_CHANGE_FIELD_MESSAGE,
+            )
+        return self
 
 
 class StoreChangeProposalResponse(ApiSchema):

@@ -79,7 +79,7 @@ def test_an_unimplemented_route_still_answers_in_the_envelope(client: TestClient
     # Given: a route declared for the contract but not yet built.
 
     # When: it is called.
-    response = client.post(f"/api/v1/store-change-proposals/{SYNC_JOB_ID}/reject")
+    response = client.post(f"/api/v1/seo/generations/{SYNC_JOB_ID}/reject")
 
     # Then: the transitional 501 is honest and still machine-readable.
     assert response.status_code == status.HTTP_501_NOT_IMPLEMENTED

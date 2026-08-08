@@ -1,8 +1,4 @@
-"""Routing-level checks: the published paths resolve and enforce their header contract.
-
-The handler bodies arrive in T225 and T227~T234, so every contract route answers 501
-for now. These checks pin the routing, the path parameter names and the header rules.
-"""
+"""Routing-level checks for the published paths and header contract."""
 
 from typing import Final
 
@@ -28,23 +24,6 @@ CREATE_GENERATION_BODY: Final = {
     "seedKeywords": ["만두전골", "가족외식"],
 }
 DECLARED_ROUTES: Final = (
-    ("post", "/api/v1/store-change-proposals", CREATE_PROPOSAL_BODY, None),
-    (
-        "patch",
-        f"/api/v1/store-change-proposals/{PROPOSAL_ID}",
-        {
-            "changes": [
-                {
-                    "field": "representativeMenuName",
-                    "currentValue": "아메리카노",
-                    "proposedValue": "라테",
-                }
-            ]
-        },
-        None,
-    ),
-    ("post", f"/api/v1/store-change-proposals/{PROPOSAL_ID}/reject", None, None),
-    ("post", f"/api/v1/store-change-proposals/{PROPOSAL_ID}/approve", None, "approve-1"),
     ("post", "/api/v1/seo/generations", CREATE_GENERATION_BODY, None),
     (
         "post",
@@ -55,8 +34,8 @@ DECLARED_ROUTES: Final = (
     ("post", f"/api/v1/seo/generations/{GENERATION_ID}/reject", None, None),
     ("post", f"/api/v1/seo/generations/{GENERATION_ID}/approve", None, "approve-2"),
 )
-# The sync-jobs endpoints are implemented and need a database, so their behaviour
-# lives in tests/integration/test_sync_api.py rather than in this placeholder sweep.
+# UC1 and sync endpoints are implemented and need a database, so their behavior
+# lives in integration tests rather than in this placeholder sweep.
 APPROVE_PATHS: Final = (
     f"/api/v1/store-change-proposals/{PROPOSAL_ID}/approve",
     f"/api/v1/seo/generations/{GENERATION_ID}/approve",
@@ -80,7 +59,7 @@ def test_every_contract_route_resolves(
     # Given: one endpoint of the published contract.
     headers = {"Idempotency-Key": key} if key else {}
 
-    # When: it is called with a valid request.
+    # When: an endpoint whose body is not implemented is called.
     response = client.request(method, path, json=body, headers=headers)
 
     # Then: routing works and the missing implementation is reported honestly.
@@ -149,9 +128,9 @@ def test_an_undefined_request_field_is_rejected(client: TestClient) -> None:
 def test_the_request_id_header_is_accepted(client: TestClient) -> None:
     # Given: a client supplying its own trace id.
 
-    # When: any contract route is called with it.
+    # When: an unimplemented contract route is called with it.
     response = client.post(
-        f"/api/v1/store-change-proposals/{PROPOSAL_ID}/reject",
+        f"/api/v1/seo/generations/{GENERATION_ID}/reject",
         headers={"X-Request-ID": "trace-1234"},
     )
 

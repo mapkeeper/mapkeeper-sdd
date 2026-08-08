@@ -1678,7 +1678,7 @@
     },
     "/api/v1/store-change-proposals/{proposalId}": {
       "patch": {
-        "description": "Replace the full change list. A stale currentValue is 409 STALE_PROPOSAL.",
+        "description": "Replace the full change list after stale currentValue checking.",
         "operationId": "patch_proposal_api_v1_store_change_proposals__proposalId__patch",
         "parameters": [
           {
@@ -1800,7 +1800,7 @@
     },
     "/api/v1/store-change-proposals/{proposalId}/approve": {
       "post": {
-        "description": "Approve the proposal and create one SyncJob with three platform tasks atomically.",
+        "description": "Commit approval and queue synchronization only after the commit succeeds.",
         "operationId": "approve_proposal_api_v1_store_change_proposals__proposalId__approve_post",
         "parameters": [
           {

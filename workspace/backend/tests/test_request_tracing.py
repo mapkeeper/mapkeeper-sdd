@@ -25,9 +25,8 @@ from mapkeeper.core.logging import (
 from mapkeeper.main import app
 
 SYNC_JOB_ID: Final = "66666666-6666-4666-8666-666666666666"
-PROPOSAL_ID: Final = "22222222-2222-4222-8222-222222222222"
 # A route whose handler is still a placeholder, so tracing is checked without a database.
-TRACED_PATH: Final = f"/api/v1/store-change-proposals/{PROPOSAL_ID}/reject"
+TRACED_PATH: Final = f"/api/v1/seo/generations/{SYNC_JOB_ID}/reject"
 
 
 @pytest.fixture(scope="module")

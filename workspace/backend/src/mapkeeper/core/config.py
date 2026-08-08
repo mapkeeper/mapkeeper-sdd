@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # MVP has no login. Approvals are attributed to this fixed actor, never to a
     # value taken from the request body.
     mvp_actor_id: UUID
+    gemini_api_key: str | None = None
 
     @field_validator("database_url")
     @classmethod

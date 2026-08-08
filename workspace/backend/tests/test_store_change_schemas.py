@@ -124,3 +124,16 @@ def test_representative_menu_name_is_capped_at_fifty_characters() -> None:
     # When / Then: the menu limit is enforced before anything is stored.
     with pytest.raises(ValidationError):
         _ = PatchStoreChangeProposalRequest.model_validate(payload)
+
+
+def test_patch_rejects_duplicate_change_fields() -> None:
+    # Given: a patch that repeats the same supported field.
+    change = {
+        "field": "businessHours",
+        "currentValue": {"open": "09:00", "close": "22:00"},
+        "proposedValue": {"open": "09:00", "close": "20:00"},
+    }
+
+    # When / Then: duplicate fields are rejected at the API boundary.
+    with pytest.raises(ValidationError):
+        _ = PatchStoreChangeProposalRequest.model_validate({"changes": [change, change]})
