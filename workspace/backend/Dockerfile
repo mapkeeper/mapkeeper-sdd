@@ -15,6 +15,13 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY src ./src
 RUN uv sync --locked --no-dev --no-editable
 
+# Migrations ship with the code that expects the schema they create, so the
+# deployment runs `alembic upgrade head` from this image rather than from a
+# checkout that could be a different commit. Copied after the dependency sync so
+# editing a migration does not rebuild the virtual environment.
+COPY alembic.ini ./
+COPY alembic ./alembic
+
 RUN useradd --no-create-home --uid 10001 mapkeeper
 USER mapkeeper
 

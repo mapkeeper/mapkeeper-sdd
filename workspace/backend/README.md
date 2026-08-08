@@ -41,6 +41,20 @@ uv run --locked alembic upgrade head --sql  # DB 연결 없이 SQL만 확인
 
 `--sql` 오프라인 모드는 DB 접속 없이 생성될 DDL을 그대로 출력한다.
 
+배포 시에는 GitHub Actions가 새 이미지를 pull한 뒤, 컨테이너를 올리기 **전에**
+같은 이미지로 migration을 적용한다.
+
+```bash
+docker compose run --rm --no-deps backend alembic upgrade head
+```
+
+migration 파일이 이미지에 함께 들어 있어 스키마와 코드의 커밋이 항상 일치한다.
+migration이 실패하면 배포가 중단되고 이전 이미지로 롤백된다.
+
+⚠️ **migration은 직전 릴리스와 호환되어야 한다.** 배포가 migration 이후 단계에서
+실패하면 컨테이너만 롤백되고 스키마는 적용된 상태로 남는다. 컬럼·테이블 추가는
+안전하지만 삭제·이름 변경은 두 단계로 나눠야 한다.
+
 ## Seed
 
 migration 이후 시연용 매장 하나와 마스킹 완료 리뷰 세 건을 넣는다.

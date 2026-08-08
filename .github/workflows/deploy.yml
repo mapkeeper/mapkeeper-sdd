@@ -148,9 +148,20 @@ jobs:
               "http://$frontend_endpoint/healthz" || return 1
           }
 
+          # Migrations run from the image being deployed, so the schema always
+          # matches the code that expects it. A migration must stay compatible
+          # with the previous release: a failed deployment rolls the containers
+          # back, but the schema stays where the migration left it.
+          apply_migrations() {
+            BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
+              docker compose run --rm --no-deps backend \
+                alembic upgrade head || return 1
+          }
+
           deploy_new_version() {
             BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
               docker compose pull backend frontend || return 1
+            apply_migrations || return 1
             BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
               docker compose up -d --no-build --remove-orphans \
                 --wait --wait-timeout 90 || return 1
