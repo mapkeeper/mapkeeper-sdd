@@ -7,6 +7,7 @@ from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 
 from mapkeeper.api.error_handlers import build_error_response, install_error_handlers
+from mapkeeper.api.schemas.common import ApiError
 from mapkeeper.core.errors import (
     SAFE_INTERNAL_MESSAGE,
     IdempotencyConflictError,
@@ -142,9 +143,11 @@ def test_a_retryable_flag_can_be_reported_on_an_error() -> None:
     # Given: a failure the caller may safely retry.
     response = build_error_response(
         status.HTTP_429_TOO_MANY_REQUESTS,
-        ApiErrorCode.REQUEST_RATE_LIMITED,
-        "잠시 후 다시 시도해 주세요.",
-        retryable=True,
+        ApiError(
+            code=ApiErrorCode.REQUEST_RATE_LIMITED,
+            message="잠시 후 다시 시도해 주세요.",
+            retryable=True,
+        ),
     )
 
     # When / Then: the envelope carries the hint the client needs.

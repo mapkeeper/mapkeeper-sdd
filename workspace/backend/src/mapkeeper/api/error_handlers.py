@@ -13,9 +13,16 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from mapkeeper.api.middleware import scoped_request_id
 from mapkeeper.api.schemas.common import ApiError, ErrorEnvelope, ValidationDetail
 from mapkeeper.core.errors import SAFE_INTERNAL_MESSAGE, MapKeeperError
-from mapkeeper.core.logging import REQUEST_ID_HEADER, get_logger, get_request_id
+from mapkeeper.core.logging import (
+    REQUEST_ID_HEADER,
+    get_logger,
+    get_request_id,
+    reset_request_id,
+    set_request_id,
+)
 from mapkeeper.models.enums import ApiErrorCode, ApiResponseStatus
 
 logger = get_logger(__name__)
@@ -40,30 +47,37 @@ _STATUS_TO_MESSAGE: Final[dict[int, str]] = {
 }
 
 
+def resolve_request_id(request: Request | None = None) -> str:
+    """Return the trace id for this failure.
+
+    The context variable is released once user middleware unwinds, so an unhandled
+    exception - which Starlette reports from outside it - falls back to the id kept
+    on the ASGI scope.
+    """
+    if request is not None:
+        scoped = scoped_request_id(request)
+        if scoped is not None:
+            return scoped
+    return get_request_id()
+
+
 def build_error_response(
     http_status: int,
-    code: ApiErrorCode,
-    message: str,
-    details: Sequence[ValidationDetail] = (),
-    retryable: bool | None = None,
+    error: ApiError,
+    request: Request | None = None,
 ) -> JSONResponse:
     """Render one failure as the contract's envelope, stamped with the trace id."""
     envelope = ErrorEnvelope(
         success=False,
         status=ApiResponseStatus.FAILED,
         data=None,
-        error=ApiError(
-            code=code,
-            message=message,
-            details=tuple(details),
-            retryable=retryable,
-        ),
+        error=error,
         timestamp=datetime.now(UTC),
     )
     return JSONResponse(
         status_code=http_status,
         content=envelope.model_dump(by_alias=True, mode="json"),
-        headers={REQUEST_ID_HEADER: get_request_id()},
+        headers={REQUEST_ID_HEADER: resolve_request_id(request)},
     )
 
 
@@ -95,7 +109,8 @@ async def handle_mapkeeper_error(request: Request, exc: Exception) -> Response:
     if not isinstance(exc, MapKeeperError):  # pragma: no cover - defensive
         raise exc
     logger.warning("%s %s -> %s", request.method, request.url.path, exc.code.value)
-    return build_error_response(exc.http_status, exc.code, exc.message, retryable=exc.retryable)
+    error = ApiError(code=exc.code, message=exc.message, retryable=exc.retryable)
+    return build_error_response(exc.http_status, error, request)
 
 
 async def handle_validation_error(request: Request, exc: Exception) -> Response:
@@ -109,12 +124,12 @@ async def handle_validation_error(request: Request, exc: Exception) -> Response:
         request.url.path,
         [detail.field for detail in details],
     )
-    return build_error_response(
-        status.HTTP_422_UNPROCESSABLE_CONTENT,
-        ApiErrorCode.VALIDATION_ERROR,
-        VALIDATION_MESSAGE,
-        details,
+    error = ApiError(
+        code=ApiErrorCode.VALIDATION_ERROR,
+        message=VALIDATION_MESSAGE,
+        details=details,
     )
+    return build_error_response(status.HTTP_422_UNPROCESSABLE_CONTENT, error, request)
 
 
 async def handle_http_exception(request: Request, exc: Exception) -> Response:
@@ -124,22 +139,34 @@ async def handle_http_exception(request: Request, exc: Exception) -> Response:
     code = _STATUS_TO_CODE.get(exc.status_code, ApiErrorCode.INTERNAL_SERVER_ERROR)
     message = _STATUS_TO_MESSAGE.get(exc.status_code, SAFE_INTERNAL_MESSAGE)
     logger.info("%s %s -> %s", request.method, request.url.path, exc.status_code)
-    return build_error_response(exc.status_code, code, message)
+    return build_error_response(exc.status_code, ApiError(code=code, message=message), request)
 
 
 async def handle_unexpected_error(request: Request, exc: Exception) -> Response:
-    """Log the real cause and answer with a message that reveals nothing."""
+    """Log the real cause and answer with a message that reveals nothing.
+
+    Starlette reports an unhandled exception from outside user middleware, so the
+    trace id is re-bound here to keep the log line and the response on the same id.
+    """
+    token = set_request_id(resolve_request_id(request))
+    try:
+        return _report_unexpected(request, exc)
+    finally:
+        reset_request_id(token)
+
+
+def _report_unexpected(request: Request, exc: Exception) -> Response:
     logger.error(
         "%s %s failed unexpectedly",
         request.method,
         request.url.path,
         exc_info=exc,
     )
-    return build_error_response(
-        status.HTTP_500_INTERNAL_SERVER_ERROR,
-        ApiErrorCode.INTERNAL_SERVER_ERROR,
-        SAFE_INTERNAL_MESSAGE,
+    error = ApiError(
+        code=ApiErrorCode.INTERNAL_SERVER_ERROR,
+        message=SAFE_INTERNAL_MESSAGE,
     )
+    return build_error_response(status.HTTP_500_INTERNAL_SERVER_ERROR, error, request)
 
 
 def install_error_handlers(app: FastAPI) -> None:

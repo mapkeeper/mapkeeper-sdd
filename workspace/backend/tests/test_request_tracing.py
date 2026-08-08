@@ -5,9 +5,11 @@ from typing import Final
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi import status
+from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 
+from mapkeeper.api.error_handlers import install_error_handlers
+from mapkeeper.api.middleware import request_id_middleware
 from mapkeeper.core.logging import (
     REQUEST_ID_HEADER,
     UNSET_REQUEST_ID,
@@ -240,3 +242,70 @@ def test_configured_logging_stamps_the_trace_id(capsys: pytest.CaptureFixture[st
 
     # Then: an operator can find the line by request id.
     assert "trace-configured" in capsys.readouterr().err
+
+
+def test_an_unhandled_failure_still_reports_its_trace_id() -> None:
+    # Given: an app wired exactly like the service, with a route that breaks.
+    broken = FastAPI()
+    _ = broken.middleware("http")(request_id_middleware)
+    install_error_handlers(broken)
+
+    async def boom() -> None:
+        message = "something nobody expected"
+        raise RuntimeError(message)
+
+    _ = broken.get("/boom")(boom)
+
+    # When: the client traces the request that fails.
+    with TestClient(broken, raise_server_exceptions=False) as client:
+        response = client.get("/boom", headers={REQUEST_ID_HEADER: "trace-500"})
+
+    # Then: the 500 can still be tied to the server's log line.
+    assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert response.headers[REQUEST_ID_HEADER] == "trace-500"
+
+
+def test_an_unhandled_failure_without_a_client_trace_id_still_gets_one() -> None:
+    # Given: the same app, called without a trace header.
+    broken = FastAPI()
+    _ = broken.middleware("http")(request_id_middleware)
+    install_error_handlers(broken)
+
+    async def boom() -> None:
+        message = "something nobody expected"
+        raise RuntimeError(message)
+
+    _ = broken.get("/boom")(boom)
+
+    # When: the request fails.
+    with TestClient(broken, raise_server_exceptions=False) as client:
+        response = client.get("/boom")
+
+    # Then: the generated id reaches the client instead of a placeholder.
+    returned = response.headers[REQUEST_ID_HEADER]
+    assert returned != UNSET_REQUEST_ID
+    assert returned.isalnum()
+
+
+def test_the_failure_log_uses_the_same_trace_id_as_the_response(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Given: an app whose route breaks, with logging configured as on startup.
+    configure_logging("INFO")
+    broken = FastAPI()
+    _ = broken.middleware("http")(request_id_middleware)
+    install_error_handlers(broken)
+
+    async def boom() -> None:
+        message = "something nobody expected"
+        raise RuntimeError(message)
+
+    _ = broken.get("/boom")(boom)
+
+    # When: a traced request fails.
+    with TestClient(broken, raise_server_exceptions=False) as client:
+        response = client.get("/boom", headers={REQUEST_ID_HEADER: "trace-log-500"})
+
+    # Then: an operator can search the log by the id the client was given.
+    assert response.headers[REQUEST_ID_HEADER] == "trace-log-500"
+    assert "trace-log-500" in capsys.readouterr().err
