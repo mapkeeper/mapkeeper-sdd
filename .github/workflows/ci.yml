@@ -69,6 +69,7 @@ jobs:
     env:
       DATABASE_URL: postgresql+asyncpg://mapkeeper:local@127.0.0.1:5432/mapkeeper_test
       TEST_DATABASE_URL: postgresql+asyncpg://mapkeeper:local@127.0.0.1:5432/mapkeeper_test
+      MVP_ACTOR_ID: 99999999-9999-4999-8999-999999999999
     defaults:
       run:
         working-directory: workspace/backend
