@@ -3,14 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { App } from '@/App';
 
 vi.mock('@/features/store-change/StoreChangeWizard', () => ({
-  StoreChangeWizard: ({ onSyncHandoff }: { onSyncHandoff?: (value: { syncJobId: string; statusUrl: string }) => void }) => (
-    <button type="button" onClick={() => onSyncHandoff?.({ syncJobId: 'job-uc1', statusUrl: '/uc1' })}>UC1 승인 완료</button>
+  StoreChangeWizard: ({ onSyncHandoff, storeProfileId }: { onSyncHandoff?: (value: { syncJobId: string; statusUrl: string }) => void; storeProfileId: string }) => (
+    <div data-testid="store-change-wizard" data-store-profile-id={storeProfileId}>
+      <button type="button" onClick={() => onSyncHandoff?.({ syncJobId: 'job-uc1', statusUrl: '/uc1' })}>UC1 승인 완료</button>
+    </div>
   ),
 }));
 
 vi.mock('@/features/seo/SeoGenerationWizard', () => ({
-  SeoGenerationWizard: ({ onExit }: { onExit?: () => void }) => (
-    <div><h1>SEO 단계 화면</h1><button type="button" onClick={onExit}>SEO 홈으로</button></div>
+  SeoGenerationWizard: ({ onExit, storeProfileId }: { onExit?: () => void; storeProfileId: string }) => (
+    <div data-testid="seo-generation-wizard" data-store-profile-id={storeProfileId}><h1>SEO 단계 화면</h1><button type="button" onClick={onExit}>SEO 홈으로</button></div>
   ),
 }));
 
@@ -37,10 +39,12 @@ describe('App mobile routing', () => {
     render(<App />);
     await user.click(screen.getByRole('button', { name: 'AI 가게 홍보 & 소문내기' }));
     expect(screen.getByRole('heading', { name: 'SEO 단계 화면' })).toBeInTheDocument();
+    expect(screen.getByTestId('seo-generation-wizard')).toHaveAttribute('data-store-profile-id', '11111111-1111-4111-8111-111111111111');
     expect(screen.queryByRole('button', { name: '음성으로 매장 정보 변경하기' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'SEO 홈으로' }));
 
     await user.click(screen.getByRole('button', { name: '음성으로 매장 정보 변경하기' }));
+    expect(screen.getByTestId('store-change-wizard')).toHaveAttribute('data-store-profile-id', '11111111-1111-4111-8111-111111111111');
     await user.click(screen.getByRole('button', { name: 'UC1 승인 완료' }));
     expect(screen.getByText('동기화 작업 job-uc1')).toBeInTheDocument();
     expect(screen.queryByText('SEO 단계 화면')).not.toBeInTheDocument();
