@@ -1,11 +1,7 @@
 import type { ReviewSummary, SourceReview, StoreProfile } from '@/types/domain';
 
-// UUIDs match the API Contract's documented examples (§5 storeProfileId, §5 sourceReviewIds).
-export const STORE_PROFILE_ID = '11111111-1111-4111-8111-111111111111';
-export const SOURCE_REVIEW_ID = '55555555-5555-4555-8555-555555555555';
-
 export const storeProfileFixture: StoreProfile = {
-  id: STORE_PROFILE_ID,
+  id: 'store-123',
   storeName: '맵키퍼 식당',
   publicAddress: '서울시 중구 공개로 10',
   businessHours: '09:00-22:00',
@@ -17,8 +13,8 @@ export const storeProfileFixture: StoreProfile = {
 };
 
 export const sourceReviewFixtures: SourceReview[] = [{
-  id: SOURCE_REVIEW_ID,
-  storeProfileId: STORE_PROFILE_ID,
+  id: 'review-001',
+  storeProfileId: 'store-123',
   bodyMasked: '대표 메뉴가 맛있고 직원 ***님이 친절해요.',
   createdAt: '2026-08-03T00:00:00Z',
 }];

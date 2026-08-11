@@ -7,7 +7,17 @@ async function enableMocking(): Promise<void> {
   const { worker } = await import('@/mocks/browser');
   await worker.start({
     serviceWorker: { url: '/mockServiceWorker.js' },
-    onUnhandledRequest: 'error',
+    onUnhandledRequest(request, print) {
+      const { pathname } = new URL(request.url);
+
+      // MSW owns only the application API. Vite's document, module, asset,
+      // HMR, and service-worker requests must continue to the dev server.
+      if (!pathname.startsWith('/api/')) return;
+
+      // Keep missing API mocks loud without turning ordinary page resources
+      // into synthetic 500 responses.
+      print.error();
+    },
   });
 }
 

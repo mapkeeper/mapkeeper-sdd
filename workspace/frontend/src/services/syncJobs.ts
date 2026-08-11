@@ -1,32 +1,61 @@
-import { apiRequestParsed } from '@/services/api';
-import type { ParsedApiResult } from '@/services/contracts/common';
-import { getSyncJobResponseSchema, retrySyncJobResponseSchema } from '@/services/contracts/syncJob';
-import type { GetSyncJobResponse, PlatformSyncTask, RetrySyncJobResponse } from '@/services/contracts/syncJob';
+import { apiRequest } from '@/services/api';
+import type { ApiErrorBody, GetSyncJobResponse, RetrySyncJobResponse } from '@/services/api.types';
+import type { ErrorCode, SyncJob, SyncJobStatus } from '@/types/domain';
 
-const TERMINAL_STATUSES: ReadonlySet<GetSyncJobResponse['status']> = new Set(['SUCCESS', 'PARTIAL_SUCCESS', 'FAILED']);
-const MAX_ATTEMPTS = 3;
+const TERMINAL: ReadonlySet<SyncJobStatus> = new Set(['SUCCESS', 'PARTIAL_SUCCESS', 'FAILED']);
+const RETRYABLE: ReadonlySet<ErrorCode> = new Set(['API_TIMEOUT', 'RATE_LIMITED', 'INTERNAL_SERVER_ERROR']);
 
-export function isTerminalSyncStatus(status: GetSyncJobResponse['status']): boolean {
-  return TERMINAL_STATUSES.has(status);
+export const isTerminalSyncStatus = (status: SyncJobStatus): boolean => TERMINAL.has(status);
+export const isRetryEligible = (code: ErrorCode | undefined, retryable?: boolean): boolean =>
+  retryable === true && code !== undefined && RETRYABLE.has(code);
+
+export async function getSyncJob(syncJobId: string, signal?: AbortSignal): Promise<SyncJob> {
+  const options: RequestInit = signal === undefined ? {} : { signal };
+  return (await apiRequest<GetSyncJobResponse>(`/api/v1/sync-jobs/${syncJobId}`, options)).data;
 }
 
-/**
- * Tasks the job-level retry action is allowed to re-run: `FAILED`, server-marked
- * `retryable`, and under the max-attempt cap (API Contract §6 "재시도" - timeout/429/5xx
- * only, up to 3 attempts). Successes and non-retryable/max-attempt tasks are excluded so
- * the single retry button never re-runs them.
- */
-export function eligibleRetryTasks(tasks: readonly PlatformSyncTask[]): PlatformSyncTask[] {
-  return tasks.filter((task) => task.status === 'FAILED' && task.error?.retryable === true && task.attemptCount < MAX_ATTEMPTS);
+export interface SyncJobSnapshot {
+  job: SyncJob;
+  warning: ApiErrorBody | null;
 }
 
-export function getSyncJob(syncJobId: string, signal?: AbortSignal): Promise<ParsedApiResult<GetSyncJobResponse>> {
-  return apiRequestParsed(`/api/v1/sync-jobs/${encodeURIComponent(syncJobId)}`, getSyncJobResponseSchema, signal ? { signal } : {});
+export async function getSyncJobSnapshot(
+  syncJobId: string,
+  signal?: AbortSignal,
+): Promise<SyncJobSnapshot> {
+  const options: RequestInit = signal === undefined ? {} : { signal };
+  const result = await apiRequest<GetSyncJobResponse>(`/api/v1/sync-jobs/${syncJobId}`, options);
+  return { job: result.data, warning: result.warning };
 }
 
-export function retrySyncJob(syncJobId: string, signal?: AbortSignal): Promise<ParsedApiResult<RetrySyncJobResponse>> {
-  return apiRequestParsed(`/api/v1/sync-jobs/${encodeURIComponent(syncJobId)}/retry`, retrySyncJobResponseSchema, {
-    method: 'POST',
-    ...(signal ? { signal } : {}),
-  });
+export async function retrySyncJob(syncJobId: string, signal?: AbortSignal): Promise<RetrySyncJobResponse> {
+  const options: RequestInit = signal === undefined ? { method: 'POST' } : { method: 'POST', signal };
+  return (await apiRequest<RetrySyncJobResponse>(`/api/v1/sync-jobs/${syncJobId}/retry`, options)).data;
+}
+
+export interface PollSyncJobOptions {
+  signal?: AbortSignal;
+  initialIntervalMs?: number;
+  maxIntervalMs?: number;
+  backoffFactor?: number;
+  onUpdate?: (job: SyncJob) => void;
+}
+
+export async function pollSyncJob(syncJobId: string, options: PollSyncJobOptions = {}): Promise<SyncJob> {
+  let interval = options.initialIntervalMs ?? 500;
+  const maxInterval = options.maxIntervalMs ?? 4_000;
+  const factor = options.backoffFactor ?? 1.5;
+  for (;;) {
+    const job = await getSyncJob(syncJobId, options.signal);
+    options.onUpdate?.(job);
+    if (isTerminalSyncStatus(job.status)) return job;
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(resolve, interval);
+      options.signal?.addEventListener('abort', () => {
+        clearTimeout(timer);
+        reject(new DOMException('Polling aborted', 'AbortError'));
+      }, { once: true });
+    });
+    interval = Math.min(maxInterval, Math.round(interval * factor));
+  }
 }

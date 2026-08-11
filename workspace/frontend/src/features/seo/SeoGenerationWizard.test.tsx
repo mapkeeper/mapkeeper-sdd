@@ -5,254 +5,144 @@ import { reviewSummaryFixture, sourceReviewFixtures } from '@/mocks/fixtures/sto
 import { server } from '@/mocks/server';
 import { SeoGenerationWizard } from '@/features/seo/SeoGenerationWizard';
 
-const timestamp = '2026-08-03T00:00:00Z';
-const generationId = '33333333-3333-4333-8333-333333333333';
-
-function draftsFixture(revision: number, briefSuffix = '') {
-  return [
-    { draftId: `44444444-4444-4444-8444-44444444444${revision}`, platform: 'google', draftText: `구글 문구${briefSuffix}`, keywords: ['키워드'], contentRules: ['rule'] },
-    { draftId: `55555555-5555-4555-8555-55555555555${revision}`, platform: 'naver', draftText: `네이버 문구${briefSuffix}`, keywords: ['키워드'], contentRules: ['rule'] },
-    { draftId: `66666666-6666-4666-8666-66666666666${revision}`, platform: 'kakao', draftText: `카카오 문구${briefSuffix}`, keywords: ['키워드'], contentRules: ['rule'] },
-  ];
-}
-
-async function goToCommonInput(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+async function reachInterview(user: ReturnType<typeof userEvent.setup>): Promise<void> {
   await user.click(screen.getByRole('button', { name: '다음 (문구 만들기)' }));
+  await user.click(screen.getByRole('radio', { name: /매장 대표 소개글/ }));
+  await user.click(screen.getByRole('button', { name: '선택 완료' }));
 }
 
-async function fillAndSubmitCommonInput(
-  user: ReturnType<typeof userEvent.setup>,
-  briefText: string,
-  keywords: string[],
-  submitLabel = '문구 만들기',
-): Promise<void> {
-  await user.type(screen.getByRole('textbox', { name: '공통 홍보 설명' }), briefText);
-  for (const keyword of keywords) {
-    await user.type(screen.getByRole('textbox', { name: '새 키워드' }), keyword);
-    await user.click(screen.getByRole('button', { name: '추가' }));
+async function reachRecommendation(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await reachInterview(user);
+  const answers = ['정성이 가득한 동네 맛집', '깊은 국물과 친절한 서비스', '만두전골'];
+  const nextQuestions = ['가장 내세우고 싶은 특징이 있나요?', '대표 메뉴가 무엇인가요?'];
+  for (const [index, answer] of answers.entries()) {
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), answer);
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    if (index < nextQuestions.length) {
+      expect(await screen.findByText(nextQuestions[index] as string, {}, { timeout: 1_500 })).toBeInTheDocument();
+    }
   }
-  await user.click(screen.getByRole('button', { name: submitLabel }));
-}
-
-function mockCreate(): void {
-  server.use(http.post('*/api/v1/seo/generations', async () => HttpResponse.json({
-    success: true, status: 'SUCCESS',
-    data: { generationId, status: 'DRAFT', revision: 1, drafts: draftsFixture(1) },
-    error: null, timestamp,
-  }, { status: 201 })));
+  await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
+  expect(await screen.findByRole('heading', { name: '추천 문구를 확인하고 필요시 수정해 주세요' })).toBeInTheDocument();
 }
 
 describe('SeoGenerationWizard mobile flow', () => {
-  test('SUMMARY는 헤더 뒤로가기와 진행률을 제공하며 다음 단계로 이동한다', async () => {
+  test('2.1~2.4는 한 번에 한 화면만 보이며 헤더 뒤로가기와 진행률이 동작한다', async () => {
     const user = userEvent.setup();
-    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
     expect(screen.getByRole('heading', { name: '사장님! 손님들 리뷰를 분석해 보았어요' })).toBeInTheDocument();
     expect(screen.getByText('총 128건 분석')).toBeInTheDocument();
+    expect(screen.getByText('#속이알찬')).toBeInTheDocument();
     expect(screen.getByLabelText('SEO 작성 진행률')).toHaveAttribute('value', '1');
 
-    await goToCommonInput(user);
-    expect(screen.getByRole('heading', { name: '어떤 매장인지 알려주세요' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '다음 (문구 만들기)' }));
+    expect(screen.getByRole('heading', { name: '어떤 문구를 작성할까요?' })).toBeInTheDocument();
     expect(screen.queryByText('총 128건 분석')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '이전 단계로' }));
     expect(screen.getByText('총 128건 분석')).toBeInTheDocument();
   });
 
-  test('공통 설명과 키워드로 Generation을 생성하면 세 플랫폼 결과를 읽기 전용으로 보여준다', async () => {
+  test('목적과 인터뷰 답변은 로컬에 두고 마스킹 리뷰 ID로 세 플랫폼 초안을 생성한다', async () => {
     const user = userEvent.setup();
     let requestBody: unknown;
     server.use(http.post('*/api/v1/seo/generations', async ({ request }) => {
       requestBody = await request.json();
       return HttpResponse.json({
         success: true, status: 'SUCCESS',
-        data: { generationId, status: 'DRAFT', revision: 1, drafts: draftsFixture(1) },
-        error: null, timestamp,
+        data: {
+          generationId: 'gen-001',
+          drafts: [
+            { draftId: 'draft-001', platform: 'google', draftText: '추천 소개글', contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-002', platform: 'naver', draftText: '네이버 문구', contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-003', platform: 'kakao', draftText: '카카오 문구', contentRules: ['rule'], status: 'DRAFT' },
+          ],
+        }, error: null, timestamp: '2026-08-03T00:00:00Z',
       }, { status: 201 });
     }));
-    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
-    await goToCommonInput(user);
-    await fillAndSubmitCommonInput(user, '만두전골의 깊은 국물 맛을 강조하고 싶어요.', ['만두전골', '가족외식']);
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachRecommendation(user);
 
-    expect(await screen.findByRole('heading', { name: 'Google·Naver·Kakao 문구를 확인해 주세요' })).toBeInTheDocument();
-    expect(requestBody).toEqual({
-      storeProfileId: '11111111-1111-4111-8111-111111111111',
-      briefText: '만두전골의 깊은 국물 맛을 강조하고 싶어요.',
-      seedKeywords: ['만두전골', '가족외식'],
-      sourceReviewIds: ['55555555-5555-4555-8555-555555555555'],
-    });
-    expect(screen.getByRole('heading', { name: 'Google' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Naver' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Kakao' })).toBeInTheDocument();
-    expect(screen.getByText('구글 문구')).toBeInTheDocument();
-    // read-only: no selection/edit controls anywhere on the result screen
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-  });
-
-  test('빈 설명, 빈/중복 키워드는 제출 버튼을 비활성 상태로 유지한다', async () => {
-    const user = userEvent.setup();
-    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
-    await goToCommonInput(user);
-
-    expect(screen.getByRole('button', { name: '문구 만들기' })).toBeDisabled();
-
-    await user.type(screen.getByRole('textbox', { name: '새 키워드' }), '만두전골');
+    expect(requestBody).toEqual({ storeProfileId: 'store-123', sourceReviewIds: ['review-001'] });
+    expect(screen.getByRole('textbox', { name: '소개글 본문' })).toHaveValue('추천 소개글');
+    await user.type(screen.getByRole('textbox', { name: '새 해시태그' }), '가족모임');
     await user.click(screen.getByRole('button', { name: '추가' }));
-    await user.type(screen.getByRole('textbox', { name: '새 키워드' }), '만두전골');
-    await user.click(screen.getByRole('button', { name: '추가' }));
-    expect(screen.getAllByText('#만두전골')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: '문구 만들기' })).toBeDisabled();
-
-    await user.type(screen.getByRole('textbox', { name: '공통 홍보 설명' }), '설명');
-    expect(screen.getByRole('button', { name: '문구 만들기' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /#가족모임/ })).toBeInTheDocument();
   });
 
-  test('서버 422 응답은 안내 메시지를 보여주고 다음 단계로 이동하지 않는다', async () => {
+  test('업로드 버튼 클릭만 세 초안 PATCH와 한 번의 idempotent 승인을 실행해 2.5로 이동한다', async () => {
     const user = userEvent.setup();
-    server.use(http.post('*/api/v1/seo/generations', () => HttpResponse.json({
-      success: false, status: 'FAILED', data: null,
-      error: { code: 'VALIDATION_ERROR', message: '입력을 확인해 주세요.' },
-      timestamp,
-    }, { status: 422 })));
-    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
-    await goToCommonInput(user);
-    await fillAndSubmitCommonInput(user, '설명', ['키워드']);
-
-    expect(await screen.findByRole('alert')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Google·Naver·Kakao 문구를 확인해 주세요' })).not.toBeInTheDocument();
-  });
-
-  test('네트워크 오류는 안내 메시지를 보여주고 요청을 재시도할 수 있게 둔다', async () => {
-    const user = userEvent.setup();
-    server.use(http.post('*/api/v1/seo/generations', () => HttpResponse.error()));
-    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
-    await goToCommonInput(user);
-    await fillAndSubmitCommonInput(user, '설명', ['키워드']);
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('서버에 연결할 수 없습니다');
-    expect(screen.getByRole('button', { name: '문구 만들기' })).toBeEnabled();
-  });
-
-  test('재생성은 storeProfileId 없이 공통 입력만 다시 보내고 세 결과와 revision을 교체한다', async () => {
-    const user = userEvent.setup();
-    mockCreate();
-    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
-    await goToCommonInput(user);
-    await fillAndSubmitCommonInput(user, '만두전골의 깊은 국물 맛을 강조하고 싶어요.', ['만두전골']);
-    await screen.findByRole('heading', { name: 'Google·Naver·Kakao 문구를 확인해 주세요' });
-
-    let regenerateBody: unknown;
-    server.use(http.post(`*/api/v1/seo/generations/${generationId}/regenerate`, async ({ request }) => {
-      regenerateBody = await request.json();
-      return HttpResponse.json({
-        success: true, status: 'SUCCESS',
-        data: { generationId, status: 'DRAFT', revision: 2, drafts: draftsFixture(2, ' (수정)') },
-        error: null, timestamp,
-      });
-    }));
-
-    await user.click(screen.getByRole('button', { name: '다시 만들기' }));
-    expect(screen.getByRole('heading', { name: '설명을 수정하고 다시 만들어요' })).toBeInTheDocument();
-    await user.type(screen.getByRole('textbox', { name: '공통 홍보 설명' }), ' 추가로 강조');
-    await user.click(screen.getByRole('button', { name: '다시 만들기' }));
-
-    expect(await screen.findByText('구글 문구 (수정)')).toBeInTheDocument();
-    expect(regenerateBody).not.toHaveProperty('storeProfileId');
-    expect(regenerateBody).toMatchObject({ seedKeywords: ['만두전골'] });
-  });
-
-  test('반려는 별도 케이스로 REJECTED 상태를 표시하고 규정을 다시 만들기로 안내한다', async () => {
-    const user = userEvent.setup();
-    mockCreate();
-    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
-    await goToCommonInput(user);
-    await fillAndSubmitCommonInput(user, '설명', ['키워드']);
-    await screen.findByRole('heading', { name: 'Google·Naver·Kakao 문구를 확인해 주세요' });
-
-    server.use(http.post(`*/api/v1/seo/generations/${generationId}/reject`, () => HttpResponse.json({
-      success: true, status: 'SUCCESS',
-      data: { generationId, status: 'REJECTED', revision: 1, drafts: draftsFixture(1) },
-      error: null, timestamp,
-    })));
-
-    await user.click(screen.getByRole('button', { name: '이 문구 반려하기' }));
-    expect(await screen.findByText('이 문구는 반려되었어요. 새로 만들어 주세요.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '승인 (3사에 반영)' })).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: '새로 만들기' }));
-    expect(screen.getByRole('heading', { name: '어떤 매장인지 알려주세요' })).toBeInTheDocument();
-  });
-
-  test('승인 버튼만 approve를 호출하며 Body 없이 Idempotency-Key를 보내고 SyncJob으로 이동한다', async () => {
-    const user = userEvent.setup();
-    mockCreate();
-    const approvalRequests: Array<{ key: string | null; body: string }> = [];
-    server.use(http.post(`*/api/v1/seo/generations/${generationId}/approve`, async ({ request }) => {
-      approvalRequests.push({ key: request.headers.get('Idempotency-Key'), body: await request.text() });
-      return HttpResponse.json({
-        success: true, status: 'PROCESSING',
-        data: {
-          generationId, generationStatus: 'APPROVED', approvedPlatforms: ['google', 'naver', 'kakao'],
-          syncJobId: '66666666-6666-4666-8666-666666666666', status: 'PENDING',
-          statusUrl: '/api/v1/sync-jobs/66666666-6666-4666-8666-666666666666',
-        },
-        error: null, timestamp,
-      });
-    }));
+    const approvalRequests: Array<{ key: string | null; body: unknown }> = [];
+    const patchedDrafts: string[] = [];
+    server.use(
+      http.patch('*/api/v1/seo/drafts/:draftId', async ({ params, request }) => {
+        patchedDrafts.push(String(params.draftId));
+        const body = await request.json() as { draftText: string };
+        return HttpResponse.json({ success: true, status: 'SUCCESS', data: { draftId: String(params.draftId), status: 'DRAFT', draftText: body.draftText }, error: null, timestamp: '2026-08-03T00:00:00Z' });
+      }),
+      http.post('*/api/v1/seo/generations/gen-001/approve', async ({ request }) => {
+        approvalRequests.push({ key: request.headers.get('Idempotency-Key'), body: await request.json() });
+        return HttpResponse.json({ success: true, status: 'PROCESSING', data: { generationId: 'gen-001', syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001' }, error: null, timestamp: '2026-08-03T00:00:00Z' });
+      }),
+    );
     const onSyncHandoff = vi.fn();
-    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} onSyncHandoff={onSyncHandoff} />);
-    await goToCommonInput(user);
-    await fillAndSubmitCommonInput(user, '설명', ['키워드']);
-    await screen.findByRole('heading', { name: 'Google·Naver·Kakao 문구를 확인해 주세요' });
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} onSyncHandoff={onSyncHandoff} />);
+    await reachRecommendation(user);
 
-    await user.click(screen.getByRole('button', { name: '승인 (3사에 반영)' }));
-    await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({ syncJobId: '66666666-6666-4666-8666-666666666666', statusUrl: '/api/v1/sync-jobs/66666666-6666-4666-8666-666666666666' }));
+    await user.keyboard('{Enter}');
+    expect(approvalRequests).toHaveLength(0);
+    await user.click(screen.getByRole('button', { name: '업로드 (3사에 반영)' }));
+    await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({ syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001' }));
+    expect(patchedDrafts).toEqual(['draft-001', 'draft-002', 'draft-003']);
     expect(approvalRequests).toHaveLength(1);
     expect(approvalRequests[0]?.key).toBeTruthy();
-    expect(approvalRequests[0]?.body).toBe('');
+    expect(approvalRequests[0]?.body).toEqual({ draftIds: ['draft-001', 'draft-002', 'draft-003'] });
     expect(screen.getByRole('heading', { name: '3사에 반영되었습니다!' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '확인 (홈으로 이동)' })).toBeInTheDocument();
   });
 
-  test('승인 버튼 연타는 한 번만 요청한다', async () => {
-    const user = userEvent.setup();
-    mockCreate();
-    let approvalCount = 0;
-    server.use(http.post(`*/api/v1/seo/generations/${generationId}/approve`, async () => {
-      approvalCount += 1;
-      await new Promise((resolve) => setTimeout(resolve, 30));
-      return HttpResponse.json({
-        success: true, status: 'PROCESSING',
-        data: {
-          generationId, generationStatus: 'APPROVED', approvedPlatforms: ['google', 'naver', 'kakao'],
-          syncJobId: '66666666-6666-4666-8666-666666666666', status: 'PENDING',
-          statusUrl: '/api/v1/sync-jobs/66666666-6666-4666-8666-666666666666',
-        },
-        error: null, timestamp,
-      });
-    }));
-    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
-    await goToCommonInput(user);
-    await fillAndSubmitCommonInput(user, '설명', ['키워드']);
-    await screen.findByRole('heading', { name: 'Google·Naver·Kakao 문구를 확인해 주세요' });
-
-    const approveButton = screen.getByRole('button', { name: '승인 (3사에 반영)' });
-    await user.click(approveButton);
-    await user.click(approveButton);
-    await waitFor(() => expect(screen.getByRole('heading', { name: '3사에 반영되었습니다!' })).toBeInTheDocument());
-    expect(approvalCount).toBe(1);
-  });
-
-  test('닫기는 승인 없이 홈 callback을 호출한다', async () => {
+  test('답변 누락을 막고 취소와 닫기는 승인 없이 홈 callback을 호출한다', async () => {
     const user = userEvent.setup();
     const onExit = vi.fn();
-    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} onExit={onExit} />);
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} onExit={onExit} />);
+    await reachInterview(user);
+    expect(screen.getByText('사장님의 가게를 한 줄로 표현해주세요.')).toBeInTheDocument();
+    expect(screen.queryByText('가장 내세우고 싶은 특징이 있나요?')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '문구 추천받기' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '이전 단계로' }));
+    await user.click(screen.getByRole('button', { name: '이전 단계로' }));
     await user.click(screen.getByRole('button', { name: '홈으로 나가기' }));
     expect(onExit).toHaveBeenCalledOnce();
+  });
+
+  test('답변을 보낼 때 사용자 말풍선과 타이핑 상태를 거쳐 질문을 하나씩 공개한다', async () => {
+    const user = userEvent.setup();
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachInterview(user);
+
+    expect(screen.getByText('사장님의 가게를 한 줄로 표현해주세요.')).toBeInTheDocument();
+    expect(screen.queryByText('가장 내세우고 싶은 특징이 있나요?')).not.toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '동네의 따뜻한 만두집');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(screen.getByText('동네의 따뜻한 만두집')).toHaveClass('chat-bubble--owner');
+    expect(screen.getByRole('status')).toHaveTextContent('AI가 답변을 작성하고 있습니다.');
+    expect(screen.queryByText('가장 내세우고 싶은 특징이 있나요?')).not.toBeInTheDocument();
+
+    expect(await screen.findByText('가장 내세우고 싶은 특징이 있나요?', {}, { timeout: 1_500 })).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '깊은 국물과 친절함');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText('대표 메뉴가 무엇인가요?', {}, { timeout: 1_500 })).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '만두전골');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    expect(screen.queryByRole('textbox', { name: '사장님 답변 입력' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '문구 추천받기' })).toBeEnabled();
   });
 
   test('리뷰 요약 API/Mock 상태를 Props로 받아 요약, 키워드, 건수를 동적으로 표시한다', () => {
     const { rerender } = render(
       <SeoGenerationWizard
-        storeProfileId="11111111-1111-4111-8111-111111111111"
+        storeProfileId="store-123"
         sourceReviews={sourceReviewFixtures}
         reviewSummary={{ summary: '단골 손님의 재방문 칭찬이 많아요.', keywords: ['재방문', '푸짐함'], reviewCount: 47 }}
       />,
@@ -265,7 +155,18 @@ describe('SeoGenerationWizard mobile flow', () => {
 
     rerender(
       <SeoGenerationWizard
-        storeProfileId="11111111-1111-4111-8111-111111111111"
+        storeProfileId="store-123"
+        sourceReviews={sourceReviewFixtures}
+        reviewSummary={{ summary: '새 리뷰 분석 결과예요.', keywords: ['친절'], reviewCount: 9 }}
+      />,
+    );
+    expect(screen.getByText('새 리뷰 분석 결과예요.')).toBeInTheDocument();
+    expect(screen.getByText('#친절')).toBeInTheDocument();
+    expect(screen.getByText('총 9건 분석')).toBeInTheDocument();
+
+    rerender(
+      <SeoGenerationWizard
+        storeProfileId="store-123"
         sourceReviews={sourceReviewFixtures}
         reviewSummary={{ summary: '키워드가 비어 있는 분석 결과예요.', keywords: [], reviewCount: 3 }}
       />,

@@ -22,11 +22,6 @@
   color: #8b95a1;
 }
 
-.proposal-editor__row p.proposal-editor__field-label {
-  color: #191f28;
-  font-weight: 700;
-}
-
 .proposal-editor input {
   min-height: 56px;
   box-sizing: border-box;

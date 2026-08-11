@@ -1,18 +1,20 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ProposalEditor } from '@/components/ProposalEditor/ProposalEditor';
 import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
-import type { ProposalChange } from '@/services/contracts/storeChange';
-import type { ClarificationRequest } from '@/services/clarification';
-import { clarificationFor } from '@/services/clarification';
-import { isVoiceCancellation } from '@/services/voiceIntent';
-import { fieldLabels, formatChangeValue } from '@/features/store-change/proposalFormat';
+import type { ProposalChange, ProposalField } from '@/types/domain';
 import { useStoreChangeFlow } from '@/features/store-change/useStoreChangeFlow';
 import type { StoreChangeSyncHandoff } from '@/features/store-change/useStoreChangeFlow';
 import './storeChange.css';
 
-type WizardStep = 'INPUT' | 'MANUAL' | 'CLARIFY' | 'REVIEW' | 'EDIT' | 'CONFIRM' | 'REJECTED' | 'SYNC';
+type WizardStep = 'INPUT' | 'MANUAL' | 'REVIEW' | 'EDIT' | 'CONFIRM' | 'REJECTED' | 'SYNC';
+
+const fieldLabels: Record<ProposalField, string> = {
+  businessHours: '영업시간',
+  temporaryClosure: '임시 휴무',
+  representativeMenuName: '대표 메뉴',
+};
 
 export interface StoreChangeWizardProps {
   storeProfileId: string;
@@ -20,14 +22,13 @@ export interface StoreChangeWizardProps {
 }
 
 export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChangeWizardProps) {
+  const speech = useSpeechRecognition();
   const [step, setStep] = useState<WizardStep>('INPUT');
   const [manualText, setManualText] = useState('');
   const [draftNote, setDraftNote] = useState<string | null>(null);
   const [isDraftPreparing, setDraftPreparing] = useState(false);
   const [editedChanges, setEditedChanges] = useState<ProposalChange[]>([]);
   const [handoff, setHandoff] = useState<StoreChangeSyncHandoff | null>(null);
-  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
-  const [clarification, setClarification] = useState<ClarificationRequest | null>(null);
   const submittedTranscriptRef = useRef('');
   const flow = useStoreChangeFlow(storeProfileId, (nextHandoff) => {
     setHandoff(nextHandoff);
@@ -38,18 +39,8 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
   const prepareDraft = useCallback(async (text: string) => {
     const normalizedText = text.trim();
     if (!normalizedText || isDraftPreparing) return;
-    const clarificationRequest = clarificationFor(normalizedText);
-    if (clarificationRequest) {
-      setClarification(clarificationRequest);
-      setManualText('');
-      setVoiceNotice(null);
-      setStep('CLARIFY');
-      return;
-    }
     setDraftPreparing(true);
     setDraftNote(null);
-    setVoiceNotice(null);
-    setClarification(null);
     try {
       const [proposal] = await Promise.all([
         flow.create(normalizedText),
@@ -63,47 +54,16 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
     }
   }, [flow, isDraftPreparing]);
 
-  const handleRecognized = useCallback((recognizedText: string): boolean => {
-    if (submittedTranscriptRef.current === recognizedText) return false;
-    submittedTranscriptRef.current = recognizedText;
-    if (isVoiceCancellation(recognizedText)) {
-      submittedTranscriptRef.current = '';
-      flow.clear();
-      setClarification(null);
-      setManualText('');
-      setDraftNote(null);
-      setVoiceNotice('음성 요청을 취소했어요. 처음부터 다시 말씀해 주세요.');
-      setStep('INPUT');
-      return true;
-    }
-    if (clarification) {
-      void prepareDraft(`${clarification.originalText} ${recognizedText}`);
-      return true;
-    }
-    if (clarificationFor(recognizedText)) {
-      void prepareDraft(recognizedText);
-      return true;
-    }
-    void prepareDraft(recognizedText);
-    return false;
-  }, [clarification, flow, prepareDraft]);
-
-  const speech = useSpeechRecognition(handleRecognized);
-  const startSpeech = speech.start;
-  const startVoice = useCallback(() => {
-    submittedTranscriptRef.current = '';
-    startSpeech();
-  }, [startSpeech]);
+  useEffect(() => {
+    if (speech.state !== 'RECOGNIZED' || !speech.recognizedText) return;
+    if (submittedTranscriptRef.current === speech.recognizedText) return;
+    submittedTranscriptRef.current = speech.recognizedText;
+    void prepareDraft(speech.recognizedText);
+  }, [prepareDraft, speech.recognizedText, speech.state]);
 
   const submitManual = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     await prepareDraft(manualText);
-  };
-
-  const submitClarification = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!clarification || !manualText.trim()) return;
-    await prepareDraft(`${clarification.originalText} ${manualText}`);
   };
 
   const beginEdit = () => {
@@ -116,12 +76,10 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
     if (proposal) setStep('REVIEW');
   };
 
-  const rejectProposal = async () => {
-    const rejected = await flow.reject();
-    if (rejected) {
-      setDraftNote(null);
-      setStep('REJECTED');
-    }
+  const rejectLocally = () => {
+    flow.clear();
+    setDraftNote(null);
+    setStep('REJECTED');
   };
 
   if (isDraftPreparing) {
@@ -141,7 +99,6 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
     <main className="store-change-wizard">
       <p className="store-change-wizard__progress">매장정보 변경 · 현재 단계</p>
       {flow.errorMessage ? <div className="store-change-wizard__alert" role="alert">{flow.errorMessage}</div> : null}
-      {voiceNotice ? <div className="store-change-wizard__alert" role="status">{voiceNotice}</div> : null}
 
       {step === 'INPUT' ? (
         <section className="store-change-wizard__step">
@@ -150,7 +107,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
             state={speech.state}
             recognizedText={speech.recognizedText}
             error={speech.error}
-            onStart={startVoice}
+            onStart={speech.start}
             onManualSubmit={(text) => {
               setManualText(text);
               setStep('MANUAL');
@@ -182,36 +139,6 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
         </section>
       ) : null}
 
-      {step === 'CLARIFY' && clarification ? (
-        <section className="store-change-wizard__step">
-          <h1>조금만 더 알려주세요</h1>
-          <p role="status">{clarification.prompt}</p>
-          <VoicePanel
-            state={speech.state}
-            recognizedText={speech.recognizedText}
-            error={speech.error}
-            onStart={startVoice}
-            onManualSubmit={setManualText}
-          />
-          <form className="store-change-wizard__form" onSubmit={submitClarification}>
-            <label htmlFor="store-change-clarification">추가로 알려줄 내용</label>
-            <textarea
-              id="store-change-clarification"
-              value={manualText}
-              onChange={(event) => setManualText(event.target.value)}
-              rows={3}
-              required
-            />
-            <button type="submit" disabled={!manualText.trim()}>변경안 만들기</button>
-          </form>
-          <button className="store-change-wizard__secondary" type="button" onClick={() => {
-            setClarification(null);
-            setManualText('');
-            setStep('INPUT');
-          }}>처음으로 돌아가기</button>
-        </section>
-      ) : null}
-
       {step === 'REVIEW' && flow.proposal ? (
         <section className="store-change-wizard__step">
           <h1 className="sr-only">변경안을 확인해 주세요</h1>
@@ -221,7 +148,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
             {flow.proposal.changes.map((change) => (
               <div key={change.field}>
                 <dt><span aria-hidden="true">◷</span><span>{fieldLabels[change.field]}</span><i>변경</i><button type="button" onClick={beginEdit}>✎ 직접 수정</button></dt>
-                <dd><small>기존</small><s>{formatChangeValue(change, 'currentValue')}</s><b aria-hidden="true">↓</b><small className="is-new">변경</small><strong>{formatChangeValue(change, 'proposedValue')}</strong></dd>
+                <dd><small>기존</small><s>{change.currentValue}</s><b aria-hidden="true">↓</b><small className="is-new">변경</small><strong>{change.proposedValue}</strong></dd>
               </div>
             ))}
             {draftNote ? (
@@ -234,9 +161,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
           <div className="store-change-wizard__actions">
             <button type="button" aria-label="승인 단계로 이동" onClick={() => setStep('CONFIRM')}>맞아요 <small>(3사에 반영)</small></button>
             <button type="button" className="store-change-wizard__secondary" onClick={beginEdit}>변경안 수정</button>
-            <button type="button" className="store-change-wizard__danger" disabled={flow.isRejecting} onClick={() => void rejectProposal()}>
-              {flow.isRejecting ? '거절 처리 중…' : '변경안 거절'}
-            </button>
+            <button type="button" className="store-change-wizard__danger" onClick={rejectLocally}>변경안 거절</button>
           </div>
         </section>
       ) : null}

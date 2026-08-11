@@ -1,81 +1,23 @@
-.voice-panel {
-  display: grid;
-  gap: 12px;
-  color: #191f28;
-  font-size: 18px;
-  line-height: 1.6;
-}
-
-.voice-panel__state {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.voice-panel__primary,
-.voice-panel__fallback button {
-  min-height: 56px;
-  padding: 12px 20px;
-  border: 0;
-  border-radius: 16px;
-  background: #3182f6;
-  color: #fff;
-  font-family: Pretendard, sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: .01em;
-  text-align: center;
-  cursor: pointer;
-}
-
-.voice-panel__primary {
-  display: flex;
-  min-height: 300px !important;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  border-radius: 28px;
-  background: linear-gradient(145deg, #2f6bd4, #17469f);
-  font-size: 25px;
-  box-shadow: 0 16px 34px rgba(31,87,189,.22);
-}
-.voice-panel__waves { display:flex; align-items:center; justify-content:center; gap:6px; width:190px; height:104px; border-radius:52px; background:rgba(255,255,255,.14); }
-.voice-panel__waves i { width:4px; height:28px; border-radius:9px; background:#fff; opacity:.75; }
-.voice-panel__waves i:nth-child(2), .voice-panel__waves i:nth-last-child(2) { height:50px; }
-.voice-panel__waves i:nth-child(3), .voice-panel__waves i:nth-last-child(3) { height:70px; }
-.voice-panel__waves b { display:grid; width:76px; height:76px; place-items:center; border-radius:50%; background:#fff; color:#245bbd; font-size:34px; }
-.voice-panel__listening { display:grid; min-height:330px; place-content:center; justify-items:center; text-align:center; }
-.voice-panel__pulse { display:grid; width:130px; height:130px; place-items:center; border-radius:50%; background:#e8f3ff; color:#245bbd; font-size:60px; animation:voice-pulse 1.4s ease-in-out infinite; }
-@keyframes voice-pulse { 50% { transform:scale(1.08); box-shadow:0 0 0 35px rgba(49,130,246,.08); } }
-
-.voice-panel__fallback form {
-  display: grid;
-  gap: 12px;
-}
-
-.voice-panel__fallback textarea {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 96px;
-  padding: 20px;
-  border: 0;
-  border-radius: 20px;
-  background: #fff;
-  color: #191f28;
-  box-shadow: 0 4px 20px rgba(0,0,0,.04);
-  font: inherit;
-  font-size: 18px;
-  line-height: 1.6;
-}
-
-.voice-panel__transcript {
-  min-height: 56px;
-  padding: 20px;
-  border-radius: 20px;
-  background: #fff;
-  font-size: 18px;
-  line-height: 1.6;
-  box-shadow: 0 4px 20px rgba(0,0,0,.04);
-}
+.voice-panel { display:grid; gap:14px; color:#0f172a; }
+.voice-panel__state { margin:0; color:#0f172a; font-size:21px; font-weight:750; letter-spacing:-.035em; line-height:1.4; }
+.voice-panel__state--idle::after { display:block; max-width:320px; margin-top:7px; color:#64748b; font-size:13px; font-weight:450; letter-spacing:-.01em; line-height:1.55; content:"사장님, 변경하실 영업시간이나 휴무일을 말씀해 주세요"; }
+.voice-panel__primary { display:flex; min-height:218px !important; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:22px; border:1px solid rgba(226,232,240,.8) !important; border-radius:22px !important; background:#fff !important; color:#334155 !important; box-shadow:0 3px 14px -5px rgba(15,23,42,.1); font-size:14px !important; font-weight:650 !important; }
+.voice-panel__waves { position:relative; display:grid; width:76px; height:76px; place-items:center; border-radius:50%; background:#2563eb; color:#fff; box-shadow:0 10px 24px -8px rgba(37,99,235,.55); }
+.voice-panel__waves::before { position:absolute; inset:-8px; border:1px solid #bfdbfe; border-radius:50%; content:""; }
+.voice-panel__waves svg, .voice-panel__pulse svg { width:30px; height:30px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.voice-panel__listening { display:grid; min-height:238px; place-content:center; justify-items:center; gap:24px; text-align:center; }
+.voice-panel__pulse { position:relative; display:grid; width:84px; height:84px; place-items:center; border-radius:50%; background:#2563eb; color:#fff; box-shadow:0 10px 24px -8px rgba(37,99,235,.55); animation:voice-pulse 1.5s ease-in-out infinite; }
+.voice-panel__pulse::before, .voice-panel__pulse::after { position:absolute; inset:-10px; border:1px solid rgba(37,99,235,.28); border-radius:50%; content:""; animation:voice-ring 1.5s ease-out infinite; }
+.voice-panel__pulse::after { animation-delay:.5s; }
+.voice-panel__hint { margin:0; color:#64748b; font-size:13px; font-weight:500; }
+.voice-panel__fallback { padding:18px; border:1px solid #fecaca; border-radius:22px; background:#fff; }
+.voice-panel__fallback > p { margin:0 0 14px; color:#be123c; font-size:13px; }
+.voice-panel__fallback form { display:grid; gap:10px; }
+.voice-panel__fallback label { color:#334155; font-size:12px; font-weight:700; }
+.voice-panel__fallback textarea { box-sizing:border-box; width:100%; min-height:104px; padding:14px; border:1px solid #e2e8f0; border-radius:16px; background:#f8fafc; color:#0f172a; box-shadow:none; font:inherit; font-size:14px; line-height:1.6; }
+.voice-panel__fallback button { min-height:52px; border:0; border-radius:16px; background:#2563eb; color:#fff; font-size:14px; font-weight:750; }
+.voice-panel__transcript { min-height:56px; margin:0; padding:18px; border:1px solid rgba(226,232,240,.8); border-radius:22px; background:#fff; color:#1e293b; box-shadow:0 3px 14px -5px rgba(15,23,42,.1); font-size:16px; font-weight:600; line-height:1.55; }
+.voice-panel:has(.voice-panel__primary)::after { margin:6px auto 0; color:#64748b; font-size:12.5px; font-weight:500; line-height:1.55; text-align:center; content:"💡 말씀하신 내용은 맵지기가 보기 쉽게 정리해 드려요"; }
+@keyframes voice-pulse { 50% { transform:scale(1.04); } }
+@keyframes voice-ring { from { transform:scale(.88); opacity:.9; } to { transform:scale(1.35); opacity:0; } }
+@media (prefers-reduced-motion:reduce) { .voice-panel__pulse, .voice-panel__pulse::before, .voice-panel__pulse::after { animation:none; } }

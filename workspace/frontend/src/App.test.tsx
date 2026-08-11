@@ -22,39 +22,48 @@ describe('App mobile routing', () => {
   beforeEach(() => vi.stubEnv('VITE_API_MOCKING', 'true'));
   afterEach(() => vi.unstubAllEnvs());
 
-  test('480px 모바일 홈에는 두 진입 행동만 보이고 개발 패널은 접혀 있다', () => {
+  test('480px 모바일 홈에는 세 가지 핵심 행동만 보이고 개발 도구는 없다', () => {
     render(<App />);
     expect(screen.getByTestId('dashboard-container')).toHaveClass('app-phone');
-    expect(screen.getByRole('button', { name: /AI 홍보 문구 만들기/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /매장정보 변경하기/ })).toBeInTheDocument();
-    expect(screen.getByText('개발자용 모의 응답 설정').closest('details')).not.toHaveAttribute('open');
-    expect(screen.queryByText('SEO 단계 화면')).not.toBeInTheDocument();
-  });
-
-  test('배포 화면에서는 내부 API 응답을 사용해도 개발자 도구를 숨긴다', () => {
-    // Given: a deployment build with internal API responses and developer tools disabled.
-    vi.stubEnv('VITE_SHOW_DEVELOPER_TOOLS', 'false');
-
-    // When: the application renders its home screen.
-    render(<App />);
-
-    // Then: the user-facing page does not expose internal response controls.
+    expect(screen.getByRole('button', { name: 'AI 가게 홍보 & 소문내기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '음성으로 매장 정보 변경하기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '우리 가게 리뷰 분석 확인하기' })).toBeInTheDocument();
     expect(screen.queryByText('개발자용 모의 응답 설정')).not.toBeInTheDocument();
+    expect(screen.queryByText('SEO 단계 화면')).not.toBeInTheDocument();
   });
 
   test('홈, UC2, UC1, 동기화 결과 중 한 화면만 전환해 표시한다', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: /AI 홍보 문구 만들기/ }));
+    await user.click(screen.getByRole('button', { name: 'AI 가게 홍보 & 소문내기' }));
     expect(screen.getByRole('heading', { name: 'SEO 단계 화면' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /매장정보 변경하기/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '음성으로 매장 정보 변경하기' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'SEO 홈으로' }));
 
-    await user.click(screen.getByRole('button', { name: /매장정보 변경하기/ }));
+    await user.click(screen.getByRole('button', { name: '음성으로 매장 정보 변경하기' }));
     await user.click(screen.getByRole('button', { name: 'UC1 승인 완료' }));
     expect(screen.getByText('동기화 작업 job-uc1')).toBeInTheDocument();
     expect(screen.queryByText('SEO 단계 화면')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '홈으로 돌아가기' }));
-    expect(screen.getByRole('button', { name: /AI 홍보 문구 만들기/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '확인 (홈으로 이동)' }));
+    expect(screen.getByRole('button', { name: 'AI 가게 홍보 & 소문내기' })).toBeInTheDocument();
+  });
+
+  test('리뷰 분석 카드는 요약 모달을 먼저 보여준 뒤 CTA로 UC2에 진입한다', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: '우리 가게 리뷰 분석 확인하기' }));
+    expect(screen.getByRole('dialog', { name: /손님들이 우리 가게를/ })).toBeInTheDocument();
+    expect(screen.getByText('128')).toBeInTheDocument();
+    expect(screen.getByText('#속이알참')).toBeInTheDocument();
+    expect(screen.getByText('플랫폼별 주요 반응')).toBeInTheDocument();
+    expect(screen.getByText(/만두전골 국물과 푸짐한 양/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'SEO 단계 화면' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '리뷰 분석 창 전체 화면으로 확장' }));
+    expect(screen.getByText('맵지기 분석 포인트')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /이 분석으로 AI 홍보문구 만들기/ }));
+    expect(screen.getByRole('heading', { name: 'SEO 단계 화면' })).toBeInTheDocument();
   });
 });

@@ -24,9 +24,6 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
       restoreMocks: true,
-      // The mock-off transport suite runs only under vitest.transport.config.ts (Node
-      // environment, no MSW setup file) via `npm run test:transport`.
-      exclude: ['**/node_modules/**', '**/dist/**', 'transport-tests/**'],
       coverage: { provider: 'v8', reporter: ['text', 'html'], exclude: ['src/mocks/**'] },
     },
   };

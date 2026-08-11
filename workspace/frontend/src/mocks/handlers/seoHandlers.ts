@@ -1,97 +1,38 @@
 import { http, HttpResponse } from 'msw';
 import { errorEnvelope, mockDelay, nextRequestId, successEnvelope } from '@/mocks/factories/envelopeFactory';
-import {
-  buildApproval,
-  buildDrafts,
-  buildGeneration,
-  seoIdempotencyConflictFixture,
-  seoInvalidStateErrorFixture,
-  seoNotFoundErrorFixture,
-  seoValidationErrorFixture,
-} from '@/mocks/fixtures/seoFixtures';
+import { editedSeoDraftFixture, seoApprovalFixture, seoGenerationFixture, seoValidationErrorFixture } from '@/mocks/fixtures/seoFixtures';
 import { getMockScenario, scenarioLatency } from '@/mocks/scenarios';
-import { createSeoGenerationRequestSchema, regenerateSeoGenerationRequestSchema } from '@/services/contracts/seo';
-import type { ApproveSeoGenerationResponse, ContentGenerationData } from '@/services/contracts/seo';
+import type { ApproveSeoGenerationRequest, CreateSeoGenerationRequest, PatchSeoDraftRequest, SeoApprovalResponse } from '@/services/api.types';
 
+const approvalReplay = new Map<string, SeoApprovalResponse>();
 const responseOptions = () => ({ headers: { 'X-Request-ID': nextRequestId() } });
-
-let currentGeneration: ContentGenerationData | null = null;
-interface ApprovalReplayEntry {
-  generationId: string;
-  revision: number;
-  response: ApproveSeoGenerationResponse;
-}
-const approvalReplay = new Map<string, ApprovalReplayEntry>();
 
 export const seoHandlers = [
   http.post('*/api/v1/seo/generations', async ({ request }) => {
     if (getMockScenario() === 'network-error') return HttpResponse.error();
     await mockDelay(scenarioLatency());
-    const parsed = createSeoGenerationRequestSchema.safeParse(await request.json());
-    if (!parsed.success) {
-      return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
-    }
-    currentGeneration = buildGeneration(parsed.data.seedKeywords);
-    return HttpResponse.json(successEnvelope(currentGeneration), { status: 201, ...responseOptions() });
+    const body = await request.json() as Partial<CreateSeoGenerationRequest>;
+    if (typeof body.storeProfileId !== 'string' || !Array.isArray(body.sourceReviewIds)) return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
+    return HttpResponse.json(successEnvelope(seoGenerationFixture), {
+      status: 201,
+      ...responseOptions(),
+    });
   }),
-
-  http.post('*/api/v1/seo/generations/:generationId/regenerate', async ({ params, request }) => {
-    if (getMockScenario() === 'network-error') return HttpResponse.error();
+  http.patch('*/api/v1/seo/drafts/:draftId', async ({ params, request }) => {
     await mockDelay(scenarioLatency());
-    if (!currentGeneration || params.generationId !== currentGeneration.generationId) {
-      return HttpResponse.json(errorEnvelope(seoNotFoundErrorFixture), { status: 404, ...responseOptions() });
-    }
-    if (currentGeneration.status !== 'DRAFT') {
-      return HttpResponse.json(errorEnvelope(seoInvalidStateErrorFixture), { status: 409, ...responseOptions() });
-    }
-    const parsed = regenerateSeoGenerationRequestSchema.safeParse(await request.json());
-    if (!parsed.success) return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
-    currentGeneration = {
-      ...currentGeneration,
-      revision: currentGeneration.revision + 1,
-      drafts: buildDrafts(parsed.data.seedKeywords),
-    };
-    return HttpResponse.json(successEnvelope(currentGeneration), responseOptions());
+    const body = await request.json() as Partial<PatchSeoDraftRequest>;
+    if (typeof body.draftText !== 'string' || body.draftText.trim() === '') return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
+    return HttpResponse.json(successEnvelope({ ...editedSeoDraftFixture, draftId: String(params.draftId), draftText: body.draftText }), responseOptions());
   }),
-
-  http.post('*/api/v1/seo/generations/:generationId/reject', async ({ params }) => {
-    if (getMockScenario() === 'network-error') return HttpResponse.error();
-    await mockDelay(scenarioLatency());
-    if (!currentGeneration || params.generationId !== currentGeneration.generationId) {
-      return HttpResponse.json(errorEnvelope(seoNotFoundErrorFixture), { status: 404, ...responseOptions() });
-    }
-    if (currentGeneration.status !== 'DRAFT') {
-      return HttpResponse.json(errorEnvelope(seoInvalidStateErrorFixture), { status: 409, ...responseOptions() });
-    }
-    currentGeneration = { ...currentGeneration, status: 'REJECTED' };
-    return HttpResponse.json(successEnvelope(currentGeneration), responseOptions());
-  }),
-
   http.post('*/api/v1/seo/generations/:generationId/approve', async ({ params, request }) => {
-    if (getMockScenario() === 'network-error') return HttpResponse.error();
     await mockDelay(scenarioLatency());
     const key = request.headers.get('Idempotency-Key');
-    if (!key) return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
-    if (!currentGeneration || params.generationId !== currentGeneration.generationId) {
-      return HttpResponse.json(errorEnvelope(seoNotFoundErrorFixture), { status: 404, ...responseOptions() });
-    }
-    const replayed = approvalReplay.get(key);
-    if (replayed) {
-      const sameTarget = replayed.generationId === currentGeneration.generationId && replayed.revision === currentGeneration.revision;
-      if (!sameTarget) return HttpResponse.json(errorEnvelope(seoIdempotencyConflictFixture), { status: 409, ...responseOptions() });
-      return HttpResponse.json(successEnvelope(replayed.response, 'PROCESSING'), responseOptions());
-    }
-    if (currentGeneration.status !== 'DRAFT') {
-      return HttpResponse.json(errorEnvelope(seoInvalidStateErrorFixture), { status: 409, ...responseOptions() });
-    }
-    const response = buildApproval(currentGeneration);
-    approvalReplay.set(key, { generationId: currentGeneration.generationId, revision: currentGeneration.revision, response });
-    currentGeneration = { ...currentGeneration, status: 'APPROVED' };
-    return HttpResponse.json(successEnvelope(response, 'PROCESSING'), responseOptions());
+    const body = await request.json() as Partial<ApproveSeoGenerationRequest>;
+    if (!key || params.generationId !== 'gen-001' || !Array.isArray(body.draftIds) || body.draftIds.length === 0) return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
+    const data = approvalReplay.get(key) ?? seoApprovalFixture;
+    approvalReplay.set(key, data);
+    return HttpResponse.json(successEnvelope(data, 'PROCESSING'), responseOptions());
   }),
 ];
 
-export function resetSeoHandlerState(): void {
-  currentGeneration = null;
-  approvalReplay.clear();
-}
+export function resetSeoHandlerState(): void { approvalReplay.clear(); }

@@ -1,21 +1,63 @@
-// Stable, named re-export surface over the strict v0.2 contract types (Todo 5): every
-// type here is inferred from a Zod schema in `@/services/contracts/*`, never redeclared.
-export type { ApiEnvelope, ApiError, ApiStatus, ParsedApiResult } from '@/services/contracts/common';
-export type {
-  CreateStoreChangeRequest,
-  CreateStoreChangeResponse,
-  PatchStoreChangeRequest,
-  PatchStoreChangeResponse,
-  RejectStoreChangeResponse,
-  StoreChangeApprovalResponse,
-  StoreChangeProposalData,
+import type {
+  EnvelopeStatus,
+  ErrorCode,
   ProposalChange,
-} from '@/services/contracts/storeChange';
-export type {
-  ContentGenerationData,
-  CreateSeoGenerationRequest,
-  RegenerateSeoGenerationRequest,
-  ApproveSeoGenerationResponse,
-  LocalSeoContent,
-} from '@/services/contracts/seo';
-export type { GetSyncJobResponse, RetrySyncJobResponse, PlatformSyncTask } from '@/services/contracts/syncJob';
+  SeoDraft,
+  StoreChangeProposal,
+  SyncJob,
+  Platform,
+} from '@/types/domain';
+
+export interface ValidationDetail {
+  field: string;
+  reason: string;
+}
+
+export interface ApiErrorBody {
+  code: ErrorCode;
+  message: string;
+  details?: ValidationDetail[];
+  retryable?: boolean;
+}
+
+export interface ApiEnvelope<T> {
+  success: boolean;
+  status: EnvelopeStatus;
+  data: T | null;
+  error: ApiErrorBody | null;
+  timestamp: string;
+}
+
+export interface CreateStoreChangeRequest {
+  storeProfileId: string;
+  recognizedText: string;
+  locale: string;
+}
+export type CreateStoreChangeResponse = StoreChangeProposal & { recognizedTextMasked: string };
+export interface PatchStoreChangeRequest { changes: ProposalChange[] }
+export type PatchStoreChangeResponse = StoreChangeProposal;
+export interface StoreChangeApprovalResponse {
+  proposalId: string;
+  syncJobId: string;
+  statusUrl: string;
+}
+
+export interface CreateSeoGenerationRequest {
+  storeProfileId: string;
+  sourceReviewIds: string[];
+}
+export interface CreateSeoGenerationResponse { generationId: string; drafts: SeoDraft[] }
+export interface PatchSeoDraftRequest { draftText: string }
+export interface PatchSeoDraftResponse { draftId: string; status: 'DRAFT'; draftText: string }
+export interface ApproveSeoGenerationRequest { draftIds: string[] }
+export interface SeoApprovalResponse { generationId: string; syncJobId: string; statusUrl: string }
+export type GetSyncJobResponse = SyncJob;
+export interface RetrySyncJobResponse { syncJobId: string; retryingPlatforms: Platform[] }
+
+export interface ApiResult<T> {
+  data: T;
+  status: EnvelopeStatus;
+  timestamp: string;
+  requestId: string | null;
+  warning: ApiErrorBody | null;
+}

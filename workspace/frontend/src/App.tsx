@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { SeoGenerationWizard } from '@/features/seo/SeoGenerationWizard';
 import { StoreChangeWizard } from '@/features/store-change/StoreChangeWizard';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
-import { MockScenarioPanel } from '@/mocks/MockScenarioPanel';
-import { reviewSummaryFixture, sourceReviewFixtures, STORE_PROFILE_ID } from '@/mocks/fixtures/storeFixtures';
+import type { PlatformResult } from '@/components/SyncStatus/SyncStatus';
+import { reviewSummaryFixture, sourceReviewFixtures } from '@/mocks/fixtures/storeFixtures';
 import googleLogo from '@/assets/platforms/google.svg';
 import naverLogo from '@/assets/platforms/naver.svg';
 import kakaoLogo from '@/assets/platforms/kakao.svg';
@@ -11,10 +11,11 @@ import './App.css';
 
 type AppScreen = 'HOME' | 'STORE_CHANGE' | 'SEO' | 'STORE_SYNC';
 
-function Icon({ name, className = 'h-6 w-6' }: { name: 'bell' | 'mic' | 'store' | 'sparkle' | 'home' | 'info' | 'copy' | 'history' | 'settings'; className?: string }) {
+function Icon({ name, className = 'h-6 w-6' }: { name: 'bell' | 'mic' | 'chart' | 'store' | 'sparkle' | 'home' | 'info' | 'copy' | 'history' | 'settings'; className?: string }) {
   const paths = {
     bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></>,
     mic: <><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/></>,
+    chart: <><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/><path d="m4 7 6-4 6 6 5-4"/></>,
     store: <><path d="M3 10h18l-2-6H5l-2 6Z"/><path d="M5 10v10h14V10M9 20v-6h6v6M3 10c0 2 3 3 4.5 0 1.5 3 4.5 3 6 0 1.5 3 4.5 3 7.5 0"/></>,
     sparkle: <><path d="m12 3 1.3 3.7L17 8l-3.7 1.3L12 13l-1.3-3.7L7 8l3.7-1.3L12 3ZM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14ZM19 13l.7 1.8 1.8.7-1.8.7L19 18l-.7-1.8-1.8-.7 1.8-.7L19 13Z"/></>,
     home: <><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></>,
@@ -27,79 +28,147 @@ function Icon({ name, className = 'h-6 w-6' }: { name: 'bell' | 'mic' | 'store' 
 }
 
 const platforms = [
-  { name: '구글', logo: googleLogo },
-  { name: '네이버', logo: naverLogo },
-  { name: '카카오', logo: kakaoLogo },
+  { name: '구글', logo: googleLogo, status: 'connected' },
+  { name: '네이버', logo: naverLogo, status: 'connected' },
+  { name: '카카오', logo: kakaoLogo, status: 'connected' },
 ];
 
 function Home({ onStore, onSeo }: { onStore(): void; onSeo(): void }) {
-  return <main className="min-h-dvh bg-gray-50 pb-24 font-pretendard text-ink">
-    <header className="flex items-center justify-between px-6 pb-5 pt-[calc(24px+env(safe-area-inset-top))]">
-      <h1 className="!m-0 !text-[24px] !font-extrabold !text-[#184796]">MapKeeper</h1>
-      <button type="button" aria-label="알림" className="grid h-12 w-12 place-items-center rounded-full bg-white text-gray-900 shadow-card"><Icon name="bell" /></button>
+  const [isReviewSummaryOpen, setReviewSummaryOpen] = useState(false);
+  const [isReviewSummaryExpanded, setReviewSummaryExpanded] = useState(false);
+  const reviewDragStartRef = useRef<number | null>(null);
+  const reviewDidDragRef = useRef(false);
+
+  const closeReviewSummary = () => {
+    setReviewSummaryOpen(false);
+    setReviewSummaryExpanded(false);
+  };
+
+  return <main className="home">
+    <header className="home__header">
+      <div className="home__brand-row">
+        <div className="home__brand"><span aria-hidden="true">M</span><h1>MapKeeper</h1></div>
+        <div className="home__header-actions">
+          <button type="button" aria-label="알림" className="home__notification"><Icon name="bell" /></button>
+          <span className="home__profile" aria-label="성경만두 요리전문점 프로필"><Icon name="store" /></span>
+        </div>
+      </div>
+      <div className="home__welcome"><p>안녕하세요, 사장님</p><strong>오늘도 가게 관리를<br />쉽고 빠르게 시작해 볼까요?</strong></div>
     </header>
 
-    <div className="space-y-4 px-5">
-      <section className="rounded-2xl bg-white p-5 shadow-card" aria-label="3사 연동 상태">
-        <div className="mb-5 flex items-center gap-3">
-          <span className="grid h-12 w-12 place-items-center rounded-xl bg-blue-50 text-blue-700"><Icon name="store" className="h-8 w-8" /></span>
-          <div><h2 className="!m-0 !text-[20px] !font-bold">성경만두 요리전문점</h2><p className="m-0 text-[15px] font-medium text-gray-500">3사 연동 상태</p></div>
+    <div className="home__sheet">
+    <div className="home__content">
+      <section className="connection-card" aria-label="3사 연동 상태">
+        <div className="connection-card__heading">
+          <h2>성경만두 요리전문점</h2>
+          <span className="connection-card__badge">3사 연동 상태</span>
         </div>
-        <div className="grid grid-cols-3 divide-x divide-gray-200">
-          {platforms.map((platform) => <div key={platform.name} className="flex flex-col items-center gap-2">
-            <img src={platform.logo} alt={`${platform.name} 로고`} className="h-9 w-9" />
-            <span className="text-[15px] font-bold text-green-700">연결됨</span>
+        <div className="connection-card__platforms">
+          {platforms.map((platform) => <div key={platform.name} className={`connection-card__platform connection-card__platform--${platform.status}`} aria-label={`${platform.name} ${platform.status === 'connected' ? '연결됨' : '확인 필요'}`}>
+            <span className="connection-card__logo"><img src={platform.logo} alt={`${platform.name} 로고`} /></span>
+            <strong>{platform.name}</strong>
+            <span className="connection-card__status-mark" aria-hidden="true">{platform.status === 'connected' ? '✓' : '!'}</span>
           </div>)}
         </div>
       </section>
 
-      <button type="button" onClick={onStore} aria-label="매장정보 변경하기" className="group relative flex aspect-square w-full flex-col items-center justify-center overflow-hidden rounded-[28px] bg-gradient-to-br from-[#245fc9] to-[#123d91] px-6 text-white shadow-[0_14px_32px_rgba(31,87,189,.25)]">
-        <span className="absolute inset-0 opacity-20 [background:radial-gradient(circle_at_50%_35%,white,transparent_35%)]" />
-        <span className="relative mb-5 grid h-24 w-24 place-items-center rounded-full bg-white/95 text-[#2255ad] shadow-lg"><Icon name="mic" className="h-14 w-14" /></span>
-        <strong className="relative text-[30px] leading-[1.35]">눌러서<br />매장 정보<br />변경하기</strong>
-        <small className="relative mt-3 text-[17px] font-medium text-blue-100">음성으로 쉽고 빠르게!</small>
+      <div className="home__section-heading"><div><strong>가게 관리</strong><p>필요한 업무를 선택해 주세요</p></div></div>
+
+      <button type="button" onClick={onStore} className="home-card" aria-label="음성으로 매장 정보 변경하기">
+        <span className="home-card__copy">
+          <small className="home-card__eyebrow">01 · 매장 정보</small>
+          <strong>음성으로 매장 정보 변경하기</strong>
+          <small>영업시간, 휴무일, 주차 정보 등을 말로 편하게 수정하세요</small>
+        </span>
+        <span className="home-card__icon home-card__icon--voice"><Icon name="mic" className="h-8 w-8" /></span>
+        <span className="home-card__chevron" aria-hidden="true">›</span>
       </button>
 
-      <button type="button" onClick={onSeo} className="flex min-h-[82px] w-full items-center gap-4 rounded-2xl bg-white px-5 text-left shadow-card" aria-label="AI 홍보 문구 만들기">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600"><Icon name="sparkle" className="h-7 w-7" /></span>
-        <span className="min-w-0 flex-1"><strong className="block text-[18px]">3사 맞춤 홍보문구 만들기</strong><small className="block text-[15px] font-medium text-gray-500">AI가 멋진 소개글을 만들어드려요</small></span>
-        <span className="text-3xl font-light text-gray-400" aria-hidden="true">›</span>
+      <button type="button" onClick={() => setReviewSummaryOpen(true)} className="home-card" aria-label="우리 가게 리뷰 분석 확인하기">
+        <span className="home-card__copy">
+          <small className="home-card__eyebrow">02 · 리뷰 인사이트</small>
+          <strong>우리 가게 리뷰 분석 확인하기</strong>
+          <small>손님들의 최근 리뷰 요약과 핵심 키워드를 한눈에 확인하세요</small>
+        </span>
+        <span className="home-card__icon home-card__icon--review"><Icon name="chart" className="h-8 w-8" /></span>
+        <span className="home-card__chevron" aria-hidden="true">›</span>
+      </button>
+
+      <button type="button" onClick={onSeo} className="home-card" aria-label="AI 가게 홍보 & 소문내기">
+        <span className="home-card__copy">
+          <small className="home-card__badge">✦ 맵지기 추천</small>
+          <strong>AI 가게 홍보 &amp; 소문내기</strong>
+          <small>맵지기 AI가 추천하는 맞춤 소식과 문구로 방문자를 늘려보세요</small>
+        </span>
+        <span className="home-card__icon home-card__icon--ai"><Icon name="sparkle" className="h-8 w-8" /></span>
+        <span className="home-card__chevron" aria-hidden="true">›</span>
       </button>
     </div>
+    </div>
 
-    <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto grid h-[78px] max-w-[480px] grid-cols-5 border-t border-gray-100 bg-white px-2 pb-[env(safe-area-inset-bottom)]" aria-label="하단 메뉴">
-      {[['home','홈'],['store','매장 정보'],['sparkle','홍보문구'],['history','기록'],['settings','설정']].map(([icon,label], index) => <button key={label} type="button" className={`flex min-h-0 flex-col items-center justify-center gap-1 text-[12px] font-semibold ${index === 0 ? 'text-blue-600' : 'text-gray-500'}`}><Icon name={icon as 'home'} className="h-6 w-6" />{label}</button>)}
+    {isReviewSummaryOpen ? <div className="review-modal" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) closeReviewSummary();
+    }}>
+      <section className={isReviewSummaryExpanded ? 'review-modal__sheet is-expanded' : 'review-modal__sheet'} role="dialog" aria-modal="true" aria-labelledby="review-summary-title">
+        <button className="review-modal__drag-zone" type="button" aria-label={isReviewSummaryExpanded ? '리뷰 분석 창 축소' : '리뷰 분석 창 전체 화면으로 확장'} aria-expanded={isReviewSummaryExpanded} onClick={() => {
+          if (reviewDidDragRef.current) { reviewDidDragRef.current = false; return; }
+          setReviewSummaryExpanded((current) => !current);
+        }} onPointerDown={(event) => {
+          reviewDragStartRef.current = event.clientY;
+          reviewDidDragRef.current = false;
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+        }} onPointerUp={(event) => {
+          const startY = reviewDragStartRef.current;
+          reviewDragStartRef.current = null;
+          if (startY === null) return;
+          const distance = event.clientY - startY;
+          reviewDidDragRef.current = Math.abs(distance) > 10;
+          if (distance < -40) setReviewSummaryExpanded(true);
+          if (distance > 40) setReviewSummaryExpanded(false);
+        }}><span className="review-modal__handle" aria-hidden="true" /></button>
+        <header className="review-modal__header">
+          <div><small>최근 리뷰 분석</small><h2 id="review-summary-title">손님들이 우리 가게를<br />이렇게 이야기하고 있어요</h2></div>
+          <button type="button" onClick={closeReviewSummary} aria-label="리뷰 분석 닫기">×</button>
+        </header>
+        <div className="review-modal__count"><strong>128</strong><span>건의 리뷰를 분석했어요</span></div>
+        <p className="review-modal__summary">속이 꽉 찬 만두와 깊고 깔끔한 국물 맛에 대한 칭찬이 가장 많아요. 직원의 친절하고 세심한 응대가 편안한 식사 경험으로 이어진다는 반응도 꾸준해요. 넉넉한 양과 정갈한 매장 분위기 덕분에 가족과 다시 방문하고 싶다는 의견이 자주 언급됐어요.</p>
+        <div className="review-modal__keywords" aria-label="핵심 리뷰 키워드">
+          {['#속이알참', '#친절함', '#국물맛집'].map((keyword) => <span key={keyword}>{keyword}</span>)}
+        </div>
+        <section className="review-platforms" aria-labelledby="platform-reactions-title">
+          <h3 id="platform-reactions-title">플랫폼별 주요 반응</h3>
+          {[{ name: '구글', logo: googleLogo, text: '외국인 손님도 메뉴를 고르기 쉽고 응대가 친절해요.' }, { name: '네이버', logo: naverLogo, text: '만두전골 국물과 푸짐한 양에 대한 칭찬이 많아요.' }, { name: '카카오', logo: kakaoLogo, text: '가족 식사와 재방문 장소로 추천하는 반응이 많아요.' }].map((platform) => <article key={platform.name}>
+            <span><img src={platform.logo} alt="" /><strong>{platform.name}</strong></span><p>{platform.text}</p>
+          </article>)}
+        </section>
+        {isReviewSummaryExpanded ? <section className="review-modal__detail"><h3>맵지기 분석 포인트</h3><p>최근 3개월 동안 맛에 대한 긍정 반응이 꾸준히 유지됐고, 친절한 서비스 언급은 지난달보다 늘었어요. 홍보 문구에는 ‘깊은 국물’, ‘속이 꽉 찬 만두’, ‘가족 식사’를 함께 강조하면 좋아요.</p></section> : null}
+        <button className="review-modal__cta" type="button" onClick={onSeo}>이 분석으로 AI 홍보문구 만들기 <span aria-hidden="true">→</span></button>
+      </section>
+    </div> : null}
+
+    <nav className="home-nav" aria-label="하단 메뉴">
+      {[['home','홈'],['store','매장 정보'],['sparkle','홍보문구'],['history','기록'],['settings','설정']].map(([icon,label], index) => <button key={label} type="button" className={index === 0 ? 'is-active' : ''}><Icon name={icon as 'home'} />{label}</button>)}
     </nav>
   </main>;
 }
 
-function SyncResult({ onHome, syncJobId }: { onHome(): void; syncJobId: string }) {
+function SyncResult({ onHome, syncJobId, resultOverride }: { onHome(): void; syncJobId: string; resultOverride: PlatformResult[] | null }) {
   return <main className="flex min-h-dvh flex-col bg-gray-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] font-pretendard">
     <button type="button" aria-label="홈으로 나가기" onClick={onHome} className="ml-auto grid h-12 w-12 place-items-center rounded-full bg-white text-3xl shadow-card">×</button>
-    <SyncStatusDashboard syncJobId={syncJobId} />
-    <button type="button" onClick={onHome} className="mt-auto h-14 w-full rounded-2xl bg-blue-600 text-[18px] font-bold text-white shadow-lg shadow-blue-200">홈으로 돌아가기</button>
+    <SyncStatusDashboard syncJobId={syncJobId} pollIntervalMs={100} resultOverride={resultOverride} viewMode="store-change" />
+    <button type="button" onClick={onHome} className="sticky bottom-[calc(16px+env(safe-area-inset-bottom))] mt-auto h-14 w-full rounded-[18px] bg-blue-600 text-[17px] font-bold text-white shadow-md active:scale-[.985]">확인 (홈으로 이동)</button>
   </main>;
 }
 
 export function App() {
   const [screen, setScreen] = useState<AppScreen>('HOME');
   const [syncJobId, setSyncJobId] = useState('');
-  const storeProfileId = import.meta.env.VITE_STORE_PROFILE_ID ?? STORE_PROFILE_ID;
   const mockMode = import.meta.env.VITE_API_MOCKING === 'true';
-  const showDeveloperTools = import.meta.env.VITE_SHOW_DEVELOPER_TOOLS === 'true'
-    || (import.meta.env.DEV && import.meta.env.VITE_SHOW_DEVELOPER_TOOLS !== 'false');
   const goHome = () => setScreen('HOME');
   return <div className="app-viewport"><div className="app-phone" data-testid="dashboard-container">
     {screen === 'HOME' && <Home onStore={() => setScreen('STORE_CHANGE')} onSeo={() => setScreen('SEO')} />}
-    {screen === 'SEO' && <SeoGenerationWizard storeProfileId={storeProfileId} sourceReviews={mockMode ? sourceReviewFixtures : []} {...(mockMode ? { reviewSummary: reviewSummaryFixture } : {})} onExit={goHome} />}
-    {screen === 'STORE_CHANGE' && <main className="standalone-flow"><button className="standalone-flow__close" type="button" aria-label="홈으로 나가기" onClick={goHome}>×</button><StoreChangeWizard storeProfileId={storeProfileId} onSyncHandoff={({ syncJobId: nextId }) => { setSyncJobId(nextId); setScreen('STORE_SYNC'); }} /></main>}
-    {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} />}
-  </div>{showDeveloperTools && <footer className="developer-footer">
-    <details>
-      <summary><span aria-hidden="true">⚙️ </span>개발자용 모의 응답 설정</summary>
-      <div className="developer-footer__controls" aria-label="동기화 결과 테스트 설정">
-        {mockMode ? <MockScenarioPanel /> : <p>Mock 모드가 아닐 때는 시나리오 패널을 사용할 수 없습니다.</p>}
-      </div>
-    </details>
-  </footer>}</div>;
+    {screen === 'SEO' && <SeoGenerationWizard storeProfileId="store-123" sourceReviews={mockMode ? sourceReviewFixtures : []} {...(mockMode ? { reviewSummary: reviewSummaryFixture } : {})} onExit={goHome} />}
+    {screen === 'STORE_CHANGE' && <main className="standalone-flow"><button className="standalone-flow__close" type="button" aria-label="홈으로 나가기" onClick={goHome}>‹</button><StoreChangeWizard storeProfileId="store-123" onSyncHandoff={({ syncJobId: nextId }) => { setSyncJobId(nextId); setScreen('STORE_SYNC'); }} /></main>}
+    {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} resultOverride={null} />}
+  </div></div>;
 }

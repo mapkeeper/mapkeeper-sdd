@@ -17,14 +17,14 @@ describe('민감정보 경계', () => {
       return HttpResponse.json({
         success: true,
         status: 'SUCCESS',
-        data: { proposalId: '22222222-2222-4222-8222-222222222222', recognizedTextMasked: '***', changes: [], status: 'DRAFT' },
+        data: { proposalId: 'prop-001', recognizedTextMasked: '***', changes: [], status: 'DRAFT' },
         error: null,
         timestamp: '2026-08-03T00:00:00Z',
       });
     }));
-    await createStoreChangeProposal({ storeProfileId: '11111111-1111-4111-8111-111111111111', recognizedText: '영업시간 변경', locale: 'ko-KR' });
+    await createStoreChangeProposal({ storeProfileId: 'store-123', recognizedText: '영업시간 변경', locale: 'ko-KR' });
 
-    expect(requestBody).toEqual({ storeProfileId: '11111111-1111-4111-8111-111111111111', recognizedText: '영업시간 변경', locale: 'ko-KR' });
+    expect(requestBody).toEqual({ storeProfileId: 'store-123', recognizedText: '영업시간 변경', locale: 'ko-KR' });
     expect(JSON.stringify(requestBody)).not.toMatch(/audio|blob|authorization|token|secret|apiKey/i);
     expect(requestUrl).not.toContain('영업시간');
     expect(JSON.stringify(localStorage)).not.toContain('영업시간 변경');
@@ -34,7 +34,7 @@ describe('민감정보 경계', () => {
     const user = userEvent.setup();
     const sensitiveReview = sourceReviewFixtures[0]?.bodyMasked ?? '';
     let body: unknown;
-    server.use(http.post('*/api/v1/seo/generations', async ({ request }) => {
+    server.use(http.post('/api/v1/seo/generations', async ({ request }) => {
       body = await request.json();
       return HttpResponse.json({
         success: false,
@@ -44,22 +44,21 @@ describe('민감정보 경계', () => {
         timestamp: '2026-08-03T00:00:00Z',
       }, { status: 422 });
     }));
-    render(<SeoGenerationWizard storeProfileId="11111111-1111-4111-8111-111111111111" sourceReviews={sourceReviewFixtures} />);
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} />);
     await user.click(screen.getByRole('button', { name: '다음 (문구 만들기)' }));
-    await user.type(screen.getByRole('textbox', { name: '공통 홍보 설명' }), '따뜻한 가게, 만두전골이 자랑이에요.');
-    await user.type(screen.getByRole('textbox', { name: '새 키워드' }), '만두전골');
-    await user.click(screen.getByRole('button', { name: '추가' }));
-    await user.click(screen.getByRole('button', { name: '문구 만들기' }));
+    await user.click(screen.getByRole('radio', { name: /매장 대표 소개글/ }));
+    await user.click(screen.getByRole('button', { name: '선택 완료' }));
+    for (const answer of ['따뜻한 가게', '친절함', '만두전골']) {
+      await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), answer);
+      await user.click(screen.getByRole('button', { name: '전송' }));
+      if (answer !== '만두전골') await new Promise((resolve) => window.setTimeout(resolve, 550));
+    }
+    await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
 
-    expect(body).toEqual({
-      storeProfileId: '11111111-1111-4111-8111-111111111111',
-      briefText: '따뜻한 가게, 만두전골이 자랑이에요.',
-      seedKeywords: ['만두전골'],
-      sourceReviewIds: ['55555555-5555-4555-8555-555555555555'],
-    });
+    expect(body).toEqual({ storeProfileId: 'store-123', sourceReviewIds: ['review-001'] });
     expect(JSON.stringify(body)).not.toContain(sensitiveReview);
     expect(await screen.findByRole('alert')).not.toHaveTextContent(sensitiveReview);
-    expect(window.location.href).not.toContain('55555555-5555-4555-8555-555555555555');
+    expect(window.location.href).not.toContain('review-001');
     expect(JSON.stringify(localStorage)).not.toContain(sensitiveReview);
   });
 

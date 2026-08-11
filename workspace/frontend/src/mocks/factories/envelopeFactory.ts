@@ -1,4 +1,5 @@
-import type { ApiEnvelope, ApiError, ApiStatus } from '@/services/contracts/common';
+import type { ApiEnvelope, ApiErrorBody } from '@/services/api.types';
+import type { EnvelopeStatus } from '@/types/domain';
 
 export const MOCK_TIMESTAMP = '2026-08-03T00:00:00Z';
 let requestSequence = 0;
@@ -10,17 +11,11 @@ export function nextRequestId(): string {
 
 export function resetRequestSequence(): void { requestSequence = 0; }
 
-export function successEnvelope<T>(data: T, status: ApiStatus = 'SUCCESS', error: ApiError | null = null): ApiEnvelope<T> {
+export function successEnvelope<T>(data: T, status: EnvelopeStatus = 'SUCCESS', error: ApiErrorBody | null = null): ApiEnvelope<T> {
   return { success: true, status, data, error, timestamp: MOCK_TIMESTAMP };
 }
 
-export function errorEnvelope(error: ApiError): {
-  success: false;
-  status: 'FAILED';
-  data: null;
-  error: ApiError;
-  timestamp: string;
-} {
+export function errorEnvelope(error: ApiErrorBody): ApiEnvelope<never> {
   return { success: false, status: 'FAILED', data: null, error, timestamp: MOCK_TIMESTAMP };
 }
 
