@@ -96,7 +96,7 @@ function Home({ onStore, onSeo }: { onStore(): void; onSeo(): void }) {
 
       <button type="button" onClick={onSeo} className="home-card" aria-label="AI 가게 홍보 & 소문내기">
         <span className="home-card__copy">
-          <small className="home-card__badge">✦ 맵지기 추천</small>
+          <small className="home-card__eyebrow">03 · AI 홍보</small>
           <strong>AI 가게 홍보 &amp; 소문내기</strong>
           <small>맵지기 AI가 추천하는 맞춤 소식과 문구로 방문자를 늘려보세요</small>
         </span>
