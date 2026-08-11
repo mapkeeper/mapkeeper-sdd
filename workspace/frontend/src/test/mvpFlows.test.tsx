@@ -23,7 +23,7 @@ describe('MVP 통합 흐름', () => {
     await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({ syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001' }));
   });
 
-  test('UC2 세 플랫폼 생성부터 선택 승인과 SyncJob handoff까지 완료한다', async () => {
+  test('UC2 세 플랫폼 생성부터 전체 승인과 SyncJob handoff까지 완료한다', async () => {
     const user = userEvent.setup();
     const onSyncHandoff = vi.fn();
     render(
@@ -38,8 +38,8 @@ describe('MVP 통합 흐름', () => {
       if (answer !== '만두전골') await new Promise((resolve) => window.setTimeout(resolve, 550));
     }
     await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
-    await screen.findByRole('heading', { name: '추천 문구를 확인하고 필요시 수정해 주세요' });
-    await user.click(screen.getByRole('button', { name: '업로드 (3사에 반영)' }));
+    await screen.findByRole('heading', { name: '3사 전체 추천 문구를 확인해 주세요' });
+    await user.click(screen.getByRole('button', { name: '3사 전체 승인' }));
     await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({ syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001' }));
   });
 

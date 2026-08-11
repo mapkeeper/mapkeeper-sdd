@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { ApiClientError } from '@/services/api';
 import { acquireIdempotencyKey } from '@/services/idempotency';
-import { approveSeoGeneration, generateSeoDrafts, patchSeoDraft } from '@/services/seoApi';
+import { approveSeoGeneration, generateSeoDrafts } from '@/services/seoApi';
 import type { SeoDraft } from '@/types/domain';
 import { seoGenerationFixture } from '@/mocks/fixtures/seoFixtures';
 
@@ -13,15 +13,10 @@ export interface SeoSyncHandoff {
 interface SeoGenerationFlow {
   generationId: string | null;
   drafts: SeoDraft[];
-  selectedDraftIds: string[];
   isGenerating: boolean;
-  isSaving: boolean;
   isApproving: boolean;
   errorMessage: string | null;
-  generate(sourceReviewIds: string[]): Promise<SeoDraft[] | null>;
-  saveDraft(draftId: string, draftText: string): Promise<boolean>;
-  rejectDraft(draftId: string): void;
-  setDraftSelected(draftId: string, selected: boolean): void;
+  generate(request: { briefText: string; seedKeywords: string[]; sourceReviewIds: string[] }): Promise<SeoDraft[] | null>;
   approveFromButton(): Promise<boolean>;
   setValidationError(message: string): void;
 }
@@ -45,30 +40,26 @@ export function useSeoGenerationFlow(
 ): SeoGenerationFlow {
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<SeoDraft[]>([]);
-  const [selectedDraftIds, setSelectedDraftIds] = useState<string[]>([]);
   const [isGenerating, setGenerating] = useState(false);
-  const [isSaving, setSaving] = useState(false);
   const [isApproving, setApproving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const approvalLockRef = useRef(false);
 
-  const generate = useCallback(async (sourceReviewIds: string[]) => {
+  const generate = useCallback(async (request: { briefText: string; seedKeywords: string[]; sourceReviewIds: string[] }) => {
     if (isGenerating) return null;
     setGenerating(true);
     setErrorMessage(null);
     try {
-      const result = await generateSeoDrafts({ storeProfileId, sourceReviewIds });
+      const result = await generateSeoDrafts({ storeProfileId, ...request });
       const nextDrafts = result.data.drafts.map((draft) => ({ ...draft, status: draft.status ?? 'DRAFT' }));
       setGenerationId(result.data.generationId);
       setDrafts(nextDrafts);
-      setSelectedDraftIds(nextDrafts.map(({ draftId }) => draftId));
       return nextDrafts;
     } catch (error: unknown) {
       if (import.meta.env.VITE_API_MOCKING === 'true') {
         const nextDrafts = seoGenerationFixture.drafts.map((draft) => ({ ...draft, status: draft.status ?? 'DRAFT' }));
         setGenerationId(seoGenerationFixture.generationId);
         setDrafts(nextDrafts);
-        setSelectedDraftIds(nextDrafts.map(({ draftId }) => draftId));
         return nextDrafts;
       }
       setErrorMessage(safeUserMessage(error));
@@ -78,79 +69,35 @@ export function useSeoGenerationFlow(
     }
   }, [isGenerating, storeProfileId]);
 
-  const saveDraft = useCallback(async (draftId: string, draftText: string) => {
-    if (isSaving) return false;
-    setSaving(true);
-    setErrorMessage(null);
-    try {
-      const result = await patchSeoDraft(draftId, { draftText });
-      setDrafts((current) => current.map((draft) => (
-        draft.draftId === draftId
-          ? { ...draft, draftText: result.data.draftText, status: 'DRAFT' }
-          : draft
-      )));
-      return true;
-    } catch (error: unknown) {
-      setErrorMessage(safeUserMessage(error));
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [isSaving]);
-
-  const rejectDraft = useCallback((draftId: string) => {
-    setDrafts((current) => current.map((draft) => (
-      draft.draftId === draftId ? { ...draft, status: 'REJECTED' } : draft
-    )));
-    setSelectedDraftIds((current) => current.filter((id) => id !== draftId));
-  }, []);
-
-  const setDraftSelected = useCallback((draftId: string, selected: boolean) => {
-    setSelectedDraftIds((current) => {
-      if (selected) return current.includes(draftId) ? current : [...current, draftId];
-      return current.filter((id) => id !== draftId);
-    });
-  }, []);
-
   const approveFromButton = useCallback(async () => {
-    if (!generationId || selectedDraftIds.length === 0 || approvalLockRef.current) return false;
+    if (!generationId || drafts.length !== 3 || approvalLockRef.current) return false;
     approvalLockRef.current = true;
     setApproving(true);
     setErrorMessage(null);
     const lease = acquireIdempotencyKey(`seo-generation:${generationId}`);
     try {
-      const result = await approveSeoGeneration(
-        generationId,
-        { draftIds: selectedDraftIds },
-        lease.key,
-      );
-      setDrafts((current) => current.map((draft) => (
-        selectedDraftIds.includes(draft.draftId) ? { ...draft, status: 'APPROVED' } : draft
-      )));
+      const result = await approveSeoGeneration(generationId, lease.key);
+      lease.resolve();
+      setDrafts((current) => current.map((draft) => ({ ...draft, status: 'APPROVED' })));
       onSyncHandoff?.({ syncJobId: result.data.syncJobId, statusUrl: result.data.statusUrl });
       return true;
     } catch (error: unknown) {
+      if (!(error instanceof ApiClientError) || error.status !== 0) lease.resolve();
       setErrorMessage(safeUserMessage(error));
       return false;
     } finally {
-      lease.resolve();
       approvalLockRef.current = false;
       setApproving(false);
     }
-  }, [generationId, onSyncHandoff, selectedDraftIds]);
+  }, [drafts.length, generationId, onSyncHandoff]);
 
   return {
     generationId,
     drafts,
-    selectedDraftIds,
     isGenerating,
-    isSaving,
     isApproving,
     errorMessage,
     generate,
-    saveDraft,
-    rejectDraft,
-    setDraftSelected,
     approveFromButton,
     setValidationError: setErrorMessage,
   };

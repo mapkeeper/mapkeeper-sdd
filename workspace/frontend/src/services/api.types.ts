@@ -6,6 +6,7 @@ import type {
   StoreChangeProposal,
   SyncJob,
   Platform,
+  SyncJobStatus,
 } from '@/types/domain';
 
 export interface ValidationDetail {
@@ -44,13 +45,19 @@ export interface StoreChangeApprovalResponse {
 
 export interface CreateSeoGenerationRequest {
   storeProfileId: string;
+  briefText: string;
+  seedKeywords: string[];
   sourceReviewIds: string[];
 }
 export interface CreateSeoGenerationResponse { generationId: string; drafts: SeoDraft[] }
-export interface PatchSeoDraftRequest { draftText: string }
-export interface PatchSeoDraftResponse { draftId: string; status: 'DRAFT'; draftText: string }
-export interface ApproveSeoGenerationRequest { draftIds: string[] }
-export interface SeoApprovalResponse { generationId: string; syncJobId: string; statusUrl: string }
+export interface SeoApprovalResponse {
+  generationId: string;
+  generationStatus: 'APPROVED';
+  approvedPlatforms: Platform[];
+  syncJobId: string;
+  status: SyncJobStatus;
+  statusUrl: string;
+}
 export type GetSyncJobResponse = SyncJob;
 export interface RetrySyncJobResponse { syncJobId: string; retryingPlatforms: Platform[] }
 

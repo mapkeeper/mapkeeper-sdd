@@ -23,7 +23,7 @@ async function reachRecommendation(user: ReturnType<typeof userEvent.setup>): Pr
     }
   }
   await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
-  expect(await screen.findByRole('heading', { name: '추천 문구를 확인하고 필요시 수정해 주세요' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: '3사 전체 추천 문구를 확인해 주세요' })).toBeInTheDocument();
 }
 
 describe('SeoGenerationWizard mobile flow', () => {
@@ -62,26 +62,23 @@ describe('SeoGenerationWizard mobile flow', () => {
     render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
     await reachRecommendation(user);
 
-    expect(requestBody).toEqual({ storeProfileId: 'store-123', sourceReviewIds: ['review-001'] });
-    expect(screen.getByRole('textbox', { name: '소개글 본문' })).toHaveValue('추천 소개글');
-    await user.type(screen.getByRole('textbox', { name: '새 해시태그' }), '가족모임');
-    await user.click(screen.getByRole('button', { name: '추가' }));
-    expect(screen.getByRole('button', { name: /#가족모임/ })).toBeInTheDocument();
+    expect(requestBody).toEqual({
+      storeProfileId: 'store-123',
+      briefText: '정성이 가득한 동네 맛집 깊은 국물과 친절한 서비스 만두전골',
+      seedKeywords: ['속이알찬', '친절함', '주차편함'],
+      sourceReviewIds: ['review-001'],
+    });
+    expect(screen.getByText('추천 소개글')).toBeInTheDocument();
+    expect(screen.getByText('#속이알찬')).toBeInTheDocument();
   });
 
-  test('업로드 버튼 클릭만 세 초안 PATCH와 한 번의 idempotent 승인을 실행해 2.5로 이동한다', async () => {
+  test('업로드 버튼 클릭만 한 번의 전체 승인과 SyncJob handoff를 실행한다', async () => {
     const user = userEvent.setup();
-    const approvalRequests: Array<{ key: string | null; body: unknown }> = [];
-    const patchedDrafts: string[] = [];
+    const approvalRequests: Array<{ key: string | null; body: string }> = [];
     server.use(
-      http.patch('*/api/v1/seo/drafts/:draftId', async ({ params, request }) => {
-        patchedDrafts.push(String(params.draftId));
-        const body = await request.json() as { draftText: string };
-        return HttpResponse.json({ success: true, status: 'SUCCESS', data: { draftId: String(params.draftId), status: 'DRAFT', draftText: body.draftText }, error: null, timestamp: '2026-08-03T00:00:00Z' });
-      }),
       http.post('*/api/v1/seo/generations/gen-001/approve', async ({ request }) => {
-        approvalRequests.push({ key: request.headers.get('Idempotency-Key'), body: await request.json() });
-        return HttpResponse.json({ success: true, status: 'PROCESSING', data: { generationId: 'gen-001', syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001' }, error: null, timestamp: '2026-08-03T00:00:00Z' });
+        approvalRequests.push({ key: request.headers.get('Idempotency-Key'), body: await request.text() });
+        return HttpResponse.json({ success: true, status: 'PROCESSING', data: { generationId: 'gen-001', generationStatus: 'APPROVED', approvedPlatforms: ['google', 'naver', 'kakao'], syncJobId: 'job-001', status: 'PENDING', statusUrl: '/api/v1/sync-jobs/job-001' }, error: null, timestamp: '2026-08-03T00:00:00Z' });
       }),
     );
     const onSyncHandoff = vi.fn();
@@ -90,12 +87,11 @@ describe('SeoGenerationWizard mobile flow', () => {
 
     await user.keyboard('{Enter}');
     expect(approvalRequests).toHaveLength(0);
-    await user.click(screen.getByRole('button', { name: '업로드 (3사에 반영)' }));
+    await user.click(screen.getByRole('button', { name: '3사 전체 승인' }));
     await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({ syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001' }));
-    expect(patchedDrafts).toEqual(['draft-001', 'draft-002', 'draft-003']);
     expect(approvalRequests).toHaveLength(1);
     expect(approvalRequests[0]?.key).toBeTruthy();
-    expect(approvalRequests[0]?.body).toEqual({ draftIds: ['draft-001', 'draft-002', 'draft-003'] });
+    expect(approvalRequests[0]?.body).toBe('');
     expect(screen.getByRole('heading', { name: '3사에 반영되었습니다!' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '확인 (홈으로 이동)' })).toBeInTheDocument();
   });

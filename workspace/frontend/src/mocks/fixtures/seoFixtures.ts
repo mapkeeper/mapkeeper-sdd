@@ -1,4 +1,4 @@
-import type { ApiErrorBody, CreateSeoGenerationResponse, PatchSeoDraftResponse, SeoApprovalResponse } from '@/services/api.types';
+import type { ApiErrorBody, CreateSeoGenerationResponse, SeoApprovalResponse } from '@/services/api.types';
 
 export const seoGenerationFixture: CreateSeoGenerationResponse = {
   generationId: 'gen-001',
@@ -9,11 +9,12 @@ export const seoGenerationFixture: CreateSeoGenerationResponse = {
   ],
 };
 
-export const editedSeoDraftFixture: PatchSeoDraftResponse = { draftId: 'draft-001', status: 'DRAFT', draftText: '수정된 소개글' };
 export const seoValidationErrorFixture: ApiErrorBody = {
-  code: 'VALIDATION_ERROR', message: '선택한 문구를 확인해 주세요.',
-  details: [{ field: 'draftIds', reason: 'at least one draft is required' }],
+  code: 'VALIDATION_ERROR', message: 'SEO 문구 내용을 확인해 주세요.',
+  details: [{ field: 'briefText', reason: 'required' }],
 };
 export const seoApprovalFixture: SeoApprovalResponse = {
-  generationId: 'gen-001', syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001',
+  generationId: 'gen-001', generationStatus: 'APPROVED',
+  approvedPlatforms: ['google', 'naver', 'kakao'], syncJobId: 'job-001',
+  status: 'PENDING', statusUrl: '/api/v1/sync-jobs/job-001',
 };

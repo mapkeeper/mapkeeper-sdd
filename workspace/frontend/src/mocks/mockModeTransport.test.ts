@@ -10,6 +10,8 @@ describe('MSW browser transport boundary', () => {
 
     const result = await generateSeoDrafts({
       storeProfileId: 'store-123',
+      briefText: '따뜻한 동네 맛집',
+      seedKeywords: ['친절함'],
       sourceReviewIds: ['review-001'],
     });
 
@@ -21,7 +23,7 @@ describe('MSW browser transport boundary', () => {
     const response = await fetch('/api/v1/seo/generations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storeProfileId: 'store-123', sourceReviewIds: ['review-001'] }),
+      body: JSON.stringify({ storeProfileId: 'store-123', briefText: '따뜻한 동네 맛집', seedKeywords: ['친절함'], sourceReviewIds: ['review-001'] }),
     });
     const envelope = await response.json() as {
       data: { generationId: string; drafts: Array<{ platform: string; status: string }> };

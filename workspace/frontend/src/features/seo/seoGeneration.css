@@ -86,7 +86,8 @@
 .chat-wave i:nth-child(2),.chat-wave i:nth-child(4) { animation-delay:150ms; }.chat-wave i:nth-child(3) { animation-delay:300ms; }
 .chat-voice-error { margin:0; color:#e11d48; font-size:11.5px; text-align:center; }
 
-.recommend-help { margin:-5px 0 18px; color:#64748b; font-size:13px; }
+.recommend-help { margin:-5px 0 18px; color:#64748b; font-size:13px; word-break:keep-all; }
+.seo-draft-list { display:grid; gap:12px; margin-bottom:14px; }
 .recommend-editor,.hashtag-editor { display:grid; gap:11px; margin-bottom:14px; padding:18px; border:1px solid rgba(226,232,240,.8); border-radius:22px; background:#fff; box-shadow:0 3px 14px -5px rgba(15,23,42,.1); font-weight:700; }
 .recommend-editor > span,.hashtag-editor > strong { display:flex; align-items:center; justify-content:space-between; color:#1e293b; font-size:13px; }
 .recommend-editor small,.hashtag-editor small { padding:4px 7px; border-radius:7px; background:#f1f5f9; color:#64748b; font-size:10px; }

@@ -1,5 +1,5 @@
 import { ApiClientError, apiRequest } from '@/services/api';
-import type { ApproveSeoGenerationRequest, CreateSeoGenerationResponse, CreateStoreChangeResponse, GetSyncJobResponse, RetrySyncJobResponse, SeoApprovalResponse, StoreChangeApprovalResponse } from '@/services/api.types';
+import type { CreateSeoGenerationResponse, CreateStoreChangeResponse, GetSyncJobResponse, RetrySyncJobResponse, SeoApprovalResponse, StoreChangeApprovalResponse } from '@/services/api.types';
 import { MOCK_TIMESTAMP } from '@/mocks/factories/envelopeFactory';
 import { setMockScenario } from '@/mocks/scenarios';
 
@@ -24,16 +24,16 @@ describe('API contract mocks', () => {
     expect(first.status).toBe('PROCESSING');
   });
 
-  test('UC2 returns one draft per platform and approves selected IDs', async () => {
+  test('UC2 returns one draft per platform and approves the whole generation', async () => {
     const generated = await apiRequest<CreateSeoGenerationResponse>('/api/v1/seo/generations', {
-      method: 'POST', body: { storeProfileId: 'store-123', sourceReviewIds: ['review-001'] },
+      method: 'POST', body: { storeProfileId: 'store-123', briefText: '따뜻한 동네 맛집', seedKeywords: ['친절함'], sourceReviewIds: ['review-001'] },
     });
     expect(generated.data.drafts.map(({ platform }) => platform)).toEqual(['google', 'naver', 'kakao']);
-    const approvalBody: ApproveSeoGenerationRequest = { draftIds: generated.data.drafts.map(({ draftId }) => draftId) };
     const approved = await apiRequest<SeoApprovalResponse>('/api/v1/seo/generations/gen-001/approve', {
-      method: 'POST', headers: { 'Idempotency-Key': 'seo-key-001' }, body: approvalBody,
+      method: 'POST', headers: { 'Idempotency-Key': 'seo-key-001' },
     });
     expect(approved.data.statusUrl).toBe('/api/v1/sync-jobs/job-001');
+    expect(approved.data.approvedPlatforms).toEqual(['google', 'naver', 'kakao']);
   });
 
   test('validation error follows the common failed envelope', async () => {

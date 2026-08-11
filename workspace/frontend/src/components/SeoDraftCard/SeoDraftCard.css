@@ -51,6 +51,8 @@
   background: #f8fafc;
   font-size: 18px;
   line-height: 1.6;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .seo-draft-card__rules ul { margin-bottom: 0; }

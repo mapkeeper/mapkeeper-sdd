@@ -55,7 +55,12 @@ describe('민감정보 경계', () => {
     }
     await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
 
-    expect(body).toEqual({ storeProfileId: 'store-123', sourceReviewIds: ['review-001'] });
+    expect(body).toEqual({
+      storeProfileId: 'store-123',
+      briefText: '따뜻한 가게 친절함 만두전골',
+      seedKeywords: ['맛있는메뉴', '친절함', '다시찾는집'],
+      sourceReviewIds: ['review-001'],
+    });
     expect(JSON.stringify(body)).not.toContain(sensitiveReview);
     expect(await screen.findByRole('alert')).not.toHaveTextContent(sensitiveReview);
     expect(window.location.href).not.toContain('review-001');

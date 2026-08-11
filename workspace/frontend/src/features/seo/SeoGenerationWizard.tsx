@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { FormEvent, KeyboardEvent } from 'react';
+import type { FormEvent } from 'react';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
+import { SeoDraftCard } from '@/components/SeoDraftCard/SeoDraftCard';
 import { useSeoGenerationFlow } from '@/features/seo/useSeoGenerationFlow';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import type { SeoSyncHandoff } from '@/features/seo/useSeoGenerationFlow';
@@ -75,8 +76,7 @@ export function SeoGenerationWizard({
   const [visibleQuestionCount, setVisibleQuestionCount] = useState(1);
   const [isAiTyping, setAiTyping] = useState(false);
   const [body, setBody] = useState('');
-  const [tags, setTags] = useState(() => summaryState.keywords);
-  const [tagInput, setTagInput] = useState('');
+  const [tags] = useState(() => summaryState.keywords);
   const [handoff, setHandoff] = useState<SeoSyncHandoff | null>(null);
   const [uploading, setUploading] = useState(false);
   const speech = useSpeechRecognition();
@@ -139,7 +139,11 @@ export function SeoGenerationWizard({
       flow.setValidationError('세 가지 질문에 모두 답해 주세요.');
       return;
     }
-    const generated = await flow.generate(sourceReviews.map(({ id }) => id));
+    const generated = await flow.generate({
+      briefText: answers.map((answer) => answer.trim()).join(' '),
+      seedKeywords: tags,
+      sourceReviewIds: sourceReviews.map(({ id }) => id),
+    });
     if (!generated) return;
     const context = answers.map((answer) => answer.trim()).join(' ');
     const generatedBody = generated[0]?.draftText;
@@ -147,30 +151,9 @@ export function SeoGenerationWizard({
     setStep('RECOMMEND');
   };
 
-  const addTag = () => {
-    const next = tagInput.trim().replace(/^#/, '');
-    if (!next || tags.includes(next)) return;
-    setTags((current) => [...current, next]);
-    setTagInput('');
-  };
-
-  const tagKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== 'Enter') return;
-    event.preventDefault();
-    addTag();
-  };
-
   const upload = async () => {
     if (uploading || !body.trim()) return;
     setUploading(true);
-    const draftText = `${body.trim()}\n\n${tags.map((tag) => `#${tag}`).join(' ')}`.trim();
-    for (const draft of flow.drafts) {
-      const saved = await flow.saveDraft(draft.draftId, draftText);
-      if (!saved) {
-        setUploading(false);
-        return;
-      }
-    }
     await flow.approveFromButton();
     setUploading(false);
   };
@@ -288,20 +271,21 @@ export function SeoGenerationWizard({
       {step === 'RECOMMEND' ? (
         <section className="mobile-step-screen" aria-labelledby="recommend-title">
           <div className="mobile-step-screen__content">
-            <h1 id="recommend-title">추천 문구를 확인하고 필요시 수정해 주세요</h1>
-            <p className="recommend-help">직접 수정하셔도 좋아요!</p>
-            <label className="recommend-editor"><span>소개글 본문 <small>✎ 직접 수정 가능</small></span><textarea aria-label="소개글 본문" value={body} onChange={(event) => setBody(event.target.value)} rows={8} /></label>
+            <h1 id="recommend-title">3사 전체 추천 문구를 확인해 주세요</h1>
+            <p className="recommend-help">세 문구를 확인한 뒤 한 번에 승인합니다.</p>
+            <div className="seo-draft-list" aria-label="3사 추천 문구">
+              {flow.drafts.map((draft) => <SeoDraftCard key={draft.draftId} draft={draft} />)}
+            </div>
             <div className="hashtag-editor">
-              <strong>추천 해시태그 <small>✎ 직접 수정 가능</small></strong>
+              <strong>3사 공통 추천 해시태그</strong>
               <div className="tag-list">
-                {tags.map((tag) => <button type="button" className="tag-chip tag-chip--editable" key={tag} onClick={() => setTags((current) => current.filter((item) => item !== tag))}>#{tag} <span aria-hidden="true">×</span></button>)}
+                {tags.map((tag) => <span className="tag-chip" key={tag}>#{tag}</span>)}
               </div>
-              <div className="tag-add"><input aria-label="새 해시태그" value={tagInput} onChange={(event) => setTagInput(event.target.value)} onKeyDown={tagKeyDown} placeholder="#태그 추가" /><button type="button" onClick={addTag}>추가</button></div>
             </div>
           </div>
           <div className="bottom-split-actions">
             <button className="bottom-secondary" type="button" onClick={onExit}>취소</button>
-            <button className="bottom-primary" type="button" disabled={uploading || flow.isApproving} onClick={() => void upload()}>{uploading ? '업로드 중…' : '업로드 (3사에 반영)'}</button>
+            <button className="bottom-primary" type="button" disabled={uploading || flow.isApproving} onClick={() => void upload()}>{uploading ? '전체 승인 처리 중…' : '3사 전체 승인'}</button>
           </div>
         </section>
       ) : null}
