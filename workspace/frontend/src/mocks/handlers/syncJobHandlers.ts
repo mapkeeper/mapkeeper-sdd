@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { errorEnvelope, mockDelay, nextRequestId, successEnvelope } from '@/mocks/factories/envelopeFactory';
 import { failedSyncJobFixture, nonRetryableSyncErrorFixture, partialSuccessSyncJobFixture, pendingSyncJobFixture, processingSyncJobFixture, retryableSyncErrorFixture, retryingSyncJobFixture, retrySyncFixture, successSyncJobFixture } from '@/mocks/fixtures/syncJobFixtures';
 import { getMockScenario, scenarioLatency } from '@/mocks/scenarios';
+import type { GetSyncJobResponse } from '@/services/api.types';
 import type { SyncJob } from '@/types/domain';
 
 let pollCount = 0;
@@ -19,6 +20,19 @@ function scenarioJob(): { job: SyncJob; error: typeof retryableSyncErrorFixture 
   return { job: processingSyncJobFixture, error: null };
 }
 
+function toContractResponse(job: SyncJob): GetSyncJobResponse {
+  return {
+    syncJobId: job.syncJobId,
+    status: job.status,
+    platformTasks: (['google', 'naver', 'kakao'] as const).map((platform) => ({
+      platform,
+      status: job.platforms[platform],
+      attemptCount: 1,
+      error: null,
+    })),
+  };
+}
+
 export const syncJobHandlers = [
   http.get('*/api/v1/sync-jobs/:syncJobId', async ({ params }) => {
     if (getMockScenario() === 'network-error') return HttpResponse.error();
@@ -26,7 +40,7 @@ export const syncJobHandlers = [
     if (params.syncJobId !== 'job-001') return HttpResponse.json(errorEnvelope({ code: 'VALIDATION_ERROR', message: '작업을 찾을 수 없습니다.' }), { status: 404, ...responseOptions() });
     const { job, error } = scenarioJob();
     const status = job.status === 'PARTIAL_SUCCESS' ? 'PARTIAL_SUCCESS' : job.status === 'FAILED' ? 'FAILED' : job.status === 'SUCCESS' ? 'SUCCESS' : 'PROCESSING';
-    return HttpResponse.json(successEnvelope(job, status, error), responseOptions());
+    return HttpResponse.json(successEnvelope(toContractResponse(job), status, error), responseOptions());
   }),
   http.post('*/api/v1/sync-jobs/:syncJobId/retry', async ({ params }) => {
     await mockDelay(scenarioLatency());

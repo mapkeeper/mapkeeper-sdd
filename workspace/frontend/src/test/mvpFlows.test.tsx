@@ -68,7 +68,16 @@ describe('MVP 통합 흐름', () => {
     server.use(http.get('/api/v1/sync-jobs/job-restarted', () => HttpResponse.json({
       success: true,
       status: 'FAILED',
-      data: { ...failedSyncJobFixture, syncJobId: 'job-restarted' },
+      data: {
+        syncJobId: 'job-restarted',
+        status: 'FAILED',
+        platformTasks: (['google', 'naver', 'kakao'] as const).map((platform) => ({
+          platform,
+          status: failedSyncJobFixture.platforms[platform],
+          attemptCount: 3,
+          error: null,
+        })),
+      },
       error: { code: 'API_TIMEOUT', message: '서버 재시작으로 작업이 중단되었습니다.', retryable: true },
       timestamp: '2026-08-03T00:00:00Z',
     })));

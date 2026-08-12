@@ -65,18 +65,18 @@ describe('API contract mocks', () => {
     }]);
   });
 
-  test.each(['all-success', 'partial-success', 'retryable-failure', 'non-retryable-failure'] as const)('sync scenario %s returns contracted enums and summary', async (scenario) => {
+  test.each(['all-success', 'partial-success', 'retryable-failure', 'non-retryable-failure'] as const)('sync scenario %s returns contracted platform tasks', async (scenario) => {
     setMockScenario(scenario);
     const result = await apiRequest<GetSyncJobResponse>('/api/v1/sync-jobs/job-001');
     expect(['PENDING', 'PROCESSING', 'PARTIAL_SUCCESS', 'SUCCESS', 'FAILED', 'RETRYING']).toContain(result.data.status);
-    expect(Object.keys(result.data.platforms)).toEqual(['google', 'naver', 'kakao']);
-    expect(result.data.summary.total).toBe(3);
+    expect(result.data.platformTasks.map(({ platform }) => platform)).toEqual(['google', 'naver', 'kakao']);
+    expect(result.data.platformTasks).toHaveLength(3);
   });
 
   test('retry preserves successful platform and returns eligible failed platform only', async () => {
     setMockScenario('partial-success');
     const before = await apiRequest<GetSyncJobResponse>('/api/v1/sync-jobs/job-001');
-    expect(before.data.platforms.google).toBe('SUCCESS');
+    expect(before.data.platformTasks.find(({ platform }) => platform === 'google')?.status).toBe('SUCCESS');
     const retried = await apiRequest<RetrySyncJobResponse>('/api/v1/sync-jobs/job-001/retry', { method: 'POST' });
     expect(retried.data).toEqual({ syncJobId: 'job-001', retryingPlatforms: ['naver'] });
   });

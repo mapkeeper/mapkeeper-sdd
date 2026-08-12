@@ -9,9 +9,23 @@ export const isTerminalSyncStatus = (status: SyncJobStatus): boolean => TERMINAL
 export const isRetryEligible = (code: ErrorCode | undefined, retryable?: boolean): boolean =>
   retryable === true && code !== undefined && RETRYABLE.has(code);
 
+function toSyncJob(response: GetSyncJobResponse): SyncJob {
+  const platforms: SyncJob['platforms'] = { google: 'PENDING', naver: 'PENDING', kakao: 'PENDING' };
+  const summary: SyncJob['summary'] = { total: response.platformTasks.length, succeeded: 0, failed: 0, retrying: 0 };
+
+  for (const task of response.platformTasks) {
+    platforms[task.platform] = task.status;
+    if (task.status === 'SUCCESS') summary.succeeded += 1;
+    if (task.status === 'FAILED') summary.failed += 1;
+    if (task.status === 'RETRYING') summary.retrying += 1;
+  }
+
+  return { syncJobId: response.syncJobId, status: response.status, platforms, summary };
+}
+
 export async function getSyncJob(syncJobId: string, signal?: AbortSignal): Promise<SyncJob> {
   const options: RequestInit = signal === undefined ? {} : { signal };
-  return (await apiRequest<GetSyncJobResponse>(`/api/v1/sync-jobs/${syncJobId}`, options)).data;
+  return toSyncJob((await apiRequest<GetSyncJobResponse>(`/api/v1/sync-jobs/${syncJobId}`, options)).data);
 }
 
 export interface SyncJobSnapshot {
@@ -25,7 +39,7 @@ export async function getSyncJobSnapshot(
 ): Promise<SyncJobSnapshot> {
   const options: RequestInit = signal === undefined ? {} : { signal };
   const result = await apiRequest<GetSyncJobResponse>(`/api/v1/sync-jobs/${syncJobId}`, options);
-  return { job: result.data, warning: result.warning };
+  return { job: toSyncJob(result.data), warning: result.warning };
 }
 
 export async function retrySyncJob(syncJobId: string, signal?: AbortSignal): Promise<RetrySyncJobResponse> {

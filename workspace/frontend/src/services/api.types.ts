@@ -4,7 +4,6 @@ import type {
   ProposalChange,
   SeoDraft,
   StoreChangeProposal,
-  SyncJob,
   Platform,
   SyncJobStatus,
 } from '@/types/domain';
@@ -58,7 +57,30 @@ export interface SeoApprovalResponse {
   status: SyncJobStatus;
   statusUrl: string;
 }
-export type GetSyncJobResponse = SyncJob;
+export type PlatformTaskErrorCode =
+  | 'API_TIMEOUT'
+  | 'RATE_LIMITED'
+  | 'PLATFORM_SERVER_ERROR'
+  | 'AUTHENTICATION_ERROR'
+  | 'PERMISSION_DENIED'
+  | 'PLATFORM_VALIDATION_ERROR';
+export interface PlatformTaskError {
+  code: PlatformTaskErrorCode;
+  message: string;
+  retryable: boolean;
+  platform: Platform;
+}
+export interface PlatformTaskResponse {
+  platform: Platform;
+  status: Exclude<SyncJobStatus, 'PARTIAL_SUCCESS'>;
+  attemptCount: number;
+  error: PlatformTaskError | null;
+}
+export interface GetSyncJobResponse {
+  syncJobId: string;
+  status: SyncJobStatus;
+  platformTasks: PlatformTaskResponse[];
+}
 export interface RetrySyncJobResponse { syncJobId: string; retryingPlatforms: Platform[] }
 
 export interface ApiResult<T> {
