@@ -32,7 +32,7 @@ describe('SeoGenerationWizard mobile flow', () => {
     render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
     expect(screen.getByRole('heading', { name: '사장님! 손님들 리뷰를 분석해 보았어요' })).toBeInTheDocument();
     expect(screen.getByText('총 128건 분석')).toBeInTheDocument();
-    expect(screen.getByText('#속이알찬')).toBeInTheDocument();
+    expect(screen.getByText('#속이알참')).toBeInTheDocument();
     expect(screen.getByLabelText('SEO 작성 진행률')).toHaveAttribute('value', '1');
 
     await user.click(screen.getByRole('button', { name: '다음 (문구 만들기)' }));
@@ -65,11 +65,11 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(requestBody).toEqual({
       storeProfileId: 'store-123',
       briefText: '정성이 가득한 동네 맛집 깊은 국물과 친절한 서비스 만두전골',
-      seedKeywords: ['속이알찬', '친절함', '주차편함'],
+      seedKeywords: ['속이알참', '친절함', '주차편함'],
       sourceReviewIds: ['review-001'],
     });
     expect(screen.getByText('추천 소개글')).toBeInTheDocument();
-    expect(screen.getByText('#속이알찬')).toBeInTheDocument();
+    expect(screen.getByText('#속이알참')).toBeInTheDocument();
   });
 
   test('업로드 버튼 클릭만 한 번의 전체 승인과 SyncJob handoff를 실행한다', async () => {

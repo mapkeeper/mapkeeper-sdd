@@ -40,6 +40,10 @@ def test_uc2_contract_routes_are_registered() -> None:
     assert "/api/v1/seo/generations" in schema["paths"]
 
 
+def test_shared_review_summary_route_is_registered() -> None:
+    assert "/api/v1/store-profiles/{storeProfileId}/reviews/summary" in app.openapi()["paths"]
+
+
 @pytest.mark.parametrize("path", APPROVE_PATHS)
 def test_approval_without_an_idempotency_key_is_rejected(client: TestClient, path: str) -> None:
     # Given: an approval call that forgot the required header.

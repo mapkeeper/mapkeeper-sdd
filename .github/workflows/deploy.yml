@@ -159,10 +159,17 @@ jobs:
                 alembic upgrade head || return 1
           }
 
+          seed_demo_data() {
+            BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
+              docker compose run --rm --no-deps backend \
+                python -m mapkeeper.db.seed || return 1
+          }
+
           deploy_new_version() {
             BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
               docker compose pull backend frontend || return 1
             apply_migrations || return 1
+            seed_demo_data || return 1
             BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
               docker compose up -d --no-build --remove-orphans \
                 --wait --wait-timeout 90 || return 1

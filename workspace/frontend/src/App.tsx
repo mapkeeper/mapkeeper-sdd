@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SeoGenerationWizard } from '@/features/seo/SeoGenerationWizard';
 import { StoreChangeWizard } from '@/features/store-change/StoreChangeWizard';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
 import type { PlatformResult } from '@/components/SyncStatus/SyncStatus';
+import { getReviewSummary } from '@/services/reviewApi';
+import type { GetReviewSummaryResponse } from '@/services/api.types';
 import { reviewSummaryFixture, sourceReviewFixtures } from '@/mocks/fixtures/storeFixtures';
 import googleLogo from '@/assets/platforms/google.svg';
 import naverLogo from '@/assets/platforms/naver.svg';
@@ -33,7 +35,19 @@ const platforms = [
   { name: '카카오', logo: kakaoLogo, status: 'connected' },
 ];
 
-function Home({ onStore, onSeo }: { onStore(): void; onSeo(): void }) {
+const emptyReviewSummary: GetReviewSummaryResponse = {
+  storeProfileId: '',
+  summary: '아직 분석할 리뷰가 없어요.',
+  keywords: [],
+  reviewCount: 0,
+  sourceReviews: [],
+};
+
+const initialReviewSummary: GetReviewSummaryResponse = import.meta.env.VITE_API_MOCKING === 'true'
+  ? { storeProfileId: '', ...reviewSummaryFixture, sourceReviews: sourceReviewFixtures }
+  : emptyReviewSummary;
+
+function Home({ onStore, onSeo, reviewSummary }: { onStore(): void; onSeo(): void; reviewSummary: GetReviewSummaryResponse }) {
   const [isReviewSummaryOpen, setReviewSummaryOpen] = useState(false);
   const [isReviewSummaryExpanded, setReviewSummaryExpanded] = useState(false);
   const reviewDragStartRef = useRef<number | null>(null);
@@ -130,10 +144,10 @@ function Home({ onStore, onSeo }: { onStore(): void; onSeo(): void }) {
           <div><small>최근 리뷰 분석</small><h2 id="review-summary-title">손님들이 우리 가게를<br />이렇게 이야기하고 있어요</h2></div>
           <button type="button" onClick={closeReviewSummary} aria-label="리뷰 분석 닫기">×</button>
         </header>
-        <div className="review-modal__count"><strong>128</strong><span>건의 리뷰를 분석했어요</span></div>
-        <p className="review-modal__summary">속이 꽉 찬 만두와 깊고 깔끔한 국물 맛에 대한 칭찬이 가장 많아요. 직원의 친절하고 세심한 응대가 편안한 식사 경험으로 이어진다는 반응도 꾸준해요. 넉넉한 양과 정갈한 매장 분위기 덕분에 가족과 다시 방문하고 싶다는 의견이 자주 언급됐어요.</p>
+        <div className="review-modal__count"><strong>{reviewSummary.reviewCount}</strong><span>건의 리뷰를 분석했어요</span></div>
+        <p className="review-modal__summary">{reviewSummary.summary}</p>
         <div className="review-modal__keywords" aria-label="핵심 리뷰 키워드">
-          {['#속이알참', '#친절함', '#국물맛집'].map((keyword) => <span key={keyword}>{keyword}</span>)}
+          {reviewSummary.keywords.map((keyword) => <span key={keyword}>#{keyword}</span>)}
         </div>
         <section className="review-platforms" aria-labelledby="platform-reactions-title">
           <h3 id="platform-reactions-title">플랫폼별 주요 반응</h3>
@@ -163,12 +177,21 @@ function SyncResult({ onHome, syncJobId, resultOverride }: { onHome(): void; syn
 export function App() {
   const [screen, setScreen] = useState<AppScreen>('HOME');
   const [syncJobId, setSyncJobId] = useState('');
-  const mockMode = import.meta.env.VITE_API_MOCKING === 'true';
   const storeProfileId = import.meta.env.VITE_STORE_PROFILE_ID ?? '11111111-1111-4111-8111-111111111111';
+  const [reviewSummary, setReviewSummary] = useState<GetReviewSummaryResponse>(initialReviewSummary);
+  useEffect(() => {
+    let active = true;
+    void getReviewSummary(storeProfileId).then((result) => {
+      if (active) setReviewSummary(result.data);
+    }).catch(() => {
+      if (active) setReviewSummary({ ...emptyReviewSummary, storeProfileId });
+    });
+    return () => { active = false; };
+  }, [storeProfileId]);
   const goHome = () => setScreen('HOME');
   return <div className="app-viewport"><div className="app-phone" data-testid="dashboard-container">
-    {screen === 'HOME' && <Home onStore={() => setScreen('STORE_CHANGE')} onSeo={() => setScreen('SEO')} />}
-    {screen === 'SEO' && <SeoGenerationWizard storeProfileId={storeProfileId} sourceReviews={mockMode ? sourceReviewFixtures : []} {...(mockMode ? { reviewSummary: reviewSummaryFixture } : {})} onExit={goHome} />}
+    {screen === 'HOME' && <Home reviewSummary={reviewSummary} onStore={() => setScreen('STORE_CHANGE')} onSeo={() => setScreen('SEO')} />}
+    {screen === 'SEO' && <SeoGenerationWizard storeProfileId={storeProfileId} sourceReviews={reviewSummary.sourceReviews} reviewSummary={reviewSummary} onExit={goHome} />}
     {screen === 'STORE_CHANGE' && <main className="standalone-flow"><button className="standalone-flow__close" type="button" aria-label="홈으로 나가기" onClick={goHome}>‹</button><StoreChangeWizard storeProfileId={storeProfileId} onSyncHandoff={({ syncJobId: nextId }) => { setSyncJobId(nextId); setScreen('STORE_SYNC'); }} /></main>}
     {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} resultOverride={null} />}
   </div></div>;

@@ -18,7 +18,7 @@
 .seo-greeting h1 { margin-bottom:4px; }
 .seo-greeting p { margin:0; color:#64748b; font-size:13px; }
 .review-summary-card { padding:19px; border:1px solid rgba(226,232,240,.8); border-radius:22px; background:#fff; box-shadow:0 3px 14px -5px rgba(15,23,42,.1); }
-.review-summary-card p { margin:14px 0 0; color:#334155; font-size:14px; font-weight:500; line-height:1.65; }
+.review-summary-card p { margin:14px 0 0; color:#334155; font-size:14px; font-weight:500; line-height:1.65; word-break:keep-all; }
 .ai-badge { display:inline-flex; padding:5px 9px; border-radius:999px; background:#eff6ff; color:#2563eb; font-size:10.5px; font-weight:750; }
 .keyword-title { display:block; margin:18px 0 9px; color:#475569; font-size:12px; font-weight:700; }
 .tag-list { display:flex; flex-wrap:wrap; gap:7px; }

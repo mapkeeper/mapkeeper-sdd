@@ -21,6 +21,6 @@ export const sourceReviewFixtures: SourceReview[] = [{
 
 export const reviewSummaryFixture: ReviewSummary = {
   summary: '만두전골 국물이 깊고 진하다는 평가가 가장 많았어요. 친절한 응대와 편리한 주차도 손님들이 자주 칭찬했어요.',
-  keywords: ['속이알찬', '친절함', '주차편함'],
+  keywords: ['속이알참', '친절함', '주차편함'],
   reviewCount: 128,
 };

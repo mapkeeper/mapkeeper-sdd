@@ -93,7 +93,7 @@ body, button, input, textarea, select { font-family: Pretendard, sans-serif; }
 .review-modal__count { display:flex; align-items:baseline; gap:6px; margin-top:24px; }
 .review-modal__count strong { color:#2563eb; font-size:30px; line-height:1; }
 .review-modal__count span { color:#475569; font-size:14px; font-weight:600; }
-.review-modal__summary { margin:14px 0 16px; color:#475569; font-size:14px; font-weight:400; line-height:1.65; }
+.review-modal__summary { margin:14px 0 16px; color:#475569; font-size:14px; font-weight:400; line-height:1.65; word-break:keep-all; }
 .review-modal__keywords { display:flex; flex-wrap:wrap; gap:8px; }
 .review-modal__keywords span { padding:7px 11px; border-radius:999px; background:#f1f5f9; color:#475569; font-size:12px; font-weight:600; }
 .review-platforms { margin-top:22px; }

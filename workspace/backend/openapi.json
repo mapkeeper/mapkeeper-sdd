@@ -93,6 +93,52 @@
         "title": "ApiEnvelope[ContentGenerationResponse]",
         "type": "object"
       },
+      "ApiEnvelope_ReviewSummaryResponse_": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewSummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ApiResponseStatus"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "status",
+          "data",
+          "error",
+          "timestamp"
+        ],
+        "title": "ApiEnvelope[ReviewSummaryResponse]",
+        "type": "object"
+      },
       "ApiEnvelope_StoreChangeProposalApprovalResponse_": {
         "additionalProperties": false,
         "properties": {
@@ -879,6 +925,81 @@
           "proposedValue"
         ],
         "title": "RepresentativeMenuNameChange",
+        "type": "object"
+      },
+      "ReviewSummaryResponse": {
+        "additionalProperties": false,
+        "description": "Shared review data consumed by the home insight and SEO flows.",
+        "properties": {
+          "keywords": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Keywords",
+            "type": "array"
+          },
+          "reviewCount": {
+            "title": "Reviewcount",
+            "type": "integer"
+          },
+          "sourceReviews": {
+            "items": {
+              "$ref": "#/components/schemas/SourceReviewResponse"
+            },
+            "title": "Sourcereviews",
+            "type": "array"
+          },
+          "storeProfileId": {
+            "format": "uuid",
+            "title": "Storeprofileid",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "storeProfileId",
+          "reviewCount",
+          "summary",
+          "keywords",
+          "sourceReviews"
+        ],
+        "title": "ReviewSummaryResponse",
+        "type": "object"
+      },
+      "SourceReviewResponse": {
+        "additionalProperties": false,
+        "description": "One masked source review that can be shown or cited by a generation.",
+        "properties": {
+          "bodyMasked": {
+            "title": "Bodymasked",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "storeProfileId": {
+            "format": "uuid",
+            "title": "Storeprofileid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "storeProfileId",
+          "bodyMasked",
+          "createdAt"
+        ],
+        "title": "SourceReviewResponse",
         "type": "object"
       },
       "StoreChangeProposalApprovalResponse": {
@@ -2033,6 +2154,108 @@
         "summary": "Reject a DRAFT proposal",
         "tags": [
           "store-change"
+        ]
+      }
+    },
+    "/api/v1/store-profiles/{storeProfileId}/reviews/summary": {
+      "get": {
+        "description": "Return one deterministic review summary for both insight and SEO screens.",
+        "operationId": "get_review_summary_api_v1_store_profiles__storeProfileId__reviews_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "storeProfileId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Storeprofileid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_ReviewSummaryResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No resource matches the requested id. error.code is one of: RESOURCE_NOT_FOUND."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Get the shared review summary for a store",
+        "tags": [
+          "reviews"
         ]
       }
     },

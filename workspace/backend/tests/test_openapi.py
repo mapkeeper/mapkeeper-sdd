@@ -19,6 +19,7 @@ CONTRACT_ENDPOINTS: Final[tuple[tuple[str, str, str], ...]] = (
     ("post", "/api/v1/seo/generations/{generationId}/approve", "202"),
     ("get", "/api/v1/sync-jobs/{syncJobId}", "200"),
     ("post", "/api/v1/sync-jobs/{syncJobId}/retry", "202"),
+    ("get", "/api/v1/store-profiles/{storeProfileId}/reviews/summary", "200"),
 )
 APPROVAL_ENDPOINTS: Final = (
     ("post", "/api/v1/store-change-proposals/{proposalId}/approve"),
@@ -72,7 +73,7 @@ def parameters_of(operation: JsonObject) -> list[JsonObject]:
     return [obj(parameter) for parameter in arr(operation.get("parameters", []))]
 
 
-def test_the_contract_publishes_exactly_the_ten_agreed_endpoints(document: JsonObject) -> None:
+def test_the_contract_publishes_the_agreed_endpoints(document: JsonObject) -> None:
     # Given: the published OpenAPI document.
     paths = paths_of(document)
 
@@ -84,7 +85,7 @@ def test_the_contract_publishes_exactly_the_ten_agreed_endpoints(document: JsonO
         if path.startswith("/api/v1")
     }
 
-    # Then: only the ten endpoints of the v0.2 contract are exposed.
+    # Then: only the endpoints of the v0.2 contract are exposed.
     assert api_operations == {(method, path) for method, path, _ in CONTRACT_ENDPOINTS}
 
 

@@ -5,6 +5,8 @@ import type {
   SeoDraft,
   StoreChangeProposal,
   Platform,
+  ReviewSummary,
+  SourceReview,
   SyncJobStatus,
 } from '@/types/domain';
 
@@ -49,6 +51,10 @@ export interface CreateSeoGenerationRequest {
   sourceReviewIds: string[];
 }
 export interface CreateSeoGenerationResponse { generationId: string; drafts: SeoDraft[] }
+export interface GetReviewSummaryResponse extends ReviewSummary {
+  storeProfileId: string;
+  sourceReviews: SourceReview[];
+}
 export interface SeoApprovalResponse {
   generationId: string;
   generationStatus: 'APPROVED';

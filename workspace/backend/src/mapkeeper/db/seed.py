@@ -24,6 +24,7 @@ DEMO_SOURCE_REVIEW_IDS: Final = (
     UUID("55555555-5555-4555-8555-555555555555"),
     UUID("55555555-5555-4555-8555-555555555556"),
     UUID("55555555-5555-4555-8555-555555555557"),
+    *tuple(UUID(f"55555555-5555-4555-8555-{index:012x}") for index in range(3, 128)),
 )
 
 DEMO_STORE_NAME: Final = "만두전골 하우스"
@@ -43,10 +44,19 @@ DEMO_PLATFORM_ACCOUNT_REFS: Final[JsonObject] = {
 }
 
 # Already masked. The raw text never reaches the database or Gemini.
-DEMO_MASKED_REVIEWS: Final[tuple[str, ...]] = (
+DEMO_REVIEW_TEMPLATES: Final[tuple[str, ...]] = (
     "[고객명]님 가족과 방문했는데 국물이 깊고 재료가 신선했어요. 주차도 편했습니다.",
     "아이와 함께 갔는데 자리가 넓어 좋았어요. 만두전골 양이 푸짐합니다.",
     "[고객명]님 일행이 예약 문의를 [전화번호]로 주셨어요. 응대가 친절했습니다.",
+    "만두가 속이 꽉 차고 간이 자극적이지 않아 부모님과 함께 먹기 좋았어요.",
+    "직원분들이 친절하고 음식이 따뜻하게 나와서 기분 좋게 식사했습니다.",
+    "서울 관악구에서 가족 외식 장소를 찾는다면 다시 방문하고 싶은 곳이에요.",
+    "국물 맛이 깔끔하고 양이 넉넉해서 든든하게 먹었습니다.",
+    "매장이 정갈하고 음식이 빠르게 나와 점심 식사로도 만족스러웠어요.",
+)
+DEMO_MASKED_REVIEWS: Final[tuple[str, ...]] = tuple(
+    f"{DEMO_REVIEW_TEMPLATES[index % len(DEMO_REVIEW_TEMPLATES)]} (데모 리뷰 {index + 1})"
+    for index in range(len(DEMO_SOURCE_REVIEW_IDS))
 )
 
 

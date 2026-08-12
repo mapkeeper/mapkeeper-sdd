@@ -118,10 +118,12 @@ def test_the_seed_provides_usable_uc2_review_references() -> None:
     # Given: the seeded reviews.
     reviews = build_source_reviews()
 
-    # When / Then: ids are unique, non-empty and within the contract's ten-review cap.
+    # When / Then: ids are unique, and the seed contains enough reviews for the demo.
     assert len(reviews) == len(DEMO_SOURCE_REVIEW_IDS)
     assert len({review.id for review in reviews}) == len(reviews)
-    assert 1 <= len(reviews) <= SOURCE_REVIEW_IDS_MAX
+    assert len(reviews) == 128
+    assert len(DEMO_SOURCE_REVIEW_IDS) > SOURCE_REVIEW_IDS_MAX
+    assert len(reviews) >= SOURCE_REVIEW_IDS_MAX
     for review in reviews:
         assert review.body_masked.strip()
 
