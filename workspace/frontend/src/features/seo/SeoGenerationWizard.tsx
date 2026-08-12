@@ -5,6 +5,9 @@ import { SeoDraftCard } from '@/components/SeoDraftCard/SeoDraftCard';
 import { useSeoGenerationFlow } from '@/features/seo/useSeoGenerationFlow';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import type { SeoSyncHandoff } from '@/features/seo/useSeoGenerationFlow';
+import { NewsDateRangePicker } from '@/features/seo/NewsDateRangePicker';
+import type { NewsDateRange } from '@/features/seo/newsDate';
+import { parseNewsSchedule } from '@/features/seo/newsDate';
 import type { PlatformResult } from '@/components/SyncStatus/SyncStatus';
 import type { ReviewSummary, SourceReview } from '@/types/domain';
 import './seoGeneration.css';
@@ -84,6 +87,9 @@ export function SeoGenerationWizard({
   const [visibleQuestionCount, setVisibleQuestionCount] = useState(1);
   const [isAiTyping, setAiTyping] = useState(false);
   const [body, setBody] = useState('');
+  const [newsDateRange, setNewsDateRange] = useState<NewsDateRange | null>(null);
+  const [newsDateConfirmed, setNewsDateConfirmed] = useState(false);
+  const [newsHasNoDate, setNewsHasNoDate] = useState(false);
   const [tags] = useState(() => summaryState.keywords);
   const [handoff, setHandoff] = useState<SeoSyncHandoff | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -98,7 +104,7 @@ export function SeoGenerationWizard({
   });
   const baseQuestions = purpose === null ? interviewQuestions.INTRODUCTION : interviewQuestions[purpose];
   const questions = extraQuestion === null ? baseQuestions : [...baseQuestions, extraQuestion];
-  const interviewComplete = questions.every((_, index) => answers[index]?.trim() !== '');
+  const interviewComplete = questions.every((_, index) => Boolean(answers[index]?.trim()));
 
   useEffect(() => () => {
     if (typingTimerRef.current !== null) window.clearTimeout(typingTimerRef.current);
@@ -119,7 +125,16 @@ export function SeoGenerationWizard({
     const answer = value.trim();
     if (!answer || isAiTyping || interviewComplete) return;
     const questionIndex = visibleQuestionCount - 1;
-    setAnswers((current) => current.map((savedAnswer, index) => index === questionIndex ? answer : savedAnswer));
+    setAnswers((current) => current.length > questionIndex
+      ? current.map((savedAnswer, index) => index === questionIndex ? answer : savedAnswer)
+      : [...current, answer]);
+    if (purpose === 'NEWS' && questionIndex >= baseQuestions.length - 1) {
+      const parsedSchedule = parseNewsSchedule(answer);
+      if (parsedSchedule.range || parsedSchedule.hasNoDate) {
+        setNewsDateRange(parsedSchedule.range);
+        setNewsHasNoDate(parsedSchedule.hasNoDate);
+      }
+    }
     setCurrentAnswer('');
 
     const isLastBaseQuestion = questionIndex === baseQuestions.length - 1 && extraQuestion === null;
@@ -157,8 +172,16 @@ export function SeoGenerationWizard({
       flow.setValidationError('세 가지 질문에 모두 답해 주세요.');
       return;
     }
+    const answerText = answers.map((answer) => answer.trim()).join(' ');
+    const newsScheduleText = purpose !== 'NEWS'
+      ? ''
+      : newsHasNoDate
+        ? ' 행사 기간은 없습니다.'
+        : newsDateRange
+          ? ` 행사 기간은 ${newsDateRange.start}부터 ${newsDateRange.end}까지입니다.`
+          : '';
     const generated = await flow.generate({
-      briefText: answers.map((answer) => answer.trim()).join(' '),
+      briefText: `${answerText}${newsScheduleText}`,
       seedKeywords: tags,
       sourceReviewIds: sourceReviews.map(({ id }) => id),
     });
@@ -278,6 +301,16 @@ export function SeoGenerationWizard({
                 <button className="chat-send-button" type="submit" disabled={isAiTyping || speech.state === 'LISTENING' || !currentAnswer.trim()}>전송</button>
               </div>
             </form>
+          ) : purpose === 'NEWS' && !newsDateConfirmed ? (
+            <NewsDateRangePicker
+              initialRange={newsDateRange}
+              initialNoDate={newsHasNoDate}
+              onConfirm={(range) => {
+                setNewsDateRange(range);
+                setNewsHasNoDate(range === null);
+                setNewsDateConfirmed(true);
+              }}
+            />
           ) : (
             <button className="bottom-primary interview-recommend-button" type="button" disabled={flow.isGenerating} onClick={() => void generateRecommendation()}>
               {flow.isGenerating ? '추천 문구 만드는 중…' : '문구 추천받기'}

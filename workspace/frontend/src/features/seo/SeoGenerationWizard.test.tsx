@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { reviewSummaryFixture, sourceReviewFixtures } from '@/mocks/fixtures/storeFixtures';
@@ -143,6 +143,24 @@ describe('SeoGenerationWizard mobile flow', () => {
 
   test('새소식 목적은 전용 질문을 사용하고 날짜 정보가 모호하면 한 번만 추가 질문한다', async () => {
     const user = userEvent.setup();
+    let requestBody: unknown;
+    server.use(http.post('*/api/v1/seo/generations', async ({ request }) => {
+      requestBody = await request.json();
+      return HttpResponse.json({
+        success: true,
+        status: 'SUCCESS',
+        data: {
+          generationId: 'gen-news-001',
+          drafts: [
+            { draftId: 'draft-news-001', platform: 'google', draftText: '새소식', contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-news-002', platform: 'naver', draftText: '새소식', contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-news-003', platform: 'kakao', draftText: '새소식', contentRules: ['rule'], status: 'DRAFT' },
+          ],
+        },
+        error: null,
+        timestamp: '2026-08-03T00:00:00Z',
+      }, { status: 201 });
+    }));
     render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
     await reachNewsInterview(user);
 
@@ -157,6 +175,18 @@ describe('SeoGenerationWizard mobile flow', () => {
     await user.click(screen.getByRole('button', { name: '전송' }));
     expect(await screen.findByText(/구체적인 날짜, 기간 또는 할인 혜택/)).toBeInTheDocument();
     expect(screen.getByText('질문 4 / 4')).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '8월 15일부터 16일까지예요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByRole('heading', { name: '소식 기간을 확인해 주세요' })).toBeInTheDocument();
+    expect(screen.getByLabelText('시작일')).toHaveValue('2026-08-15');
+    expect(screen.getByLabelText('종료일')).toHaveValue('2026-08-16');
+    fireEvent.change(screen.getByLabelText('종료일'), { target: { value: '2026-08-17' } });
+    await user.click(screen.getByRole('button', { name: '이 기간으로 문구 만들기' }));
+    await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
+    expect(await screen.findByRole('heading', { name: '3사 전체 추천 문구를 확인해 주세요' })).toBeInTheDocument();
+    expect(requestBody).toMatchObject({
+      briefText: expect.stringContaining('행사 기간은 2026-08-15부터 2026-08-17까지입니다.'),
+    });
   });
 
   test('리뷰 요약 API/Mock 상태를 Props로 받아 요약, 키워드, 건수를 동적으로 표시한다', () => {
