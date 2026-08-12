@@ -29,6 +29,13 @@ const interviewQuestions: Record<SeoPurpose, readonly string[]> = {
   ],
 };
 const fallbackKeywords = ['맛있는메뉴', '친절함', '다시찾는집'];
+const newsQuickPrompts = [
+  { label: '신메뉴', answer: '신메뉴 소식을 알려드리고 싶어요.' },
+  { label: '할인 행사', answer: '할인 행사를 알려드리고 싶어요.' },
+  { label: '이벤트', answer: '이벤트 소식을 알려드리고 싶어요.' },
+  { label: '임시 휴무', answer: '임시 휴무 소식을 알려드리고 싶어요.' },
+  { label: '운영시간 변경', answer: '운영시간 변경을 알려드리고 싶어요.' },
+] as const;
 
 export interface SeoGenerationWizardProps {
   storeProfileId: string;
@@ -300,6 +307,16 @@ export function SeoGenerationWizard({
                 <button className={speech.state === 'LISTENING' ? 'chat-voice-button is-listening' : 'chat-voice-button'} type="button" onClick={speech.state === 'LISTENING' ? speech.stop : speech.start} disabled={isAiTyping} aria-label={speech.state === 'LISTENING' ? '음성 입력 중지' : '음성으로 말하기'}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 10.5a6.5 6.5 0 0 0 13 0M12 17v4M9 21h6"/></svg></button>
                 <button className="chat-send-button" type="submit" disabled={isAiTyping || speech.state === 'LISTENING' || !currentAnswer.trim()}>전송</button>
               </div>
+              {purpose === 'NEWS' && visibleQuestionCount === 1 && !answers[0]?.trim() ? (
+                <div className="news-quick-prompts" aria-label="새소식 유형 빠른 선택">
+                  <span>빠르게 시작하기</span>
+                  <div>
+                    {newsQuickPrompts.map(({ label, answer }) => (
+                      <button key={label} type="button" className="news-quick-prompt" onClick={() => setCurrentAnswer(answer)}>{label}</button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </form>
           ) : purpose === 'NEWS' && !newsDateConfirmed ? (
             <NewsDateRangePicker

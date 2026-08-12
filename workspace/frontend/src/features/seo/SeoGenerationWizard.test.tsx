@@ -165,6 +165,10 @@ describe('SeoGenerationWizard mobile flow', () => {
     await reachNewsInterview(user);
 
     expect(screen.getByText(/어떤 가게 소식을 알려드릴까요/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '신메뉴' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '할인 행사' }));
+    expect(screen.getByRole('textbox', { name: '사장님 답변 입력' })).toHaveValue('할인 행사를 알려드리고 싶어요.');
+    await user.clear(screen.getByRole('textbox', { name: '사장님 답변 입력' }));
     await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '이번 주말 할인 이벤트');
     await user.click(screen.getByRole('button', { name: '전송' }));
     expect(await screen.findByText(/손님에게 어떤 내용을 알려드리고 싶나요/)).toBeInTheDocument();
