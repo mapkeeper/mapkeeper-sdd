@@ -393,6 +393,10 @@ export function SeoGenerationWizard({
                   <div><strong>가게 소식 미리보기</strong><small>Google · Naver · Kakao에 맞게 게시</small></div>
                 </header>
                 <p className="news-announcement-preview__body">{body}</p>
+                <div className="news-announcement-preview__source" aria-label="반영한 요청 내용">
+                  <strong>반영한 요청 내용</strong>
+                  <p>{answers.filter((answer) => answer.trim()).join(' ')}</p>
+                </div>
                 <dl className="news-announcement-preview__details">
                   <div><dt>게시 기간</dt><dd>{newsHasNoDate ? '기간 없이 게시' : newsDateRange ? `${newsDateRange.start} ~ ${newsDateRange.end}` : '기간을 확인해 주세요'}</dd></div>
                   <div><dt>게시 채널</dt><dd>Google · Naver · Kakao</dd></div>
