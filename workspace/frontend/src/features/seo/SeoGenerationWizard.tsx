@@ -47,6 +47,16 @@ function getNewsDetailQuestion(answer: string): string {
   return '손님에게 어떤 내용을 알려드리고 싶나요? 무엇을 하는지, 어떤 혜택이 있는지 편하게 말씀해 주세요.';
 }
 
+function getNewsScheduleQuestion(answer: string): string {
+  const normalized = answer.replaceAll(' ', '');
+  if (/임시휴무|휴무일/.test(normalized)) return '휴무일은 언제인가요? 날짜를 정해 안내할 수 없다면 “없어요”라고 말씀해 주세요.';
+  if (/운영시간|영업시간/.test(normalized)) return '변경된 영업시간은 언제부터 적용되나요? 기간이 없다면 “없어요”라고 말씀해 주세요.';
+  if (/할인|쿠폰|혜택/.test(normalized)) return '할인 행사는 언제부터 언제까지인가요? 기간이나 이용 조건이 없다면 “없어요”라고 말씀해 주세요.';
+  if (/이벤트|행사/.test(normalized)) return '이벤트는 언제까지 진행하나요? 기간이 없다면 “없어요”라고 말씀해 주세요.';
+  if (/신메뉴|새메뉴|신제품/.test(normalized)) return '신메뉴는 언제부터 판매하나요? 판매 기간이 없다면 “없어요”라고 말씀해 주세요.';
+  return '이 소식은 언제까지 진행되나요? 날짜나 기간, 이용 조건이 없다면 “없어요”라고 말씀해 주세요.';
+}
+
 export interface SeoGenerationWizardProps {
   storeProfileId: string;
   sourceReviews: readonly SourceReview[];
@@ -120,7 +130,7 @@ export function SeoGenerationWizard({
     onSyncHandoff?.(nextHandoff);
   });
   const baseQuestions = purpose === 'NEWS'
-    ? [interviewQuestions.NEWS[0], getNewsDetailQuestion(answers[0] ?? ''), interviewQuestions.NEWS[2]]
+    ? [interviewQuestions.NEWS[0], getNewsDetailQuestion(answers[0] ?? ''), getNewsScheduleQuestion(`${answers[0] ?? ''} ${answers[1] ?? ''}`)]
     : purpose === null ? interviewQuestions.INTRODUCTION : interviewQuestions[purpose];
   const questions = extraQuestion === null ? baseQuestions : [...baseQuestions, extraQuestion];
   const interviewComplete = questions.every((_, index) => Boolean(answers[index]?.trim()));
