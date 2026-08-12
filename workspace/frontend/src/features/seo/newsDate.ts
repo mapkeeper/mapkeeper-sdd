@@ -47,6 +47,14 @@ function parseExplicitRange(text: string, referenceDate: Date): NewsDateRange | 
     if (start && end && start <= end) return rangeFromDates(start, end);
   }
 
+  const numericRange = text.match(/(\d{1,2})[./](\d{1,2})\s*(?:부터|~|[-–])\s*(?:(\d{1,2})[./])?(\d{1,2})/);
+  if (numericRange) {
+    const year = referenceDate.getFullYear();
+    const start = createDate(year, Number(numericRange[1]), Number(numericRange[2]));
+    const end = createDate(year, Number(numericRange[3] ?? numericRange[1]), Number(numericRange[4]));
+    if (start && end && start <= end) return rangeFromDates(start, end);
+  }
+
   return null;
 }
 
@@ -68,7 +76,7 @@ function parseRelativeRange(text: string, referenceDate: Date): NewsDateRange | 
     return rangeFromDates(saturday, shiftDate(saturday, 1));
   }
   if (normalized.includes('다음주')) {
-    const monday = shiftDate(referenceDate, ((8 - day) % 7) + 7);
+    const monday = shiftDate(referenceDate, (8 - day) % 7 || 7);
     return rangeFromDates(monday, shiftDate(monday, 6));
   }
   if (normalized.includes('이번주')) {
