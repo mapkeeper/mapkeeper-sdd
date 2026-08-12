@@ -13,11 +13,18 @@ type SeoWizardStep = 'SUMMARY' | 'PURPOSE' | 'INTERVIEW' | 'RECOMMEND' | 'RESULT
 type SeoPurpose = 'INTRODUCTION' | 'NEWS';
 
 const stepOrder: SeoWizardStep[] = ['SUMMARY', 'PURPOSE', 'INTERVIEW', 'RECOMMEND', 'RESULT'];
-const questions = [
-  '사장님의 가게를 한 줄로 표현해주세요.',
-  '가장 내세우고 싶은 특징이 있나요?',
-  '대표 메뉴가 무엇인가요?',
-] as const;
+const interviewQuestions: Record<SeoPurpose, readonly string[]> = {
+  INTRODUCTION: [
+    '사장님의 가게를 한 줄로 표현해주세요.',
+    '가장 내세우고 싶은 특징이 있나요?',
+    '대표 메뉴가 무엇인가요?',
+  ],
+  NEWS: [
+    '어떤 소식을 알리고 싶나요? 예를 들면 신메뉴, 할인, 이벤트, 임시휴무가 있어요.',
+    '손님에게 꼭 전달할 핵심 내용은 무엇인가요?',
+    '기간, 날짜 또는 혜택을 알려주세요. 해당이 없다면 없다고 말씀해 주세요.',
+  ],
+};
 const fallbackKeywords = ['맛있는메뉴', '친절함', '다시찾는집'];
 
 export interface SeoGenerationWizardProps {
@@ -72,6 +79,7 @@ export function SeoGenerationWizard({
   const [step, setStep] = useState<SeoWizardStep>('SUMMARY');
   const [purpose, setPurpose] = useState<SeoPurpose | null>(null);
   const [answers, setAnswers] = useState<string[]>(['', '', '']);
+  const [extraQuestion, setExtraQuestion] = useState<string | null>(null);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [visibleQuestionCount, setVisibleQuestionCount] = useState(1);
   const [isAiTyping, setAiTyping] = useState(false);
@@ -88,7 +96,9 @@ export function SeoGenerationWizard({
     setStep('RESULT');
     onSyncHandoff?.(nextHandoff);
   });
-  const interviewComplete = answers.every((answer) => answer.trim() !== '');
+  const baseQuestions = purpose === null ? interviewQuestions.INTRODUCTION : interviewQuestions[purpose];
+  const questions = extraQuestion === null ? baseQuestions : [...baseQuestions, extraQuestion];
+  const interviewComplete = questions.every((_, index) => answers[index]?.trim() !== '');
 
   useEffect(() => () => {
     if (typingTimerRef.current !== null) window.clearTimeout(typingTimerRef.current);
@@ -112,14 +122,22 @@ export function SeoGenerationWizard({
     setAnswers((current) => current.map((savedAnswer, index) => index === questionIndex ? answer : savedAnswer));
     setCurrentAnswer('');
 
-    if (questionIndex >= questions.length - 1) return;
+    const isLastBaseQuestion = questionIndex === baseQuestions.length - 1 && extraQuestion === null;
+    const needsNewsFollowUp = purpose === 'NEWS'
+      && isLastBaseQuestion
+      && /^(네|예|있어요|있습니다|모르겠어요|잘 모르겠어요|있는데요)[.!?]?$/i.test(answer);
+    if (needsNewsFollowUp) {
+      setExtraQuestion('구체적인 날짜, 기간 또는 할인 혜택을 알려주실 수 있을까요?');
+    }
+    if (questionIndex >= questions.length - 1 && !needsNewsFollowUp) return;
+    const nextQuestionCount = needsNewsFollowUp ? baseQuestions.length + 1 : questions.length;
     setAiTyping(true);
     typingTimerRef.current = window.setTimeout(() => {
-      setVisibleQuestionCount((count) => Math.min(count + 1, questions.length));
+      setVisibleQuestionCount((count) => Math.min(count + 1, nextQuestionCount));
       setAiTyping(false);
       typingTimerRef.current = null;
     }, 500);
-  }, [interviewComplete, isAiTyping, visibleQuestionCount]);
+  }, [baseQuestions.length, extraQuestion, interviewComplete, isAiTyping, purpose, questions.length, visibleQuestionCount]);
 
   const sendInterviewAnswer = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -221,7 +239,7 @@ export function SeoGenerationWizard({
               <h1 id="interview-title">AI 인터뷰</h1>
               <strong>질문 {Math.min(visibleQuestionCount, questions.length)} / {questions.length}</strong>
             </div>
-            <div className="interview-steps" aria-hidden="true">{[1,2,3].map((item) => <span key={item} className={item <= visibleQuestionCount ? 'is-active' : ''}>{item}</span>)}</div>
+            <div className="interview-steps" aria-hidden="true">{questions.map((_, index) => { const item = index + 1; return <span key={item} className={item <= visibleQuestionCount ? 'is-active' : ''}>{item}</span>; })}</div>
             <div className="chat-thread" aria-label="AI 인터뷰 대화" aria-live="polite">
               {questions.slice(0, visibleQuestionCount).map((question, index) => (
                 <div className="chat-exchange" key={question}>

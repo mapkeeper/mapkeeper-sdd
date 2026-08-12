@@ -11,6 +11,12 @@ async function reachInterview(user: ReturnType<typeof userEvent.setup>): Promise
   await user.click(screen.getByRole('button', { name: '선택 완료' }));
 }
 
+async function reachNewsInterview(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await user.click(screen.getByRole('button', { name: '다음 (문구 만들기)' }));
+  await user.click(screen.getByRole('radio', { name: /오늘의 가게 소식/ }));
+  await user.click(screen.getByRole('button', { name: '선택 완료' }));
+}
+
 async function reachRecommendation(user: ReturnType<typeof userEvent.setup>): Promise<void> {
   await reachInterview(user);
   const answers = ['정성이 가득한 동네 맛집', '깊은 국물과 친절한 서비스', '만두전골'];
@@ -133,6 +139,24 @@ describe('SeoGenerationWizard mobile flow', () => {
 
     expect(screen.queryByRole('textbox', { name: '사장님 답변 입력' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '문구 추천받기' })).toBeEnabled();
+  });
+
+  test('새소식 목적은 전용 질문을 사용하고 날짜 정보가 모호하면 한 번만 추가 질문한다', async () => {
+    const user = userEvent.setup();
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachNewsInterview(user);
+
+    expect(screen.getByText(/어떤 소식을 알리고 싶나요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '이번 주말 할인 이벤트');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText('손님에게 꼭 전달할 핵심 내용은 무엇인가요?', {}, { timeout: 1_500 })).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '만두전골을 할인해요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/기간, 날짜 또는 혜택을 알려주세요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '네');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/구체적인 날짜, 기간 또는 할인 혜택/)).toBeInTheDocument();
+    expect(screen.getByText('질문 4 / 4')).toBeInTheDocument();
   });
 
   test('리뷰 요약 API/Mock 상태를 Props로 받아 요약, 키워드, 건수를 동적으로 표시한다', () => {
