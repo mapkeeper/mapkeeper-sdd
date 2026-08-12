@@ -31,7 +31,7 @@ from mapkeeper.api.schemas.seo import (
 from mapkeeper.core.errors import MapKeeperError
 from mapkeeper.core.json_types import JsonValue
 from mapkeeper.core.logging import get_logger
-from mapkeeper.models import Platform, StoreProfile
+from mapkeeper.models import ContentPurpose, Platform, StoreProfile
 
 logger = get_logger(__name__)
 
@@ -94,7 +94,22 @@ def build_prompt(
     )
     reviews = "\n".join(f"- {review}" for review in source_reviews[:MAX_SOURCE_REVIEWS])
     review_block = f"\n참고 리뷰(마스킹 완료):\n{reviews}\n" if reviews else ""
-    return f"""당신은 한국 소상공인 매장의 플랫폼 소개글을 작성한다.
+    match content_input.purpose:
+        case ContentPurpose.INTRODUCTION:
+            purpose_guidance = (
+                "매장 전체를 소개하는 상시 소개글을 작성한다. "
+                "대표 메뉴와 매장의 강점을 중심으로 쓴다."
+            )
+        case ContentPurpose.NEWS:
+            purpose_guidance = (
+                "가게의 현재 소식이나 이벤트 공지글을 작성한다. "
+                "메뉴·혜택·기간·조건 등 입력된 공지 정보만 중심으로 쓴다. "
+                "소개글처럼 일반적인 매장 홍보 문구를 만들지 않는다."
+            )
+    return f"""당신은 한국 소상공인 매장의 플랫폼 문구를 작성한다.
+
+작성 목적: {content_input.purpose.value}
+목적별 작성 지침: {purpose_guidance}
 
 매장 정보:
 - 매장명: {profile.store_name}

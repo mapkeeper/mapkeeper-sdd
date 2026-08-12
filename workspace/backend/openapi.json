@@ -525,6 +525,15 @@
         "title": "ContentGenerationStatus",
         "type": "string"
       },
+      "ContentPurpose": {
+        "description": "User-facing purpose that selects the copy generation rules.",
+        "enum": [
+          "INTRODUCTION",
+          "NEWS"
+        ],
+        "title": "ContentPurpose",
+        "type": "string"
+      },
       "CreateContentGenerationRequest": {
         "additionalProperties": false,
         "description": "Request to create one three-platform content generation.",
@@ -534,6 +543,10 @@
             "minLength": 1,
             "title": "Brieftext",
             "type": "string"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/ContentPurpose",
+            "default": "INTRODUCTION"
           },
           "seedKeywords": {
             "items": {
@@ -861,6 +874,10 @@
             "minLength": 1,
             "title": "Brieftext",
             "type": "string"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/ContentPurpose",
+            "default": "INTRODUCTION"
           },
           "seedKeywords": {
             "items": {

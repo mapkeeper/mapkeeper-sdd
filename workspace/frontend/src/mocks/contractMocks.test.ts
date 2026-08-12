@@ -26,7 +26,7 @@ describe('API contract mocks', () => {
 
   test('UC2 returns one draft per platform and approves the whole generation', async () => {
     const generated = await apiRequest<CreateSeoGenerationResponse>('/api/v1/seo/generations', {
-      method: 'POST', body: { storeProfileId: 'store-123', briefText: '따뜻한 동네 맛집', seedKeywords: ['친절함'], sourceReviewIds: ['review-001'] },
+      method: 'POST', body: { storeProfileId: 'store-123', purpose: 'INTRODUCTION', briefText: '따뜻한 동네 맛집', seedKeywords: ['친절함'], sourceReviewIds: ['review-001'] },
     });
     expect(generated.data.drafts.map(({ platform }) => platform)).toEqual(['google', 'naver', 'kakao']);
     const approved = await apiRequest<SeoApprovalResponse>('/api/v1/seo/generations/gen-001/approve', {

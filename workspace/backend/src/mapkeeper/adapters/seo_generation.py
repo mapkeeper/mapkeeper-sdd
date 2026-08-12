@@ -11,7 +11,7 @@ from mapkeeper.api.schemas.seo import (
     normalize_keywords,
 )
 from mapkeeper.core.config import get_settings
-from mapkeeper.models import Platform, StoreProfile
+from mapkeeper.models import ContentPurpose, Platform, StoreProfile
 
 PLATFORM_RULES: Final[dict[Platform, tuple[str, str]]] = {
     Platform.GOOGLE: ("사실 중심", "Google용 매장 안내"),
@@ -50,14 +50,18 @@ class DeterministicSEOStub:
             keywords = normalize_keywords(
                 (*content_input.seed_keywords, profile.representative_menu_name, platform.value)
             )[:10]
+            match content_input.purpose:
+                case ContentPurpose.INTRODUCTION:
+                    prefix_text = f"{prefix}: {profile.store_name}."
+                    suffix = f"대표 메뉴는 {profile.representative_menu_name}입니다."
+                case ContentPurpose.NEWS:
+                    prefix_text = f"{prefix}: {content_input.brief_text}"
+                    suffix = ""
             results.append(
                 PlatformContentResult(
                     draft_id=uuid4(),
                     platform=platform,
-                    draft_text=(
-                        f"{prefix}: {profile.store_name}. {content_input.brief_text} "
-                        f"대표 메뉴는 {profile.representative_menu_name}입니다."
-                    ),
+                    draft_text=f"{prefix_text} {suffix}",
                     keywords=keywords,
                     content_rules=(rule,),
                 )

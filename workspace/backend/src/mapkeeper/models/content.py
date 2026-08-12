@@ -23,7 +23,7 @@ from mapkeeper.models.base import (
     UuidValue,
     pg_enum,
 )
-from mapkeeper.models.enums import ContentGenerationStatus, Platform
+from mapkeeper.models.enums import ContentGenerationStatus, ContentPurpose, Platform
 
 if TYPE_CHECKING:
     from mapkeeper.models.store import StoreProfile
@@ -48,6 +48,11 @@ class ContentGeneration(TimestampMixin, Base):
         index=True,
     )
     brief_text: Mapped[str] = mapped_column(String(BRIEF_TEXT_MAX_LENGTH))
+    purpose: Mapped[ContentPurpose] = mapped_column(
+        pg_enum(ContentPurpose, "content_purpose"),
+        default=ContentPurpose.INTRODUCTION,
+        server_default=ContentPurpose.INTRODUCTION.value,
+    )
     seed_keywords: Mapped[list[str]] = mapped_column(postgresql.ARRAY(Text()))
     source_review_ids: Mapped[list[UUID] | None] = mapped_column(
         postgresql.ARRAY(postgresql.UUID(as_uuid=True))

@@ -220,6 +220,7 @@ export function SeoGenerationWizard({
           ? ` 행사 기간은 ${newsDateRange.start}부터 ${newsDateRange.end}까지입니다.`
           : '';
     const generated = await flow.generate({
+      purpose: purpose === 'NEWS' ? 'NEWS' : 'INTRODUCTION',
       briefText: `${answerText}${newsScheduleText}`,
       seedKeywords: tags,
       sourceReviewIds: sourceReviews.map(({ id }) => id),

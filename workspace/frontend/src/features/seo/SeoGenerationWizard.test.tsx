@@ -70,6 +70,7 @@ describe('SeoGenerationWizard mobile flow', () => {
 
     expect(requestBody).toEqual({
       storeProfileId: 'store-123',
+      purpose: 'INTRODUCTION',
       briefText: '정성이 가득한 동네 맛집 깊은 국물과 친절한 서비스 만두전골',
       seedKeywords: ['속이알참', '친절함', '주차편함'],
       sourceReviewIds: ['review-001'],
@@ -196,6 +197,7 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(screen.getByRole('button', { name: '신메뉴' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '사장님 답변 입력' })).toHaveValue('');
     expect(requestBody).toMatchObject({
+      purpose: 'NEWS',
       briefText: expect.stringContaining('행사 기간은 2026-08-15부터 2026-08-17까지입니다.'),
     });
   });

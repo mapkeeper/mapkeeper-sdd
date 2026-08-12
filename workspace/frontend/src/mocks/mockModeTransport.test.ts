@@ -10,6 +10,7 @@ describe('MSW browser transport boundary', () => {
 
     const result = await generateSeoDrafts({
       storeProfileId: 'store-123',
+      purpose: 'INTRODUCTION',
       briefText: '따뜻한 동네 맛집',
       seedKeywords: ['친절함'],
       sourceReviewIds: ['review-001'],
@@ -23,7 +24,7 @@ describe('MSW browser transport boundary', () => {
     const response = await fetch('/api/v1/seo/generations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storeProfileId: 'store-123', briefText: '따뜻한 동네 맛집', seedKeywords: ['친절함'], sourceReviewIds: ['review-001'] }),
+      body: JSON.stringify({ storeProfileId: 'store-123', purpose: 'INTRODUCTION', briefText: '따뜻한 동네 맛집', seedKeywords: ['친절함'], sourceReviewIds: ['review-001'] }),
     });
     const envelope = await response.json() as {
       data: { generationId: string; drafts: Array<{ platform: string; status: string; draftText: string }> };
@@ -37,5 +38,19 @@ describe('MSW browser transport boundary', () => {
       expect.objectContaining({ platform: 'kakao', status: 'DRAFT' }),
     ]));
     expect(envelope.data.drafts.find((draft) => draft.platform === 'google')?.draftText).toContain('따뜻한 동네 맛집');
+  });
+
+  test('NEWS 목적은 소개글 접미사 대신 소식 접미사를 사용한다', async () => {
+    const response = await fetch('/api/v1/seo/generations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storeProfileId: 'store-123', purpose: 'NEWS', briefText: '이번 주말 할인 행사', seedKeywords: ['할인'], sourceReviewIds: [] }),
+    });
+    const envelope = await response.json() as {
+      data: { drafts: Array<{ platform: string; draftText: string }> };
+    };
+
+    expect(envelope.data.drafts.find((draft) => draft.platform === 'google')?.draftText).toContain('Google 소식으로 안내해요.');
+    expect(envelope.data.drafts.find((draft) => draft.platform === 'google')?.draftText).not.toContain('소개글로 정리했어요.');
   });
 });

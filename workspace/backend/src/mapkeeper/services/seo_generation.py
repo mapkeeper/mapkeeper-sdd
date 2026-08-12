@@ -120,6 +120,7 @@ def _mask_generation_input(content_input: ContentGenerationInput) -> ContentGene
     """Remove explicit customer PII before the generation adapter boundary."""
     return ContentGenerationInput(
         brief_text=mask_customer_pii(content_input.brief_text),
+        purpose=content_input.purpose,
         seed_keywords=tuple(mask_customer_pii(keyword) for keyword in content_input.seed_keywords),
         source_review_ids=content_input.source_review_ids,
     )
@@ -140,6 +141,7 @@ async def _store_generation(
     target = generation or ContentGeneration(
         store_profile_id=context.profile.id,
         brief_text=context.content_input.brief_text,
+        purpose=context.content_input.purpose,
         seed_keywords=list(context.content_input.seed_keywords),
         source_review_ids=list(context.content_input.source_review_ids)
         if context.content_input.source_review_ids is not None
@@ -152,6 +154,7 @@ async def _store_generation(
         await session.flush()
     else:
         target.brief_text = context.content_input.brief_text
+        target.purpose = context.content_input.purpose
         target.seed_keywords = list(context.content_input.seed_keywords)
         target.source_review_ids = (
             list(context.content_input.source_review_ids)

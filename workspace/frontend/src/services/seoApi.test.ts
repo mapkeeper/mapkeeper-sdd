@@ -10,6 +10,7 @@ describe('seoApi', () => {
       http.post('/api/v1/seo/generations', async ({ request }) => {
         expect(await request.json()).toEqual({
           storeProfileId: 'store-123',
+          purpose: 'INTRODUCTION',
           briefText: '따뜻한 동네 맛집',
           seedKeywords: ['친절함', '만두전골'],
           sourceReviewIds: ['review-001'],
@@ -26,6 +27,7 @@ describe('seoApi', () => {
 
     const result = await generateSeoDrafts({
       storeProfileId: 'store-123',
+      purpose: 'INTRODUCTION',
       briefText: '따뜻한 동네 맛집',
       seedKeywords: ['친절함', '만두전골'],
       sourceReviewIds: ['review-001'],

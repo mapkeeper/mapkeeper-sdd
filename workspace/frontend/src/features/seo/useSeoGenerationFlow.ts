@@ -16,7 +16,7 @@ interface SeoGenerationFlow {
   isGenerating: boolean;
   isApproving: boolean;
   errorMessage: string | null;
-  generate(request: { briefText: string; seedKeywords: string[]; sourceReviewIds: string[] }): Promise<SeoDraft[] | null>;
+  generate(request: { purpose: 'INTRODUCTION' | 'NEWS'; briefText: string; seedKeywords: string[]; sourceReviewIds: string[] }): Promise<SeoDraft[] | null>;
   approveFromButton(): Promise<boolean>;
   setValidationError(message: string): void;
 }
@@ -45,7 +45,7 @@ export function useSeoGenerationFlow(
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const approvalLockRef = useRef(false);
 
-  const generate = useCallback(async (request: { briefText: string; seedKeywords: string[]; sourceReviewIds: string[] }) => {
+  const generate = useCallback(async (request: { purpose: 'INTRODUCTION' | 'NEWS'; briefText: string; seedKeywords: string[]; sourceReviewIds: string[] }) => {
     if (isGenerating) return null;
     setGenerating(true);
     setErrorMessage(null);

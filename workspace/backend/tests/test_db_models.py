@@ -131,6 +131,7 @@ def test_store_change_proposal_keeps_masked_text_and_validated_changes(
     ("column", "definition"),
     [
         ("brief_text", "VARCHAR(500) NOT NULL"),
+        ("purpose", "content_purpose DEFAULT 'INTRODUCTION' NOT NULL"),
         ("seed_keywords", "TEXT[] NOT NULL"),
         ("source_review_ids", "UUID[]"),
         ("status", "content_generation_status NOT NULL"),

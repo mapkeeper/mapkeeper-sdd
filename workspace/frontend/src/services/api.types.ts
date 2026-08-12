@@ -46,6 +46,7 @@ export interface StoreChangeApprovalResponse {
 
 export interface CreateSeoGenerationRequest {
   storeProfileId: string;
+  purpose: 'INTRODUCTION' | 'NEWS';
   briefText: string;
   seedKeywords: string[];
   sourceReviewIds: string[];

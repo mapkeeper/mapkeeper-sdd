@@ -7,9 +7,9 @@ import type { CreateSeoGenerationRequest, CreateSeoGenerationResponse, SeoApprov
 const approvalReplay = new Map<string, SeoApprovalResponse>();
 const responseOptions = () => ({ headers: { 'X-Request-ID': nextRequestId() } });
 
-function createMockGeneration(briefText: string): CreateSeoGenerationResponse {
+function createMockGeneration(purpose: CreateSeoGenerationRequest['purpose'], briefText: string): CreateSeoGenerationResponse {
   const normalizedBrief = briefText.trim();
-  const isNews = /신메뉴|할인|이벤트|임시\s*휴무|운영시간|행사\s*기간/.test(normalizedBrief);
+  const isNews = purpose === 'NEWS';
   const endings = isNews
     ? { google: ' Google 소식으로 안내해요.', naver: ' 네이버 소식으로 알려드려요.', kakao: ' 카카오 소식으로 전해요.' }
     : { google: ' Google 소개글로 정리했어요.', naver: ' 네이버 소개글로 정리했어요.', kakao: ' 카카오 소개글로 정리했어요.' };
@@ -28,7 +28,7 @@ export const seoHandlers = [
     await mockDelay(scenarioLatency());
     const body = await request.json() as Partial<CreateSeoGenerationRequest>;
     if (typeof body.storeProfileId !== 'string' || typeof body.briefText !== 'string' || !Array.isArray(body.seedKeywords) || !Array.isArray(body.sourceReviewIds)) return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
-    return HttpResponse.json(successEnvelope(createMockGeneration(body.briefText)), {
+    return HttpResponse.json(successEnvelope(createMockGeneration(body.purpose ?? 'INTRODUCTION', body.briefText)), {
       status: 201,
       ...responseOptions(),
     });

@@ -6,7 +6,7 @@ from pydantic import Field, StringConstraints, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from mapkeeper.api.schemas.common import ApiSchema
-from mapkeeper.models.enums import ContentGenerationStatus, Platform, SyncJobStatus
+from mapkeeper.models.enums import ContentGenerationStatus, ContentPurpose, Platform, SyncJobStatus
 
 BRIEF_TEXT_MAX_LENGTH: Final = 500
 DRAFT_TEXT_MAX_LENGTH: Final = 750
@@ -67,6 +67,7 @@ class ContentGenerationInput(ApiSchema):
     """Common user input used to generate all three platform results."""
 
     brief_text: BriefText
+    purpose: ContentPurpose = ContentPurpose.INTRODUCTION
     seed_keywords: SeedKeywords
     source_review_ids: SourceReviewIds | None = None
 

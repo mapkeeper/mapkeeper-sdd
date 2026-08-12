@@ -17,6 +17,7 @@ def test_generation_request_parses_common_input_once() -> None:
     # Given: one common description and keyword set for all three platforms.
     payload = {
         "storeProfileId": str(STORE_PROFILE_ID),
+        "purpose": "NEWS",
         "briefText": "만두전골의 깊은 국물 맛을 강조하고 싶어요.",
         "seedKeywords": ["만두전골", "가족외식", "주차편한곳"],
         "sourceReviewIds": ["22222222-2222-4222-8222-222222222222"],
@@ -27,6 +28,7 @@ def test_generation_request_parses_common_input_once() -> None:
 
     # Then: common input stays separate from platform output.
     assert request.store_profile_id == STORE_PROFILE_ID
+    assert request.purpose.value == "NEWS"
     assert request.seed_keywords == ("만두전골", "가족외식", "주차편한곳")
     assert request.source_review_ids == (UUID("22222222-2222-4222-8222-222222222222"),)
 

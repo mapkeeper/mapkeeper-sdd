@@ -19,7 +19,7 @@ from mapkeeper.adapters.gemini_seo import (
 from mapkeeper.adapters.seo_generation import DeterministicSEOStub, get_seo_generator
 from mapkeeper.api.schemas.seo import ContentGenerationInput
 from mapkeeper.core.config import get_settings
-from mapkeeper.models import Platform, StoreProfile
+from mapkeeper.models import ContentPurpose, Platform, StoreProfile
 
 BRIEF: Final = "만두전골의 깊은 국물 맛을 강조하고 싶어요."
 
@@ -109,6 +109,18 @@ def test_the_prompt_carries_the_user_input_and_store_facts() -> None:
     assert "가족외식" in prompt
 
 
+def test_the_news_prompt_selects_announcement_purpose() -> None:
+    # Given: a generation explicitly requested for a time-bound store update.
+    content_input = make_input().model_copy(update={"purpose": ContentPurpose.NEWS})
+
+    # When: the prompt is built.
+    prompt = build_prompt(content_input, make_profile(), ())
+
+    # Then: the machine-readable purpose is routed to the news generation branch.
+    assert "작성 목적: NEWS" in prompt
+    assert "소개글처럼 일반적인 매장 홍보 문구를 만들지 않는다." in prompt
+
+
 def test_the_prompt_includes_masked_reviews_only_when_supplied() -> None:
     # Given: a masked review and an empty set.
     with_review = build_prompt(make_input(), make_profile(), ("[고객명]님 국물이 깊어요.",))
@@ -146,6 +158,19 @@ async def test_a_well_formed_response_becomes_three_results() -> None:
     # Then: exactly one result per platform, each with an id MapKeeper owns.
     assert {result.platform for result in results} == set(Platform)
     assert len({result.draft_id for result in results}) == 3
+
+
+@pytest.mark.asyncio
+async def test_news_stub_does_not_append_the_representative_menu() -> None:
+    # Given: a deterministic offline generation requested for a store update.
+    content_input = make_input().model_copy(update={"purpose": ContentPurpose.NEWS})
+
+    # When: the configured-key fallback generates drafts.
+    results = await DeterministicSEOStub().generate(content_input, make_profile(), ())
+
+    # Then: the news draft stays focused on the supplied announcement.
+    assert all("대표 메뉴는" not in result.draft_text for result in results)
+    assert all(BRIEF in result.draft_text for result in results)
 
 
 @pytest.mark.asyncio

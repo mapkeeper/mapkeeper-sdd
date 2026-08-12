@@ -12,6 +12,7 @@ from alembic.script import ScriptDirectory
 from mapkeeper.models import (
     Base,
     ContentGenerationStatus,
+    ContentPurpose,
     Platform,
     PlatformSyncTaskStatus,
     ProposalStatus,
@@ -20,11 +21,12 @@ from mapkeeper.models import (
 )
 
 INITIAL_REVISION: Final = "0001"
-HEAD_REVISION: Final = "0002"
+HEAD_REVISION: Final = "0003"
 ENUM_TYPES: Final = {
     "platform": Platform,
     "proposal_status": ProposalStatus,
     "content_generation_status": ContentGenerationStatus,
+    "content_purpose": ContentPurpose,
     "sync_job_status": SyncJobStatus,
     "platform_sync_task_status": PlatformSyncTaskStatus,
     "sync_source_type": SyncSourceType,
@@ -106,11 +108,19 @@ def test_upgrade_creates_every_mapped_column(upgrade_sql: str, table_name: str) 
     block = _create_table_block(upgrade_sql, table_name)
 
     # When: the model columns are compared with the migration.
-    missing = [
-        column.name
-        for column in Base.metadata.tables[table_name].columns
-        if not re.search(rf"^\s+{column.name}\s", block, re.MULTILINE)
-    ]
+    missing: list[str] = []
+    for column in Base.metadata.tables[table_name].columns:
+        in_create = re.search(rf"^\s+{column.name}\s", block, re.MULTILINE) is not None
+        added_later = (
+            re.search(
+                rf"ALTER TABLE {table_name} ADD COLUMN.*\b{column.name}\b",
+                upgrade_sql,
+                re.DOTALL,
+            )
+            is not None
+        )
+        if not in_create and not added_later:
+            missing.append(column.name)
 
     # Then: the migration and the models describe the same table.
     assert missing == []

@@ -38,6 +38,14 @@ class ContentGenerationStatus(StrEnum):
 
 
 @unique
+class ContentPurpose(StrEnum):
+    """User-facing purpose that selects the copy generation rules."""
+
+    INTRODUCTION = "INTRODUCTION"
+    NEWS = "NEWS"
+
+
+@unique
 class SyncJobStatus(StrEnum):
     """Aggregate three-platform synchronization status."""
 
