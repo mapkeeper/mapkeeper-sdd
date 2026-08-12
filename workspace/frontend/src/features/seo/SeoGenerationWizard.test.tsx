@@ -190,6 +190,10 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(await screen.findByRole('heading', { name: '가게 소식 문구를 확인해 주세요' })).toBeInTheDocument();
     expect(screen.getByRole('article', { name: '가게 소식 미리보기' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '이 소식을 3사에 게시' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '내용 수정' }));
+    expect(await screen.findByText(/어떤 가게 소식을 알려드릴까요/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '신메뉴' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '사장님 답변 입력' })).toHaveValue('');
     expect(requestBody).toMatchObject({
       briefText: expect.stringContaining('행사 기간은 2026-08-15부터 2026-08-17까지입니다.'),
     });

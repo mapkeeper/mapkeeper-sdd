@@ -238,6 +238,17 @@ export function SeoGenerationWizard({
     setUploading(false);
   };
 
+  const editGeneratedContent = () => {
+    setAnswers(['', '', '']);
+    setExtraQuestion(null);
+    setCurrentAnswer('');
+    setVisibleQuestionCount(1);
+    setNewsDateRange(null);
+    setNewsDateConfirmed(false);
+    setNewsHasNoDate(false);
+    setStep('INTERVIEW');
+  };
+
   return (
     <main className="seo-mobile-flow">
       <StepHeader step={step} onBack={goBack} onClose={onExit} />
@@ -406,7 +417,7 @@ export function SeoGenerationWizard({
             )}
           </div>
           <div className="bottom-split-actions">
-            <button className="bottom-secondary" type="button" onClick={onExit}>취소</button>
+            <button className="bottom-secondary" type="button" onClick={editGeneratedContent}>내용 수정</button>
             <button className="bottom-primary" type="button" disabled={uploading || flow.isApproving} onClick={() => void upload()}>{uploading ? (purpose === 'NEWS' ? '게시 처리 중…' : '전체 승인 처리 중…') : purpose === 'NEWS' ? '이 소식을 3사에 게시' : '3사 전체 승인'}</button>
           </div>
         </section>
