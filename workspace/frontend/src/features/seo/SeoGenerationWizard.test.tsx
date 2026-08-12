@@ -146,13 +146,13 @@ describe('SeoGenerationWizard mobile flow', () => {
     render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
     await reachNewsInterview(user);
 
-    expect(screen.getByText(/어떤 소식을 알리고 싶나요/)).toBeInTheDocument();
+    expect(screen.getByText(/어떤 가게 소식을 알려드릴까요/)).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '이번 주말 할인 이벤트');
     await user.click(screen.getByRole('button', { name: '전송' }));
-    expect(await screen.findByText('손님에게 꼭 전달할 핵심 내용은 무엇인가요?', {}, { timeout: 1_500 })).toBeInTheDocument();
+    expect(await screen.findByText(/손님에게 어떤 내용을 알려드리고 싶나요/)).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '만두전골을 할인해요');
     await user.click(screen.getByRole('button', { name: '전송' }));
-    expect(await screen.findByText(/기간, 날짜 또는 혜택을 알려주세요/)).toBeInTheDocument();
+    expect(await screen.findByText(/이 소식은 언제까지 진행되나요/)).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '네');
     await user.click(screen.getByRole('button', { name: '전송' }));
     expect(await screen.findByText(/구체적인 날짜, 기간 또는 할인 혜택/)).toBeInTheDocument();
