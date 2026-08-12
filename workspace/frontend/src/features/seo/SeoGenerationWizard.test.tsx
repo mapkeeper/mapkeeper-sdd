@@ -183,7 +183,9 @@ describe('SeoGenerationWizard mobile flow', () => {
     fireEvent.change(screen.getByLabelText('종료일'), { target: { value: '2026-08-17' } });
     await user.click(screen.getByRole('button', { name: '이 기간으로 문구 만들기' }));
     await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
-    expect(await screen.findByRole('heading', { name: '3사 전체 추천 문구를 확인해 주세요' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '가게 소식 문구를 확인해 주세요' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: '가게 소식 미리보기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '이 소식을 3사에 게시' })).toBeInTheDocument();
     expect(requestBody).toMatchObject({
       briefText: expect.stringContaining('행사 기간은 2026-08-15부터 2026-08-17까지입니다.'),
     });

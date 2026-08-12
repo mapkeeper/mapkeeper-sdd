@@ -105,6 +105,18 @@
 .recommend-help { margin:-5px 0 18px; color:#64748b; font-size:13px; word-break:keep-all; }
 .seo-draft-list { display:grid; gap:12px; margin-bottom:14px; }
 .recommend-editor,.hashtag-editor { display:grid; gap:11px; margin-bottom:14px; padding:18px; border:1px solid rgba(226,232,240,.8); border-radius:22px; background:#fff; box-shadow:0 3px 14px -5px rgba(15,23,42,.1); font-weight:700; }
+.news-announcement-preview { display:grid; gap:16px; margin-bottom:14px; padding:20px; border:1px solid #dbeafe; border-radius:22px; background:linear-gradient(180deg,#fff,#f8fbff); box-shadow:0 4px 18px rgba(37,99,235,.08); }
+.news-announcement-preview__header { display:flex; align-items:center; gap:11px; }
+.news-announcement-preview__icon { display:grid; width:40px; height:40px; flex:none; place-items:center; border-radius:13px; background:#dbeafe; color:#2563eb; }
+.news-announcement-preview__icon svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.news-announcement-preview__header strong { display:block; color:#1e293b; font-size:16px; }
+.news-announcement-preview__header small { display:block; margin-top:3px; color:#64748b; font-size:11px; font-weight:500; }
+.news-announcement-preview__body { margin:0; padding:17px; border-radius:15px; background:#fff; color:#1e293b; font-size:16px; line-height:1.65; white-space:pre-wrap; word-break:keep-all; }
+.news-announcement-preview__details { display:grid; gap:9px; margin:0; }
+.news-announcement-preview__details div { display:flex; justify-content:space-between; gap:12px; color:#64748b; font-size:12px; }
+.news-announcement-preview__details dt { font-weight:600; }
+.news-announcement-preview__details dd { margin:0; color:#1e293b; font-weight:750; text-align:right; }
+.news-announcement-preview__keywords { display:grid; gap:9px; padding-top:3px; color:#475569; font-size:12px; }
 .recommend-editor > span,.hashtag-editor > strong { display:flex; align-items:center; justify-content:space-between; color:#1e293b; font-size:13px; }
 .recommend-editor small,.hashtag-editor small { padding:4px 7px; border-radius:7px; background:#f1f5f9; color:#64748b; font-size:10px; }
 .recommend-editor textarea { width:100%; min-height:180px; padding:0; border:0; background:#fff; color:#334155; font:inherit; font-size:14px; font-weight:450; line-height:1.65; resize:none; }

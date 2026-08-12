@@ -322,21 +322,43 @@ export function SeoGenerationWizard({
       {step === 'RECOMMEND' ? (
         <section className="mobile-step-screen" aria-labelledby="recommend-title">
           <div className="mobile-step-screen__content">
-            <h1 id="recommend-title">3사 전체 추천 문구를 확인해 주세요</h1>
-            <p className="recommend-help">세 문구를 확인한 뒤 한 번에 승인합니다.</p>
-            <div className="seo-draft-list" aria-label="3사 추천 문구">
-              {flow.drafts.map((draft) => <SeoDraftCard key={draft.draftId} draft={draft} />)}
-            </div>
-            <div className="hashtag-editor">
-              <strong>3사 공통 추천 해시태그</strong>
-              <div className="tag-list">
-                {tags.map((tag) => <span className="tag-chip" key={tag}>#{tag}</span>)}
-              </div>
-            </div>
+            <h1 id="recommend-title">{purpose === 'NEWS' ? '가게 소식 문구를 확인해 주세요' : '3사 전체 추천 문구를 확인해 주세요'}</h1>
+            <p className="recommend-help">{purpose === 'NEWS' ? '작성한 소식이 3사에 맞게 정리됐어요. 내용을 확인한 뒤 한 번에 게시합니다.' : '세 문구를 확인한 뒤 한 번에 승인합니다.'}</p>
+            {purpose === 'NEWS' ? (
+              <article className="news-announcement-preview" aria-label="가게 소식 미리보기">
+                <header className="news-announcement-preview__header">
+                  <span className="news-announcement-preview__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false"><path d="M4 10.5v3a2 2 0 0 0 2 2h1.5l1.2 4h2.1l-1.1-4H11l7 3V5l-7 3H6a2 2 0 0 0-2 2.5Z" /><path d="M20 9v6M4 10.5h-1M4 13.5h-1" /></svg>
+                  </span>
+                  <div><strong>가게 소식 미리보기</strong><small>Google · Naver · Kakao에 맞게 게시</small></div>
+                </header>
+                <p className="news-announcement-preview__body">{body}</p>
+                <dl className="news-announcement-preview__details">
+                  <div><dt>게시 기간</dt><dd>{newsHasNoDate ? '기간 없이 게시' : newsDateRange ? `${newsDateRange.start} ~ ${newsDateRange.end}` : '기간을 확인해 주세요'}</dd></div>
+                  <div><dt>게시 채널</dt><dd>Google · Naver · Kakao</dd></div>
+                </dl>
+                <div className="news-announcement-preview__keywords" aria-label="소식 관련 키워드">
+                  <strong>관련 키워드</strong>
+                  <div className="tag-list">{tags.map((tag) => <span className="tag-chip" key={tag}>#{tag}</span>)}</div>
+                </div>
+              </article>
+            ) : (
+              <>
+                <div className="seo-draft-list" aria-label="3사 추천 문구">
+                  {flow.drafts.map((draft) => <SeoDraftCard key={draft.draftId} draft={draft} />)}
+                </div>
+                <div className="hashtag-editor">
+                  <strong>3사 공통 추천 해시태그</strong>
+                  <div className="tag-list">
+                    {tags.map((tag) => <span className="tag-chip" key={tag}>#{tag}</span>)}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <div className="bottom-split-actions">
             <button className="bottom-secondary" type="button" onClick={onExit}>취소</button>
-            <button className="bottom-primary" type="button" disabled={uploading || flow.isApproving} onClick={() => void upload()}>{uploading ? '전체 승인 처리 중…' : '3사 전체 승인'}</button>
+            <button className="bottom-primary" type="button" disabled={uploading || flow.isApproving} onClick={() => void upload()}>{uploading ? (purpose === 'NEWS' ? '게시 처리 중…' : '전체 승인 처리 중…') : purpose === 'NEWS' ? '이 소식을 3사에 게시' : '3사 전체 승인'}</button>
           </div>
         </section>
       ) : null}
