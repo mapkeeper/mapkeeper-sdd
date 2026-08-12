@@ -57,6 +57,10 @@ function getNewsScheduleQuestion(answer: string): string {
   return '이 소식은 언제까지 진행되나요? 날짜나 기간, 이용 조건이 없다면 “없어요”라고 말씀해 주세요.';
 }
 
+function getNewsDateClarificationQuestion(): string {
+  return '정확한 시작일과 종료일을 알려주세요. 예를 들어 “8월 15일부터 16일까지”처럼 말씀해 주세요.';
+}
+
 export interface SeoGenerationWizardProps {
   storeProfileId: string;
   sourceReviews: readonly SourceReview[];
@@ -167,14 +171,20 @@ export function SeoGenerationWizard({
     setCurrentAnswer('');
 
     const isLastBaseQuestion = questionIndex === baseQuestions.length - 1 && extraQuestion === null;
+    const parsedSchedule = purpose === 'NEWS' && isLastBaseQuestion ? parseNewsSchedule(answer) : null;
+    const needsNewsDateClarification = isLastBaseQuestion
+      && purpose === 'NEWS'
+      && parsedSchedule !== null
+      && parsedSchedule.range === null
+      && !parsedSchedule.hasNoDate;
     const needsNewsFollowUp = purpose === 'NEWS'
       && isLastBaseQuestion
       && /^(네|예|있어요|있습니다|모르겠어요|잘 모르겠어요|있는데요)[.!?]?$/i.test(answer);
-    if (needsNewsFollowUp) {
-      setExtraQuestion('구체적인 날짜, 기간 또는 할인 혜택을 알려주실 수 있을까요?');
+    if (needsNewsFollowUp || needsNewsDateClarification) {
+      setExtraQuestion(needsNewsDateClarification ? getNewsDateClarificationQuestion() : '구체적인 날짜, 기간 또는 할인 혜택을 알려주실 수 있을까요?');
     }
-    if (questionIndex >= questions.length - 1 && !needsNewsFollowUp) return;
-    const nextQuestionCount = needsNewsFollowUp ? baseQuestions.length + 1 : questions.length;
+    if (questionIndex >= questions.length - 1 && !needsNewsFollowUp && !needsNewsDateClarification) return;
+    const nextQuestionCount = needsNewsFollowUp || needsNewsDateClarification ? baseQuestions.length + 1 : questions.length;
     setAiTyping(true);
     typingTimerRef.current = window.setTimeout(() => {
       setVisibleQuestionCount((count) => Math.min(count + 1, nextQuestionCount));

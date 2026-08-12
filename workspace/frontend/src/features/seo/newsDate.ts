@@ -86,7 +86,7 @@ function parseRelativeRange(text: string, referenceDate: Date): NewsDateRange | 
 
 export function parseNewsSchedule(text: string, referenceDate = new Date()): ParsedNewsSchedule {
   const normalized = text.trim();
-  const hasNoDate = /(?:없어요|없습니다|없음|기간\s*없|날짜\s*없)/.test(normalized);
+  const hasNoDate = /(?:없어요|없습니다|없음|기간\s*없|날짜\s*없|미정|정하지\s*않)/.test(normalized);
   if (hasNoDate) return { range: null, hasNoDate: true };
   return {
     range: parseExplicitRange(normalized, referenceDate) ?? parseRelativeRange(normalized, referenceDate),
