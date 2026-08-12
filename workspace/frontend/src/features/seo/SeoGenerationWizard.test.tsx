@@ -171,7 +171,7 @@ describe('SeoGenerationWizard mobile flow', () => {
     await user.clear(screen.getByRole('textbox', { name: '사장님 답변 입력' }));
     await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '이번 주말 할인 이벤트');
     await user.click(screen.getByRole('button', { name: '전송' }));
-    expect(await screen.findByText(/손님에게 어떤 내용을 알려드리고 싶나요/)).toBeInTheDocument();
+    expect(await screen.findByText(/어떤 메뉴를 얼마나 할인하나요/)).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '만두전골을 할인해요');
     await user.click(screen.getByRole('button', { name: '전송' }));
     expect(await screen.findByText(/이 소식은 언제까지 진행되나요/)).toBeInTheDocument();

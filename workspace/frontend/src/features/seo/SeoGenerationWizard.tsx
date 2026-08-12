@@ -37,6 +37,16 @@ const newsQuickPrompts = [
   { label: '운영시간 변경', answer: '운영시간 변경을 알려드리고 싶어요.' },
 ] as const;
 
+function getNewsDetailQuestion(answer: string): string {
+  const normalized = answer.replaceAll(' ', '');
+  if (/임시휴무|휴무일/.test(normalized)) return '휴무일과 손님에게 안내할 대체 일정이 있다면 알려주세요.';
+  if (/운영시간|영업시간/.test(normalized)) return '변경되는 영업시간과 적용 시작일을 알려주세요.';
+  if (/할인|쿠폰|혜택/.test(normalized)) return '어떤 메뉴를 얼마나 할인하나요? 할인 대상과 조건도 알려주세요.';
+  if (/이벤트|행사/.test(normalized)) return '이벤트는 어떻게 참여하나요? 손님에게 제공하는 혜택도 알려주세요.';
+  if (/신메뉴|새메뉴|신제품/.test(normalized)) return '새 메뉴 이름과 가장 자랑하고 싶은 점을 알려주세요.';
+  return '손님에게 어떤 내용을 알려드리고 싶나요? 무엇을 하는지, 어떤 혜택이 있는지 편하게 말씀해 주세요.';
+}
+
 export interface SeoGenerationWizardProps {
   storeProfileId: string;
   sourceReviews: readonly SourceReview[];
@@ -109,7 +119,9 @@ export function SeoGenerationWizard({
     setStep('RESULT');
     onSyncHandoff?.(nextHandoff);
   });
-  const baseQuestions = purpose === null ? interviewQuestions.INTRODUCTION : interviewQuestions[purpose];
+  const baseQuestions = purpose === 'NEWS'
+    ? [interviewQuestions.NEWS[0], getNewsDetailQuestion(answers[0] ?? ''), interviewQuestions.NEWS[2]]
+    : purpose === null ? interviewQuestions.INTRODUCTION : interviewQuestions[purpose];
   const questions = extraQuestion === null ? baseQuestions : [...baseQuestions, extraQuestion];
   const interviewComplete = questions.every((_, index) => Boolean(answers[index]?.trim()));
 
