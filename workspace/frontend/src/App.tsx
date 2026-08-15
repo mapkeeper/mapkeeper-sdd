@@ -78,11 +78,17 @@ function Home({ onStore, onSeo, reviewSummary }: { onStore(): void; onSeo(): voi
           <span className="connection-card__badge">3사 연동 상태</span>
         </div>
         <div className="connection-card__platforms">
-          {platforms.map((platform) => <div key={platform.name} className={`connection-card__platform connection-card__platform--${platform.status}`} aria-label={`${platform.name} ${platform.status === 'connected' ? '연결됨' : '확인 필요'}`}>
-            <span className="connection-card__logo"><img src={platform.logo} alt={`${platform.name} 로고`} /></span>
-            <strong>{platform.name}</strong>
-            <span className="connection-card__status-mark" aria-hidden="true">{platform.status === 'connected' ? '✓' : '!'}</span>
-          </div>)}
+          {platforms.map((platform) => {
+            const connected = platform.status === 'connected';
+            return <div key={platform.name} className={`connection-card__platform connection-card__platform--${platform.status}`} aria-label={`${platform.name} ${connected ? '연결됨' : '확인 필요'}`}>
+              <span className="connection-card__logo"><img src={platform.logo} alt={`${platform.name} 로고`} /></span>
+              <strong>{platform.name}</strong>
+              <span className="connection-card__status">
+                <span className="connection-card__status-mark" aria-hidden="true">{connected ? '✓' : '!'}</span>
+                <span className="connection-card__status-label">{connected ? '연결됨' : '확인 필요'}</span>
+              </span>
+            </div>;
+          })}
         </div>
       </section>
 

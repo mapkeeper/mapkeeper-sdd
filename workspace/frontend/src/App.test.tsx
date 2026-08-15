@@ -30,6 +30,7 @@ describe('App mobile routing', () => {
     expect(screen.getByRole('button', { name: 'AI 가게 홍보 & 소문내기' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '음성으로 매장 정보 변경하기' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '우리 가게 리뷰 분석 확인하기' })).toBeInTheDocument();
+    expect(screen.getAllByText('연결됨')).toHaveLength(3);
     expect(screen.queryByText('개발자용 모의 응답 설정')).not.toBeInTheDocument();
     expect(screen.queryByText('SEO 단계 화면')).not.toBeInTheDocument();
   });
