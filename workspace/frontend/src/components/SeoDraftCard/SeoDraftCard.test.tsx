@@ -20,8 +20,34 @@ describe('SeoDraftCard', () => {
     expect(screen.getByRole('heading', { name: label })).toBeInTheDocument();
     expect(screen.getByText(draft.draftText)).toBeInTheDocument();
     expect(screen.getByText(draft.contentRules[0] as string)).toBeInTheDocument();
-    expect(screen.getByText('DRAFT')).toBeInTheDocument();
+    expect(screen.getByText('검토 중')).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  test('승인된 상태는 사용자에게 반영 완료로 표시한다', () => {
+    const draft = drafts.find((item) => item.platform === 'google') as SeoDraft;
+
+    render(
+      <SeoDraftCard
+        draft={{ ...draft, status: 'APPROVED' }}
+      />,
+    );
+
+    expect(screen.getByText('반영 완료')).toBeInTheDocument();
+    expect(screen.queryByText('APPROVED')).not.toBeInTheDocument();
+  });
+
+  test('거절된 상태는 사용자에게 반영 제외로 표시한다', () => {
+    const draft = drafts.find((item) => item.platform === 'google') as SeoDraft;
+
+    render(
+      <SeoDraftCard
+        draft={{ ...draft, status: 'REJECTED' }}
+      />,
+    );
+
+    expect(screen.getByText('반영 제외')).toBeInTheDocument();
+    expect(screen.queryByText('REJECTED')).not.toBeInTheDocument();
   });
 });

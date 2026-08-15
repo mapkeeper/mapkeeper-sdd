@@ -41,6 +41,7 @@
   border-radius: 999px;
   background: #e8eef7;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .seo-draft-card__preview {
