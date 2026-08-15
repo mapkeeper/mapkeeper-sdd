@@ -21,6 +21,7 @@ export type SyncJobStatus =
 export type PlatformTaskStatus = 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'RETRYING';
 export type ErrorCode =
   | 'VALIDATION_ERROR'
+  | 'INVALID_STATE'
   | 'API_TIMEOUT'
   | 'PERMISSION_DENIED'
   | 'RATE_LIMITED'

@@ -52,17 +52,14 @@ describe('API contract mocks', () => {
     expect(created.data).toMatchObject({ proposalId: 'prop-001', status: 'DRAFT', changes: [] });
   });
 
-  test('시간만 언급한 모호한 문장은 기본 영업시간 DRAFT를 반환한다', async () => {
-    const created = await apiRequest<CreateStoreChangeResponse>('/api/v1/store-change-proposals', {
+  test('변경되지 않는 모호한 영업시간 요청은 반영하지 않는다', async () => {
+    await expect(apiRequest<CreateStoreChangeResponse>('/api/v1/store-change-proposals', {
       method: 'POST',
       body: { storeProfileId: 'store-123', recognizedText: '영업 시간 정보를 정리해 줘', locale: 'ko-KR' },
-    });
-
-    expect(created.data.changes).toEqual([{
-      field: 'businessHours',
-      currentValue: '09:00-22:00',
-      proposedValue: '09:00-22:00',
-    }]);
+    })).rejects.toMatchObject({
+      status: 409,
+      causeBody: { code: 'INVALID_STATE', message: '현재 매장 정보와 달라진 내용이 없습니다.' },
+    } satisfies Partial<ApiClientError>);
   });
 
   test.each(['all-success', 'partial-success', 'retryable-failure', 'non-retryable-failure'] as const)('sync scenario %s returns contracted platform tasks', async (scenario) => {

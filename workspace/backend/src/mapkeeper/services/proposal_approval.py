@@ -31,12 +31,14 @@ from mapkeeper.services.approval import (
     create_sync_job,
 )
 from mapkeeper.services.idempotency import find_replayable_job, proposal_request_hash
+from mapkeeper.services.proposal import has_effective_change
 
 logger = get_logger(__name__)
 
 PROPOSAL_NOT_FOUND_MESSAGE: Final = "요청한 변경안을 찾을 수 없습니다."
 PROPOSAL_NOT_DRAFT_MESSAGE: Final = "이미 처리된 변경안은 승인할 수 없습니다."
 EMPTY_PROPOSAL_MESSAGE: Final = "변경할 내용이 없는 변경안은 승인할 수 없습니다."
+UNCHANGED_PROPOSAL_MESSAGE: Final = "현재 매장 정보와 달라진 내용이 없어 승인할 수 없습니다."
 PROFILE_NOT_FOUND_MESSAGE: Final = "변경안에 연결된 매장 정보를 찾을 수 없습니다."
 
 _changes_adapter: TypeAdapter[tuple[ProposalChange, ...]] = TypeAdapter(tuple[ProposalChange, ...])
@@ -107,6 +109,8 @@ async def approve_proposal(
     changes = parse_changes(proposal.changes)
     if not changes:
         raise InvalidStateError(EMPTY_PROPOSAL_MESSAGE)
+    if not has_effective_change(changes):
+        raise InvalidStateError(UNCHANGED_PROPOSAL_MESSAGE)
 
     profile = await session.get(StoreProfile, proposal.store_profile_id, with_for_update=True)
     if profile is None:

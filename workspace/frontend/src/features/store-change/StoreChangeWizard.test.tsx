@@ -138,6 +138,28 @@ describe('StoreChangeWizard', () => {
     expect(approveCalls).toBe(0);
   });
 
+  test('현재 대표 메뉴와 같은 메뉴 요청은 반영 단계로 넘어가지 않는다', async () => {
+    const user = userEvent.setup();
+    vi.stubEnv('VITE_API_MOCKING', 'false');
+    server.use(
+      http.post('/api/v1/store-change-proposals', () => HttpResponse.json({
+        success: false,
+        status: 'FAILED',
+        data: null,
+        error: { code: 'INVALID_STATE', message: '현재 매장 정보와 달라진 내용이 없습니다.', details: [] },
+        timestamp: '2026-08-03T00:00:00Z',
+      }, { status: 409 })),
+    );
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '대표 메뉴를 비빔밥으로 바꿔줘');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('변경할 매장 정보를 인식하지 못했어요. 다시 입력해 주세요.');
+    expect(screen.getByRole('heading', { name: '변경안을 확인해 주세요' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '승인 단계로 이동' })).not.toBeInTheDocument();
+  });
+
   test('Mock 서버가 검증 오류를 반환해도 처리 안내 후 원문 메모 DRAFT로 진행한다', async () => {
     const user = userEvent.setup();
     vi.stubEnv('VITE_API_MOCKING', 'true');

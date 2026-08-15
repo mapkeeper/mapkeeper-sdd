@@ -58,6 +58,9 @@ export const storeChangeHandlers = [
     const body = await request.json() as Partial<CreateStoreChangeRequest>;
     if (!validCreate(body)) return HttpResponse.json(errorEnvelope(storeChangeValidationErrorFixture), { status: 422, ...responseOptions() });
     const changes = parseStoreChangeText(body.recognizedText);
+    if (changes.length > 0 && changes.every((change) => change.currentValue === change.proposedValue)) {
+      return HttpResponse.json(errorEnvelope({ code: 'INVALID_STATE', message: '현재 매장 정보와 달라진 내용이 없습니다.', details: [] }), { status: 409, ...responseOptions() });
+    }
     return HttpResponse.json(successEnvelope({
       proposalId: 'prop-001',
       recognizedTextMasked: body.recognizedText.replace(/\d+\s*시/g, '***').replace(/\d/g, '*'),

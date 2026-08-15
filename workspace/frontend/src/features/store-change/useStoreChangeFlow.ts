@@ -32,6 +32,7 @@ interface StoreChangeFlow {
 function safeUserMessage(error: unknown): string {
   if (!(error instanceof ApiClientError)) return '예상하지 못한 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
   if (error.causeBody?.code === 'VALIDATION_ERROR') return '입력 내용을 다시 확인해 주세요.';
+  if (error.causeBody?.code === 'INVALID_STATE') return error.causeBody.message;
   if (error.causeBody?.code === 'PERMISSION_DENIED' || error.status === 401 || error.status === 403) {
     return '이 작업을 수행할 권한이 없습니다. 관리자에게 문의해 주세요.';
   }

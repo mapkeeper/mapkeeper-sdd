@@ -22,6 +22,7 @@ from mapkeeper.services.pii_masking import mask_customer_pii
 
 PROPOSAL_NOT_FOUND_MESSAGE: Final = "요청한 변경안을 찾을 수 없습니다."
 PROFILE_NOT_FOUND_MESSAGE: Final = "요청한 매장 정보를 찾을 수 없습니다."
+NO_EFFECTIVE_CHANGE_MESSAGE: Final = "현재 매장 정보와 달라진 내용이 없습니다."
 PROPOSAL_NOT_DRAFT_MESSAGE: Final = "이미 처리된 변경안은 수정하거나 거절할 수 없습니다."
 STALE_PROPOSAL_MESSAGE: Final = "변경안의 현재 값이 최신 매장 정보와 일치하지 않습니다."
 _CHANGES_ADAPTER: TypeAdapter[tuple[ProposalChange, ...]] = TypeAdapter(
@@ -42,6 +43,11 @@ def _response(proposal: StoreChangeProposal) -> StoreChangeProposalResponse:
         changes=_CHANGES_ADAPTER.validate_python(proposal.changes),
         status=proposal.status,
     )
+
+
+def has_effective_change(changes: tuple[ProposalChange, ...]) -> bool:
+    """Return whether at least one proposed value differs from its current value."""
+    return any(change.current_value != change.proposed_value for change in changes)
 
 
 async def _locked_proposal(session: AsyncSession, proposal_id: UUID) -> StoreChangeProposal:
@@ -67,6 +73,8 @@ async def create_proposal(
     selected_generator = generator if generator is not None else get_gemini_generator()
     masked_text = mask_customer_pii(body.recognized_text)
     changes = await selected_generator.generate(masked_text, profile)
+    if not has_effective_change(changes):
+        raise InvalidStateError(NO_EFFECTIVE_CHANGE_MESSAGE)
     proposal = StoreChangeProposal(
         store_profile_id=profile.id,
         recognized_text_masked=masked_text,

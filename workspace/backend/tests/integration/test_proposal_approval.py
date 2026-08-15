@@ -1,7 +1,7 @@
 """T220 against live PostgreSQL: UC1 approval is one atomic transaction."""
 
 from datetime import date
-from typing import Final
+from typing import TYPE_CHECKING, Final
 from uuid import UUID, uuid4
 
 import pytest
@@ -36,6 +36,9 @@ from .factories import (
 )
 
 pytestmark = pytest.mark.asyncio
+
+if TYPE_CHECKING:
+    from mapkeeper.core.json_types import JsonValue
 
 KEY: Final = "approve-uc1"
 
@@ -95,6 +98,33 @@ async def test_an_empty_proposal_cannot_be_approved_or_create_a_sync_job(
 
     assert proposal.status is ProposalStatus.DRAFT
     assert proposal.approved_at is None
+    jobs = await db_session.scalar(
+        select(func.count())
+        .select_from(SyncJob)
+        .where(SyncJob.store_change_proposal_id == proposal.id)
+    )
+    assert jobs == 0
+
+
+async def test_an_unchanged_menu_cannot_be_approved_or_create_a_sync_job(
+    db_session: AsyncSession,
+) -> None:
+    # Given: a DRAFT proposal whose menu target is already the current value.
+    profile = await make_store_profile(db_session)
+    unchanged_menu: list[JsonValue] = [
+        {
+            "field": "representativeMenuName",
+            "currentValue": "만두전골",
+            "proposedValue": "만두전골",
+        }
+    ]
+    proposal = await make_proposal(db_session, profile.id, changes=unchanged_menu)
+
+    # When / Then: approval is refused without creating a synchronization job.
+    with pytest.raises(InvalidStateError, match="달라진 내용이 없어"):
+        _ = await approve_proposal(db_session, proposal.id, uuid4(), "unchanged-menu")
+
+    assert proposal.status is ProposalStatus.DRAFT
     jobs = await db_session.scalar(
         select(func.count())
         .select_from(SyncJob)
