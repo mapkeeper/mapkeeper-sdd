@@ -158,11 +158,14 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
               </div>
             ) : null}
           </dl>
-          <div className="store-change-wizard__actions">
+          {flow.proposal.changes.length > 0 ? <div className="store-change-wizard__actions">
             <button type="button" aria-label="승인 단계로 이동" onClick={() => setStep('CONFIRM')}>맞아요 <small>(3사에 반영)</small></button>
             <button type="button" className="store-change-wizard__secondary" onClick={beginEdit}>변경안 수정</button>
             <button type="button" className="store-change-wizard__danger" onClick={rejectLocally}>변경안 거절</button>
-          </div>
+          </div> : <div className="store-change-wizard__actions">
+            <p className="store-change-wizard__alert" role="alert">변경할 매장 정보를 인식하지 못했어요. 다시 입력해 주세요.</p>
+            <button type="button" className="store-change-wizard__secondary" onClick={() => { flow.clear(); setDraftNote(null); setStep('INPUT'); }}>다시 입력하기</button>
+          </div>}
         </section>
       ) : null}
 

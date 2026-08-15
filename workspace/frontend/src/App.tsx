@@ -5,6 +5,7 @@ import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
 import type { PlatformResult } from '@/components/SyncStatus/SyncStatus';
 import { getReviewSummary } from '@/services/reviewApi';
 import type { GetReviewSummaryResponse } from '@/services/api.types';
+import type { ProposalChange } from '@/types/domain';
 import { reviewSummaryFixture, sourceReviewFixtures } from '@/mocks/fixtures/storeFixtures';
 import googleLogo from '@/assets/platforms/google.svg';
 import naverLogo from '@/assets/platforms/naver.svg';
@@ -172,10 +173,10 @@ function Home({ onStore, onSeo, reviewSummary }: { onStore(): void; onSeo(): voi
   </main>;
 }
 
-function SyncResult({ onHome, syncJobId, resultOverride }: { onHome(): void; syncJobId: string; resultOverride: PlatformResult[] | null }) {
+function SyncResult({ onHome, syncJobId, resultOverride, storeChanges }: { onHome(): void; syncJobId: string; resultOverride: PlatformResult[] | null; storeChanges: ProposalChange[] }) {
   return <main className="flex min-h-dvh flex-col bg-gray-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] font-pretendard">
     <button type="button" aria-label="홈으로 나가기" onClick={onHome} className="ml-auto grid h-12 w-12 place-items-center rounded-full bg-white text-3xl shadow-card">×</button>
-    <SyncStatusDashboard syncJobId={syncJobId} pollIntervalMs={100} resultOverride={resultOverride} viewMode="store-change" />
+    <SyncStatusDashboard syncJobId={syncJobId} pollIntervalMs={100} resultOverride={resultOverride} viewMode="store-change" storeChanges={storeChanges} />
     <button type="button" onClick={onHome} className="sticky bottom-[calc(16px+env(safe-area-inset-bottom))] mt-auto h-14 w-full rounded-[18px] bg-blue-600 text-[17px] font-bold text-white shadow-md active:scale-[.985]">확인 (홈으로 이동)</button>
   </main>;
 }
@@ -183,6 +184,7 @@ function SyncResult({ onHome, syncJobId, resultOverride }: { onHome(): void; syn
 export function App() {
   const [screen, setScreen] = useState<AppScreen>('HOME');
   const [syncJobId, setSyncJobId] = useState('');
+  const [storeChanges, setStoreChanges] = useState<ProposalChange[]>([]);
   const storeProfileId = import.meta.env.VITE_STORE_PROFILE_ID ?? '11111111-1111-4111-8111-111111111111';
   const [reviewSummary, setReviewSummary] = useState<GetReviewSummaryResponse>(initialReviewSummary);
   useEffect(() => {
@@ -198,7 +200,7 @@ export function App() {
   return <div className="app-viewport"><div className="app-phone" data-testid="dashboard-container">
     {screen === 'HOME' && <Home reviewSummary={reviewSummary} onStore={() => setScreen('STORE_CHANGE')} onSeo={() => setScreen('SEO')} />}
     {screen === 'SEO' && <SeoGenerationWizard storeProfileId={storeProfileId} sourceReviews={reviewSummary.sourceReviews} reviewSummary={reviewSummary} onExit={goHome} />}
-    {screen === 'STORE_CHANGE' && <main className="standalone-flow"><button className="standalone-flow__close" type="button" aria-label="홈으로 나가기" onClick={goHome}>‹</button><StoreChangeWizard storeProfileId={storeProfileId} onSyncHandoff={({ syncJobId: nextId }) => { setSyncJobId(nextId); setScreen('STORE_SYNC'); }} /></main>}
-    {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} resultOverride={null} />}
+    {screen === 'STORE_CHANGE' && <main className="standalone-flow"><button className="standalone-flow__close" type="button" aria-label="홈으로 나가기" onClick={goHome}>‹</button><StoreChangeWizard storeProfileId={storeProfileId} onSyncHandoff={({ syncJobId: nextId, changes }) => { setSyncJobId(nextId); setStoreChanges(changes); setScreen('STORE_SYNC'); }} /></main>}
+    {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} resultOverride={null} storeChanges={storeChanges} />}
   </div></div>;
 }

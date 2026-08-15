@@ -20,7 +20,7 @@ describe('MVP 통합 흐름', () => {
     await screen.findByRole('heading', { name: '변경안을 확인해 주세요' });
     await user.click(screen.getByRole('button', { name: '승인 단계로 이동' }));
     await user.click(screen.getByRole('button', { name: '승인' }));
-    await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({ syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001' }));
+    await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({ syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001', changes: [{ field: 'businessHours', currentValue: '09:00-22:00', proposedValue: '09:00-10:00' }] }));
   });
 
   test('UC2 세 플랫폼 생성부터 전체 승인과 SyncJob handoff까지 완료한다', async () => {

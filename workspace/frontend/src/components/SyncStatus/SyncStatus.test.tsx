@@ -56,12 +56,14 @@ describe('SyncStatusDashboard', () => {
 
   test('UC1 성공 플랫폼을 누르면 매장 정보 이전 값과 변경 값을 보여준다', async () => {
     const user = userEvent.setup();
-    render(<SyncStatusDashboard syncJobId="job-001" initialJob={successSyncJobFixture} autoPoll={false} viewMode="store-change" />);
+    render(<SyncStatusDashboard syncJobId="job-001" initialJob={successSyncJobFixture} autoPoll={false} viewMode="store-change" storeChanges={[{ field: 'representativeMenuName', currentValue: '만두전골', proposedValue: '김치찌개' }]} />);
 
     await user.click(screen.getByRole('listitem', { name: /Google/ }));
     expect(screen.getByRole('dialog', { name: '정상적으로 등록되었어요' })).toBeInTheDocument();
     expect(screen.getByText('매장 정보 변경 비교')).toBeInTheDocument();
-    expect(screen.getByText('인근 공영주차장 이용')).toBeInTheDocument();
+    expect(screen.getByText('대표 메뉴')).toBeInTheDocument();
+    expect(screen.getByText('김치찌개')).toBeInTheDocument();
+    expect(screen.queryByText('인근 공영주차장 이용')).not.toBeInTheDocument();
   });
 
   test('UC2 성공 플랫폼을 누르면 최종 홍보 문구와 태그 및 발행 상태를 보여준다', async () => {

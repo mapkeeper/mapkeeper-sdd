@@ -82,6 +82,27 @@ async def test_approval_creates_exactly_one_task_per_platform(db_session: AsyncS
     assert all(task.attempt_count == 0 for task in tasks)
 
 
+async def test_an_empty_proposal_cannot_be_approved_or_create_a_sync_job(
+    db_session: AsyncSession,
+) -> None:
+    # Given: a DRAFT proposal whose parser produced no supported change.
+    profile = await make_store_profile(db_session)
+    proposal = await make_proposal(db_session, profile.id, changes=[])
+
+    # When / Then: approval is refused before the profile or job is changed.
+    with pytest.raises(InvalidStateError, match="변경할 내용이 없는"):
+        _ = await approve_proposal(db_session, proposal.id, uuid4(), "empty-proposal")
+
+    assert proposal.status is ProposalStatus.DRAFT
+    assert proposal.approved_at is None
+    jobs = await db_session.scalar(
+        select(func.count())
+        .select_from(SyncJob)
+        .where(SyncJob.store_change_proposal_id == proposal.id)
+    )
+    assert jobs == 0
+
+
 async def test_a_temporary_closure_reaches_the_store_profile(db_session: AsyncSession) -> None:
     # Given: a proposal adding a closure period.
     profile = await make_store_profile(db_session)

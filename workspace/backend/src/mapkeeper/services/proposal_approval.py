@@ -36,6 +36,7 @@ logger = get_logger(__name__)
 
 PROPOSAL_NOT_FOUND_MESSAGE: Final = "요청한 변경안을 찾을 수 없습니다."
 PROPOSAL_NOT_DRAFT_MESSAGE: Final = "이미 처리된 변경안은 승인할 수 없습니다."
+EMPTY_PROPOSAL_MESSAGE: Final = "변경할 내용이 없는 변경안은 승인할 수 없습니다."
 PROFILE_NOT_FOUND_MESSAGE: Final = "변경안에 연결된 매장 정보를 찾을 수 없습니다."
 
 _changes_adapter: TypeAdapter[tuple[ProposalChange, ...]] = TypeAdapter(tuple[ProposalChange, ...])
@@ -103,11 +104,15 @@ async def approve_proposal(
     if proposal.status is not ProposalStatus.DRAFT:
         raise InvalidStateError(PROPOSAL_NOT_DRAFT_MESSAGE)
 
+    changes = parse_changes(proposal.changes)
+    if not changes:
+        raise InvalidStateError(EMPTY_PROPOSAL_MESSAGE)
+
     profile = await session.get(StoreProfile, proposal.store_profile_id, with_for_update=True)
     if profile is None:
         raise ResourceNotFoundError(PROFILE_NOT_FOUND_MESSAGE)
 
-    apply_changes(profile, parse_changes(proposal.changes))
+    apply_changes(profile, changes)
     proposal.status = ProposalStatus.APPROVED
     proposal.approved_at = datetime.now(UTC)
     await session.flush()

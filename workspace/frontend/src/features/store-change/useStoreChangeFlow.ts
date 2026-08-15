@@ -13,6 +13,7 @@ import type { ProposalChange, StoreChangeProposal } from '@/types/domain';
 export interface StoreChangeSyncHandoff {
   syncJobId: string;
   statusUrl: string;
+  changes: ProposalChange[];
 }
 
 interface StoreChangeFlow {
@@ -112,6 +113,11 @@ export function useStoreChangeFlow(
 
   const approveFromButton = useCallback(async () => {
     if (!proposal || approvalLockRef.current) return null;
+    if (proposal.changes.length === 0) {
+      setErrorMessage('변경할 매장 정보를 인식하지 못했어요. 다시 입력해 주세요.');
+      return null;
+    }
+    const approvedChanges = proposal.changes;
     approvalLockRef.current = true;
     setApproving(true);
     setErrorMessage(null);
@@ -119,12 +125,12 @@ export function useStoreChangeFlow(
     try {
       const result = await approveStoreChangeProposal(proposal.proposalId, lease.key);
       setProposal((current) => current ? { ...current, status: 'APPROVED' } : current);
-      onSyncHandoff?.({ syncJobId: result.data.syncJobId, statusUrl: result.data.statusUrl });
+      onSyncHandoff?.({ syncJobId: result.data.syncJobId, statusUrl: result.data.statusUrl, changes: approvedChanges });
       return result.data;
     } catch (error: unknown) {
       if (import.meta.env.VITE_API_MOCKING === 'true') {
         setProposal((current) => current ? { ...current, status: 'APPROVED' } : current);
-        onSyncHandoff?.({ syncJobId: storeChangeApprovalFixture.syncJobId, statusUrl: storeChangeApprovalFixture.statusUrl });
+        onSyncHandoff?.({ syncJobId: storeChangeApprovalFixture.syncJobId, statusUrl: storeChangeApprovalFixture.statusUrl, changes: approvedChanges });
         return storeChangeApprovalFixture;
       }
       setErrorMessage(safeUserMessage(error));

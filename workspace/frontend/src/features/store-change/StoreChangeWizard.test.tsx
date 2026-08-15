@@ -114,7 +114,28 @@ describe('StoreChangeWizard', () => {
     await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({
       syncJobId: 'job-001',
       statusUrl: '/api/v1/sync-jobs/job-001',
+      changes: [{ field: 'businessHours', currentValue: '09:00-22:00', proposedValue: '09:00-10:00' }],
     }));
+  });
+
+  test('변경 내용이 없는 요청은 승인 단계와 approve 호출로 넘어가지 않는다', async () => {
+    const user = userEvent.setup();
+    let approveCalls = 0;
+    server.use(
+      http.post('/api/v1/store-change-proposals/:proposalId/approve', () => {
+        approveCalls += 1;
+        return HttpResponse.error();
+      }),
+    );
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '안녕하세요');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('변경할 매장 정보를 인식하지 못했어요');
+    expect(screen.queryByRole('button', { name: '승인 단계로 이동' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다시 입력하기' })).toBeInTheDocument();
+    expect(approveCalls).toBe(0);
   });
 
   test('Mock 서버가 검증 오류를 반환해도 처리 안내 후 원문 메모 DRAFT로 진행한다', async () => {

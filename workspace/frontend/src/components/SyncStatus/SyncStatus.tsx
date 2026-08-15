@@ -8,7 +8,7 @@ import {
   retrySyncJob,
 } from '@/services/syncJobs';
 import type { ApiErrorBody } from '@/services/api.types';
-import type { Platform, PlatformTaskStatus, SyncJob } from '@/types/domain';
+import type { Platform, PlatformTaskStatus, ProposalChange, SyncJob } from '@/types/domain';
 import googleLogo from '@/assets/platforms/google.svg';
 import naverLogo from '@/assets/platforms/naver.svg';
 import kakaoLogo from '@/assets/platforms/kakao.svg';
@@ -81,6 +81,7 @@ export interface SyncStatusDashboardProps {
   autoPoll?: boolean;
   pollIntervalMs?: number;
   viewMode?: 'store-change' | 'seo';
+  storeChanges?: ProposalChange[];
   seoContent?: string;
   seoTags?: string[];
 }
@@ -109,6 +110,7 @@ export function SyncStatusDashboard({
   autoPoll = true,
   pollIntervalMs = 500,
   viewMode = 'store-change',
+  storeChanges = [],
   seoContent = '정성으로 준비한 대표 메뉴와 따뜻한 서비스를 만나보세요.',
   seoTags = ['맛있는메뉴', '친절함', '다시찾는집'],
 }: SyncStatusDashboardProps) {
@@ -247,9 +249,7 @@ export function SyncStatusDashboard({
           </div> : <div className="sync-detail-modal__content">
             <small>매장 정보 변경 비교</small>
             <dl className="sync-detail-modal__changes">
-              <div><dt>영업시간</dt><dd><s>09:00-22:00</s><b aria-hidden="true">→</b><strong>09:00-20:00</strong></dd></div>
-              <div><dt>휴무일</dt><dd><s>연중무휴</s><b aria-hidden="true">→</b><strong>매주 월요일</strong></dd></div>
-              <div><dt>주차 정보</dt><dd><s>정보 없음</s><b aria-hidden="true">→</b><strong>인근 공영주차장 이용</strong></dd></div>
+              {storeChanges.length > 0 ? storeChanges.map((change) => <div key={change.field}><dt>{change.field === 'businessHours' ? '영업시간' : change.field === 'temporaryClosure' ? '임시 휴무' : '대표 메뉴'}</dt><dd><s>{change.currentValue}</s><b aria-hidden="true">→</b><strong>{change.proposedValue}</strong></dd></div>) : <div><dt>변경 내용</dt><dd><strong>반영된 변경 내용이 없습니다.</strong></dd></div>}
             </dl>
           </div>}
           <button className="sync-detail-modal__confirm" type="button" onClick={() => setSelectedPlatform(null)}>확인</button>
