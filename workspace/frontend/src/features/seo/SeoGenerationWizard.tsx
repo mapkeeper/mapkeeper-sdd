@@ -382,7 +382,7 @@ export function SeoGenerationWizard({
               <div className="chat-input-row">
                 <label className="sr-only" htmlFor="interview-answer">사장님 답변 입력</label>
                 <input id="interview-answer" value={currentAnswer} onChange={(event) => setCurrentAnswer(event.target.value)} placeholder={isAiTyping ? 'AI가 다음 질문을 준비하고 있어요' : '답변을 입력해 주세요'} disabled={isAiTyping || speech.state === 'LISTENING'} autoComplete="off" />
-                <button className={speech.state === 'LISTENING' ? 'chat-voice-button is-listening' : 'chat-voice-button'} type="button" onClick={speech.state === 'LISTENING' ? speech.stop : speech.start} disabled={isAiTyping} aria-label={speech.state === 'LISTENING' ? '음성 입력 중지' : '음성으로 말하기'}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 10.5a6.5 6.5 0 0 0 13 0M12 17v4M9 21h6"/></svg></button>
+                <button className={speech.state === 'LISTENING' ? 'chat-voice-button is-listening' : 'chat-voice-button'} type="button" onClick={() => { if (speech.state === 'LISTENING') { const transcript = speech.stop(); if (transcript) setCurrentAnswer(transcript); } else { speech.start(); } }} disabled={isAiTyping} aria-label={speech.state === 'LISTENING' ? '음성 입력 중지' : '음성으로 말하기'}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 10.5a6.5 6.5 0 0 0 13 0M12 17v4M9 21h6"/></svg></button>
                 <button className="chat-send-button" type="submit" disabled={isAiTyping || speech.state === 'LISTENING' || !currentAnswer.trim()}>전송</button>
               </div>
               {purpose !== null && visibleQuestionCount === 1 && !answers[0]?.trim() ? (

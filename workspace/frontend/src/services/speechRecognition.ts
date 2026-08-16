@@ -7,13 +7,12 @@ export function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor 
 export function configureSpeechRecognition(recognition: SpeechRecognition): SpeechRecognition {
   recognition.lang = SPEECH_LOCALE;
   recognition.continuous = false;
-  recognition.interimResults = false;
+  recognition.interimResults = true;
   return recognition;
 }
 
-export function readFinalTranscript(event: SpeechRecognitionEvent): string {
-  const result = event.results[event.resultIndex] ?? event.results[0];
-  return result?.[0]?.transcript.trim() ?? '';
+export function readTranscript(event: SpeechRecognitionEvent): string {
+  return Array.from({ length: event.results.length }, (_, index) => event.results[index]?.[0]?.transcript ?? '').join('').trim();
 }
 
 export function detachSpeechRecognition(recognition: SpeechRecognition): void {

@@ -2,7 +2,8 @@ import { act, renderHook } from '@testing-library/react';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 
 interface FakeSpeechResultEvent {
-  results: ArrayLike<{ 0: { transcript: string } }>;
+  resultIndex?: number;
+  results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }>;
 }
 
 class FakeSpeechRecognition {
@@ -23,8 +24,8 @@ class FakeSpeechRecognition {
     FakeSpeechRecognition.instances.push(this);
   }
 
-  recognize(transcript: string): void {
-    this.onresult?.({ results: [{ 0: { transcript } }] });
+  recognize(transcript: string, isFinal = true): void {
+    this.onresult?.({ resultIndex: 0, results: [{ isFinal, 0: { transcript } }] });
   }
 
   fail(error = 'not-allowed'): void {
@@ -59,7 +60,7 @@ describe('useSpeechRecognition', () => {
     expect(recognition).toBeDefined();
     expect(recognition?.lang).toBe('ko-KR');
     expect(recognition?.continuous).toBe(false);
-    expect(recognition?.interimResults).toBe(false);
+    expect(recognition?.interimResults).toBe(true);
     expect(result.current.state).toBe('LISTENING');
 
     act(() => recognition?.recognize('영업시간을 밤 10시까지로 바꿔줘'));
@@ -84,6 +85,19 @@ describe('useSpeechRecognition', () => {
     act(() => result.current.start());
     expect(result.current.state).toBe('FAILED');
     expect(FakeSpeechRecognition.instances).toHaveLength(0);
+  });
+
+  test('음성 입력 중 중지하면 최신 중간 인식 문장을 보존한다', () => {
+    const { result } = renderHook(() => useSpeechRecognition());
+    act(() => result.current.start());
+    const recognition = FakeSpeechRecognition.instances[0];
+
+    act(() => recognition?.recognize('대표 메뉴를 김치찌개로', false));
+    let stoppedTranscript = '';
+    act(() => { stoppedTranscript = result.current.stop(); });
+
+    expect(stoppedTranscript).toBe('대표 메뉴를 김치찌개로');
+    expect(result.current).toMatchObject({ state: 'IDLE', recognizedText: '대표 메뉴를 김치찌개로' });
   });
 
   test('unmount 시 인식을 중단하고 이벤트 핸들러를 정리한다', () => {

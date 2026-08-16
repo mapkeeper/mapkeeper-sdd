@@ -3,7 +3,7 @@ import {
   configureSpeechRecognition,
   detachSpeechRecognition,
   getSpeechRecognitionConstructor,
-  readFinalTranscript,
+  readTranscript,
 } from '@/services/speechRecognition';
 import type { VoiceUiState } from '@/types/domain';
 
@@ -13,7 +13,7 @@ export interface SpeechRecognitionState {
   error: string | null;
   isSupported: boolean;
   start(): void;
-  stop(): void;
+  stop(): string;
   reset(): void;
 }
 
@@ -24,6 +24,8 @@ export function useSpeechRecognition(): SpeechRecognitionState {
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const receivedResultRef = useRef(false);
+  const latestTranscriptRef = useRef('');
+  const manuallyStoppedRef = useRef(false);
 
   const release = useCallback((abort: boolean) => {
     const recognition = recognitionRef.current;
@@ -38,6 +40,8 @@ export function useSpeechRecognition(): SpeechRecognitionState {
     setRecognizedText('');
     setError(null);
     receivedResultRef.current = false;
+    latestTranscriptRef.current = '';
+    manuallyStoppedRef.current = false;
     if (!Recognition) {
       setError('unsupported');
       setState('FAILED');
@@ -49,12 +53,19 @@ export function useSpeechRecognition(): SpeechRecognitionState {
     recognitionRef.current = recognition;
     recognition.onstart = () => setState('LISTENING');
     recognition.onresult = (event) => {
-      const transcript = readFinalTranscript(event);
+      const transcript = readTranscript(event);
       if (!transcript) {
         setError('no-speech');
         setState('FAILED');
         return;
       }
+      latestTranscriptRef.current = transcript;
+      if (manuallyStoppedRef.current) {
+        setRecognizedText(transcript);
+        return;
+      }
+      const result = event.results[event.resultIndex] ?? event.results[0];
+      if (!result?.isFinal) return;
       receivedResultRef.current = true;
       setRecognizedText(transcript);
       setState('RECOGNIZED');
@@ -65,7 +76,7 @@ export function useSpeechRecognition(): SpeechRecognitionState {
       setState('FAILED');
     };
     recognition.onend = () => {
-      if (!receivedResultRef.current) {
+      if (!receivedResultRef.current && !manuallyStoppedRef.current) {
         setError((current) => current ?? 'no-speech');
         setState('FAILED');
       }
@@ -78,8 +89,16 @@ export function useSpeechRecognition(): SpeechRecognitionState {
     }
   }, [release]);
 
-  const stop = useCallback(() => {
+  const stop = useCallback((): string => {
+    manuallyStoppedRef.current = true;
+    const transcript = latestTranscriptRef.current;
+    if (transcript) {
+      setRecognizedText(transcript);
+      setError(null);
+    }
+    setState('IDLE');
     recognitionRef.current?.stop();
+    return transcript;
   }, []);
 
   const reset = useCallback(() => {
