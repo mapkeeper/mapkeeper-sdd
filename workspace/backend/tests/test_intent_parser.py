@@ -72,6 +72,20 @@ def test_an_empty_menu_name_is_not_parsed_deterministically() -> None:
     assert parse_intent("대표 메뉴를 로 바꿔줘", make_profile()) is None
 
 
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "대표 메뉴를 김치찌개와 냉면으로 바꿔줘",
+        "대표 메뉴를 김치찌개 및 만두전골로 변경해줘",
+        "대표 메뉴를 김치찌개 그리고 냉면으로 바꿔줘",
+    ],
+)
+def test_multiple_menu_names_are_not_parsed_as_one_menu(sentence: str) -> None:
+    # Given: a request that names more than one independent menu.
+    # When / Then: the parser refuses to combine them into one representative name.
+    assert parse_intent(sentence, make_profile()) is None
+
+
 # --- business hours ------------------------------------------------------------
 
 

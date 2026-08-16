@@ -37,6 +37,8 @@ DATE_PAIR: Final = 2
 _MENU_KEYWORD: Final = r"(?:대표\s*메뉴\s*명?|주력\s*메뉴|메뉴)\s*(?:를|을|은|는)?\s*"
 _MENU_VERB: Final = r"(?:바꿔\s*줘|바꿔|변경해\s*줘|변경해|변경|수정해\s*줘|수정|해\s*줘)\s*$"
 _MENU_PATTERN: Final = re.compile(_MENU_KEYWORD + r"(?P<name>.+?)\s*(?:로|으로)\s*" + _MENU_VERB)
+_MENU_CONNECTOR_PATTERN: Final = re.compile(r"\s*(?:와|과|및|그리고)\s*")
+_COMPOUND_MENU_SUFFIXES: Final = ("세트", "정식", "모둠", "모듬", "플래터")
 _MERIDIEM_GROUP: Final = r"(?P<meridiem>새벽|아침|오전|점심|오후|저녁|밤)?\s*"
 _CLOCK_GROUP: Final = r"(?P<hour>\d{1,2})\s*시(?:\s*(?P<minute>\d{1,2})\s*분)?"
 _TIME_PATTERN: Final = re.compile(_MERIDIEM_GROUP + _CLOCK_GROUP)
@@ -107,6 +109,8 @@ def _parse_menu(text: str, profile: StoreProfile) -> ProposalChange | None:
     name = match.group("name").strip()
     if not name or len(name) > MENU_NAME_MAX_LENGTH:
         return None
+    if is_multiple_menu_request(text):
+        return None
     # A bare keyword is not a name the owner actually said.
     if name in {"메뉴", "대표", "이름", "명"}:
         return None
@@ -115,6 +119,18 @@ def _parse_menu(text: str, profile: StoreProfile) -> ProposalChange | None:
         current_value=profile.representative_menu_name,
         proposed_value=name,
     )
+
+
+def is_multiple_menu_request(text: str) -> bool:
+    """Return whether a menu change names multiple independent menu items."""
+    match = _MENU_PATTERN.search(text)
+    if match is None:
+        return False
+    name = match.group("name").strip()
+    if name.endswith(_COMPOUND_MENU_SUFFIXES):
+        return False
+    parts = _MENU_CONNECTOR_PATTERN.split(name)
+    return len(parts) > 1 and all(part and " " not in part for part in parts)
 
 
 def _parse_business_hours(text: str, profile: StoreProfile) -> ProposalChange | None:

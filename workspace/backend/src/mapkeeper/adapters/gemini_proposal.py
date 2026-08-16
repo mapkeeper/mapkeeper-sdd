@@ -15,7 +15,7 @@ from typing import Final
 from pydantic import TypeAdapter, ValidationError
 
 from mapkeeper.adapters.gemini_seo import GeminiModelClient, strip_code_fence
-from mapkeeper.adapters.intent import parse_intent
+from mapkeeper.adapters.intent import is_multiple_menu_request, parse_intent
 from mapkeeper.api.schemas.store_change import (
     MENU_NAME_MAX_LENGTH,
     ProposalChange,
@@ -127,6 +127,8 @@ class DeterministicFirstGenerator:
         profile: StoreProfile,
     ) -> tuple[ProposalChange, ...]:
         """Return the parser's changes, or the model's when the parser declines."""
+        if is_multiple_menu_request(masked_text):
+            raise UnsupportedChangeError(UNSUPPORTED_CHANGE_MESSAGE)
         parsed = parse_intent(masked_text, profile)
         if parsed is not None:
             return parsed
@@ -145,5 +147,7 @@ class GeminiProposalStructurer:
         profile: StoreProfile,
     ) -> tuple[ProposalChange, ...]:
         """Return the changes the sentence describes."""
+        if is_multiple_menu_request(masked_text):
+            raise UnsupportedChangeError(UNSUPPORTED_CHANGE_MESSAGE)
         prompt = build_proposal_prompt(masked_text, profile)
         return parse_changes(await self.client.generate(prompt))

@@ -107,6 +107,19 @@ async def test_an_opening_time_change_is_structured() -> None:
     assert change.proposed_value.close == "22:00"
 
 
+@pytest.mark.asyncio
+async def test_multiple_menu_names_are_refused_before_the_model_call() -> None:
+    # Given: a request that names two independent representative menus.
+    client = ScriptedClient("[]")
+
+    # When / Then: the unsupported multi-menu request is rejected before Gemini runs.
+    with pytest.raises(UnsupportedChangeError):
+        _ = await GeminiProposalStructurer(client).generate(
+            "대표 메뉴를 김치찌개와 냉면으로 바꿔줘", make_profile()
+        )
+    assert client.prompt == ""
+
+
 @pytest.mark.parametrize(
     "raw",
     ["[]", "not json", '{"field": "businessHours"}', '[{"field": "representativePhone"}]'],

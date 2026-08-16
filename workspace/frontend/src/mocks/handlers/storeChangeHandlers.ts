@@ -9,6 +9,7 @@ import { storeProfileFixture } from '@/mocks/fixtures/storeFixtures';
 
 const approvalReplay = new Map<string, StoreChangeApprovalResponse>();
 const responseOptions = () => ({ headers: { 'X-Request-ID': nextRequestId() } });
+const multipleMenuRequest = /(?:와|과|및|그리고)/;
 const validCreate = (body: Partial<CreateStoreChangeRequest>): body is CreateStoreChangeRequest =>
   typeof body.storeProfileId === 'string' && typeof body.recognizedText === 'string' && typeof body.locale === 'string';
 
@@ -41,7 +42,7 @@ export function parseStoreChangeText(recognizedText: string): ProposalChange[] {
   }
   if (/대표\s*메뉴|메뉴를/.test(text)) {
     const menu = text.match(/(?:대표\s*)?메뉴(?:를|는)?\s*([가-힣A-Za-z0-9 ]+?)(?:으로|로)\s*(?:바꿔|변경)/)?.[1]?.trim();
-    if (!menu) return [];
+    if (!menu || (multipleMenuRequest.test(menu) && !/(세트|정식|모둠|모듬|플래터)$/.test(menu))) return [];
     return [{
       field: 'representativeMenuName',
       currentValue: storeProfileFixture.representativeMenuName,
