@@ -39,6 +39,35 @@ describe('StoreChangeWizard', () => {
     expect(screen.getByText('대표 메뉴')).toBeInTheDocument();
   });
 
+  test('임시 휴무의 구조화된 날짜 응답도 흰 화면 없이 미리보기에 표시한다', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('/api/v1/store-change-proposals', () => HttpResponse.json({
+        success: true,
+        status: 'SUCCESS',
+        data: {
+          proposalId: 'prop-002',
+          recognizedTextMasked: '내일 문 닫아',
+          changes: [{
+            field: 'temporaryClosure',
+            currentValue: null,
+            proposedValue: { startDate: '2026-08-17', endDate: '2026-08-17' },
+          }],
+          status: 'DRAFT',
+        },
+        error: null,
+        timestamp: '2026-08-03T00:00:00Z',
+      })),
+    );
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '내일 문 닫아');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+
+    expect(await screen.findByText('임시 휴무')).toBeInTheDocument();
+    expect(screen.getByText('2026-08-17 ~ 2026-08-17')).toBeInTheDocument();
+  });
+
   test('허용 필드 값을 수정해도 DRAFT로 유지하고 로컬 거절은 API 없이 끝낸다', async () => {
     const user = userEvent.setup();
     let patchCalls = 0;

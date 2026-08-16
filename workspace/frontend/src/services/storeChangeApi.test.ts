@@ -71,6 +71,39 @@ describe('storeChangeApi', () => {
     });
   });
 
+  test('백엔드의 영업시간·임시 휴무 객체를 화면용 문자열로 변환한다', async () => {
+    server.use(
+      http.post('/api/v1/store-change-proposals', () => HttpResponse.json({
+        success: true,
+        status: 'SUCCESS',
+        data: {
+          proposalId: 'prop-002',
+          recognizedTextMasked: '내일 문 닫아',
+          changes: [{
+            field: 'temporaryClosure',
+            currentValue: null,
+            proposedValue: { startDate: '2026-08-17', endDate: '2026-08-17' },
+          }],
+          status: 'DRAFT',
+        },
+        error: null,
+        timestamp,
+      })),
+    );
+
+    const result = await createStoreChangeProposal({
+      storeProfileId: 'store-123',
+      recognizedText: '내일 문 닫아',
+      locale: 'ko-KR',
+    });
+
+    expect(result.data.changes).toEqual([{
+      field: 'temporaryClosure',
+      currentValue: '설정 없음',
+      proposedValue: '2026-08-17 ~ 2026-08-17',
+    }]);
+  });
+
   test('승인은 빈 body와 필수 Idempotency-Key로만 명시적 approve endpoint를 호출한다', async () => {
     server.use(
       http.post('/api/v1/store-change-proposals/prop-001/approve', async ({ request }) => {
