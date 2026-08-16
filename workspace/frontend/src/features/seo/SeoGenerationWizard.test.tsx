@@ -237,6 +237,21 @@ describe('SeoGenerationWizard mobile flow', () => {
     });
   });
 
+  test('임시 휴무는 쉬는 날짜를 한 번만 묻고 다음 질문은 휴무 사유로 이어진다', async () => {
+    const user = userEvent.setup();
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachNewsInterview(user);
+
+    await user.click(screen.getByRole('button', { name: '임시 휴무' }));
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/쉬는 날짜를 알려주세요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '8월 20일에 쉬어요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    expect(await screen.findByText(/휴무 사유나 손님께 함께 전하고 싶은 안내가 있나요/)).toBeInTheDocument();
+    expect(screen.queryByText(/휴무일은 언제인가요/)).not.toBeInTheDocument();
+  });
+
   test('리뷰 요약 API/Mock 상태를 Props로 받아 요약, 키워드, 건수를 동적으로 표시한다', () => {
     const { rerender } = render(
       <SeoGenerationWizard

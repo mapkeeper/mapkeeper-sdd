@@ -44,7 +44,7 @@ const introductionQuickPrompts = [
 
 function getNewsDetailQuestion(answer: string): string {
   const normalized = answer.replaceAll(' ', '');
-  if (/임시휴무|휴무일/.test(normalized)) return '휴무일과 손님에게 안내할 대체 일정이 있다면 알려주세요.';
+  if (/임시휴무|휴무일/.test(normalized)) return '쉬는 날짜를 알려주세요. 예: “8월 20일에 쉬어요.”';
   if (/운영시간|영업시간/.test(normalized)) return '변경되는 영업시간과 적용 시작일을 알려주세요.';
   if (/할인|쿠폰|혜택/.test(normalized)) return '어떤 메뉴를 얼마나 할인하나요? 할인 대상과 조건도 알려주세요.';
   if (/이벤트|행사/.test(normalized)) return '이벤트는 어떻게 참여하나요? 손님에게 제공하는 혜택도 알려주세요.';
@@ -54,7 +54,7 @@ function getNewsDetailQuestion(answer: string): string {
 
 function getNewsScheduleQuestion(answer: string): string {
   const normalized = answer.replaceAll(' ', '');
-  if (/임시휴무|휴무일/.test(normalized)) return '휴무일은 언제인가요? 날짜를 정해 안내할 수 없다면 “없어요”라고 말씀해 주세요.';
+  if (/임시휴무|휴무일/.test(normalized)) return '휴무 사유나 손님께 함께 전하고 싶은 안내가 있나요? 예: “내부 공사로 쉬어요.” 없으면 “없어요”라고 말씀해 주세요.';
   if (/운영시간|영업시간/.test(normalized)) return '변경된 영업시간은 언제부터 적용되나요? 기간이 없다면 “없어요”라고 말씀해 주세요.';
   if (/할인|쿠폰|혜택/.test(normalized)) return '할인 행사는 언제부터 언제까지인가요? 기간이나 이용 조건이 없다면 “없어요”라고 말씀해 주세요.';
   if (/이벤트|행사/.test(normalized)) return '이벤트는 언제까지 진행하나요? 기간이 없다면 “없어요”라고 말씀해 주세요.';
@@ -177,7 +177,10 @@ export function SeoGenerationWizard({
       setNewsDateConfirmed(false);
       setNewsHasNoDate(false);
     }
-    if (purpose === 'NEWS' && questionIndex >= baseQuestions.length - 1) {
+    const isTemporaryClosure = purpose === 'NEWS' && /임시휴무|휴무일/.test(`${answers[0] ?? ''}${answer}`.replaceAll(' ', ''));
+    const isLastBaseQuestion = questionIndex === baseQuestions.length - 1 && extraQuestion === null;
+    const shouldCaptureSchedule = purpose === 'NEWS' && (isTemporaryClosure ? questionIndex === 1 : questionIndex >= baseQuestions.length - 1);
+    if (shouldCaptureSchedule) {
       const parsedSchedule = parseNewsSchedule(answer);
       if (parsedSchedule.range || parsedSchedule.hasNoDate) {
         setNewsDateRange(parsedSchedule.range);
@@ -186,8 +189,7 @@ export function SeoGenerationWizard({
     }
     setCurrentAnswer('');
 
-    const isLastBaseQuestion = questionIndex === baseQuestions.length - 1 && extraQuestion === null;
-    const parsedSchedule = purpose === 'NEWS' && isLastBaseQuestion ? parseNewsSchedule(answer) : null;
+    const parsedSchedule = shouldCaptureSchedule ? parseNewsSchedule(answer) : null;
     const needsNewsDateClarification = isLastBaseQuestion
       && purpose === 'NEWS'
       && parsedSchedule !== null
@@ -212,7 +214,7 @@ export function SeoGenerationWizard({
       setAiTyping(false);
       typingTimerRef.current = null;
     }, 500);
-  }, [baseQuestions.length, editingAnswerIndex, extraQuestion, interviewComplete, isAiTyping, purpose, questions.length, visibleQuestionCount]);
+  }, [answers, baseQuestions.length, editingAnswerIndex, extraQuestion, interviewComplete, isAiTyping, purpose, questions.length, visibleQuestionCount]);
 
   const sendInterviewAnswer = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

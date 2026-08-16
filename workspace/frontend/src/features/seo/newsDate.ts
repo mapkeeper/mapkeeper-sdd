@@ -92,12 +92,34 @@ function parseRelativeRange(text: string, referenceDate: Date): NewsDateRange | 
   return null;
 }
 
+function parseSingleDate(text: string, referenceDate: Date): NewsDateRange | null {
+  const fullDate = text.match(/(20\d{2})\s*[./-년]\s*(\d{1,2})\s*[./-월]\s*(\d{1,2})\s*일?/);
+  if (fullDate) {
+    const date = createDate(Number(fullDate[1]), Number(fullDate[2]), Number(fullDate[3]));
+    return date ? rangeFromDates(date, date) : null;
+  }
+
+  const koreanDate = text.match(/(\d{1,2})월\s*(\d{1,2})일?/);
+  if (koreanDate) {
+    const date = createDate(referenceDate.getFullYear(), Number(koreanDate[1]), Number(koreanDate[2]));
+    return date ? rangeFromDates(date, date) : null;
+  }
+
+  const numericDate = text.match(/(\d{1,2})[./](\d{1,2})/);
+  if (numericDate) {
+    const date = createDate(referenceDate.getFullYear(), Number(numericDate[1]), Number(numericDate[2]));
+    return date ? rangeFromDates(date, date) : null;
+  }
+
+  return null;
+}
+
 export function parseNewsSchedule(text: string, referenceDate = new Date()): ParsedNewsSchedule {
   const normalized = text.trim();
   const hasNoDate = /(?:없어요|없습니다|없음|기간\s*없|날짜\s*없|미정|정하지\s*않)/.test(normalized);
   if (hasNoDate) return { range: null, hasNoDate: true };
   return {
-    range: parseExplicitRange(normalized, referenceDate) ?? parseRelativeRange(normalized, referenceDate),
+    range: parseExplicitRange(normalized, referenceDate) ?? parseSingleDate(normalized, referenceDate) ?? parseRelativeRange(normalized, referenceDate),
     hasNoDate: false,
   };
 }
