@@ -117,6 +117,16 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(onExit).toHaveBeenCalledOnce();
   });
 
+  test('대표 소개글 인터뷰도 빠른 시작 버튼으로 첫 답변 예시를 채운다', async () => {
+    const user = userEvent.setup();
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachInterview(user);
+
+    await user.click(screen.getByRole('button', { name: '대표 메뉴 소개' }));
+
+    expect(screen.getByRole('textbox', { name: '사장님 답변 입력' })).toHaveValue('대표 메뉴는 고기만두예요.');
+  });
+
   test('답변을 보낼 때 사용자 말풍선과 타이핑 상태를 거쳐 질문을 하나씩 공개한다', async () => {
     const user = userEvent.setup();
     render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);

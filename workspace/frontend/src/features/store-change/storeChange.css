@@ -31,6 +31,12 @@
 .store-change-wizard__form label { color:#334155; font-size:13px; font-weight:700; }
 .store-change-wizard__form textarea { box-sizing:border-box; width:100%; min-height:150px; padding:16px; border:1px solid rgba(203,213,225,.8); border-radius:18px; background:#fff; color:#0f172a; box-shadow:0 3px 14px -5px rgba(15,23,42,.1); font:inherit; font-size:15px; line-height:1.6; resize:vertical; }
 .store-change-wizard__form textarea:focus { border-color:#93c5fd; outline:3px solid rgba(37,99,235,.1); }
+.store-change-quick-prompts { display:grid; gap:7px; }
+.store-change-quick-prompts > span { color:#64748b; font-size:11px; font-weight:650; }
+.store-change-quick-prompts > div { display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; }
+.store-change-quick-prompts > div::-webkit-scrollbar { display:none; }
+.store-change-wizard .store-change-quick-prompt { min-height:36px; flex:none; padding:7px 12px; border:1px solid #dbe3ee; border-radius:999px; background:#fff; color:#475569; font-size:11px; font-weight:650; white-space:nowrap; }
+.store-change-wizard .store-change-quick-prompt:active { border-color:#2563eb; background:#eff6ff; color:#2563eb; }
 .store-change-wizard__badge { width:fit-content; margin:0; padding:5px 10px; border-radius:999px; background:#eff6ff; color:#2563eb; font-size:11px; font-weight:750; }
 
 .store-change-wizard__changes { display:grid; gap:10px; margin:0; }

@@ -16,6 +16,12 @@ const fieldLabels: Record<ProposalField, string> = {
   representativeMenuName: '대표 메뉴',
 };
 
+const storeChangeQuickPrompts = [
+  { label: '대표 메뉴', answer: '대표 메뉴를 김치찌개로 바꿔줘' },
+  { label: '영업시간', answer: '영업시간을 오후 10시까지로 바꿔줘' },
+  { label: '임시 휴무', answer: '내일 문 닫아' },
+] as const;
+
 export interface StoreChangeWizardProps {
   storeProfileId: string;
   onSyncHandoff?: (handoff: StoreChangeSyncHandoff) => void;
@@ -132,6 +138,14 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
               rows={5}
               required
             />
+            <div className="store-change-quick-prompts" aria-label="매장 정보 변경 빠른 시작">
+              <span>빠르게 시작하기</span>
+              <div>
+                {storeChangeQuickPrompts.map(({ label, answer }) => (
+                  <button key={label} type="button" className="store-change-quick-prompt" onClick={() => setManualText(answer)}>{label}</button>
+                ))}
+              </div>
+            </div>
             <button type="submit" disabled={flow.isCreating || !manualText.trim()}>
               {flow.isCreating ? '만드는 중…' : '변경안 만들기'}
             </button>

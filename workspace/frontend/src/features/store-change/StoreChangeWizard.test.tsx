@@ -13,6 +13,16 @@ async function createDraft(user: ReturnType<typeof userEvent.setup>): Promise<vo
 
 describe('StoreChangeWizard', () => {
   afterEach(() => vi.unstubAllEnvs());
+  test('빠른 시작 버튼이 대표 메뉴 예시를 직접 입력창에 채운다', async () => {
+    const user = userEvent.setup();
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.click(screen.getByRole('button', { name: '대표 메뉴' }));
+
+    expect(screen.getByLabelText('변경할 매장 정보 직접 입력')).toHaveValue('대표 메뉴를 김치찌개로 바꿔줘');
+  });
+
   test('인식 텍스트로 변경안을 만들고 검토 화면으로 이동한다', async () => {
     const user = userEvent.setup();
     render(<StoreChangeWizard storeProfileId="store-123" />);
