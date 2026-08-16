@@ -20,13 +20,22 @@ export type SyncJobStatus =
   | 'RETRYING';
 export type PlatformTaskStatus = 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'RETRYING';
 export type ErrorCode =
+  | 'MALFORMED_REQUEST'
   | 'VALIDATION_ERROR'
+  | 'RESOURCE_NOT_FOUND'
   | 'INVALID_STATE'
+  | 'STALE_PROPOSAL'
+  | 'IDEMPOTENCY_CONFLICT'
+  | 'NO_RETRYABLE_TASKS'
+  | 'REQUEST_RATE_LIMITED'
   | 'API_TIMEOUT'
   | 'PERMISSION_DENIED'
   | 'RATE_LIMITED'
+  | 'PLATFORM_SERVER_ERROR'
+  | 'AUTHENTICATION_ERROR'
+  | 'PLATFORM_VALIDATION_ERROR'
   | 'INTERNAL_SERVER_ERROR';
-export type EnvelopeStatus = 'SUCCESS' | 'PROCESSING' | 'PARTIAL_SUCCESS' | 'FAILED';
+export type EnvelopeStatus = 'SUCCESS' | 'PROCESSING' | 'FAILED';
 
 export interface StoreProfile {
   id: string;
@@ -70,8 +79,30 @@ export interface SeoDraft {
   draftId: string;
   platform: Platform;
   draftText: string;
+  keywords: string[];
   contentRules: string[];
   status?: ContentStatus;
+}
+
+export interface PlatformTaskError {
+  code: Extract<
+    ErrorCode,
+    | 'API_TIMEOUT'
+    | 'RATE_LIMITED'
+    | 'PLATFORM_SERVER_ERROR'
+    | 'AUTHENTICATION_ERROR'
+    | 'PERMISSION_DENIED'
+    | 'PLATFORM_VALIDATION_ERROR'
+  >;
+  message: string;
+  retryable: boolean;
+  platform: Platform;
+}
+
+export interface PlatformTaskDetail {
+  status: PlatformTaskStatus;
+  attemptCount: number;
+  error: PlatformTaskError | null;
 }
 
 export interface SyncSummary {
@@ -85,5 +116,6 @@ export interface SyncJob {
   syncJobId: string;
   status: SyncJobStatus;
   platforms: Record<Platform, PlatformTaskStatus>;
+  platformDetails: Record<Platform, PlatformTaskDetail>;
   summary: SyncSummary;
 }

@@ -9,6 +9,7 @@ const responseOptions = () => ({ headers: { 'X-Request-ID': nextRequestId() } })
 
 function createMockGeneration(purpose: CreateSeoGenerationRequest['purpose'], briefText: string): CreateSeoGenerationResponse {
   const normalizedBrief = briefText.trim();
+  const sentenceEnd = /[.!?。]$/.test(normalizedBrief) ? '' : '.';
   const isNews = purpose === 'NEWS';
   const endings = isNews
     ? { google: ' Google 소식으로 안내해요.', naver: ' 네이버 소식으로 알려드려요.', kakao: ' 카카오 소식으로 전해요.' }
@@ -17,7 +18,7 @@ function createMockGeneration(purpose: CreateSeoGenerationRequest['purpose'], br
     ...seoGenerationFixture,
     drafts: seoGenerationFixture.drafts.map((draft) => ({
       ...draft,
-      draftText: `${normalizedBrief}${endings[draft.platform]}`,
+      draftText: `${normalizedBrief}${sentenceEnd}${endings[draft.platform]}`,
     })),
   };
 }
@@ -40,6 +41,24 @@ export const seoHandlers = [
     const data = approvalReplay.get(key) ?? seoApprovalFixture;
     approvalReplay.set(key, data);
     return HttpResponse.json(successEnvelope(data, 'PROCESSING'), responseOptions());
+  }),
+  http.post('*/api/v1/seo/generations/:generationId/regenerate', async ({ params, request }) => {
+    await mockDelay(scenarioLatency());
+    const body = await request.json() as Partial<CreateSeoGenerationRequest>;
+    if (params.generationId !== 'gen-001' || typeof body.briefText !== 'string' || !Array.isArray(body.seedKeywords)) {
+      return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
+    }
+    return HttpResponse.json(successEnvelope({
+      ...createMockGeneration(body.purpose ?? 'INTRODUCTION', body.briefText),
+      revision: 2,
+    }), responseOptions());
+  }),
+  http.post('*/api/v1/seo/generations/:generationId/reject', async ({ params, request }) => {
+    await mockDelay(scenarioLatency());
+    if (params.generationId !== 'gen-001' || await request.text() !== '') {
+      return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
+    }
+    return HttpResponse.json(successEnvelope({ ...seoGenerationFixture, status: 'REJECTED' as const }), responseOptions());
   }),
 ];
 

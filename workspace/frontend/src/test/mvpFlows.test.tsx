@@ -60,14 +60,14 @@ describe('MVP 통합 흐름', () => {
 
     setMockScenario('non-retryable-failure');
     render(<SyncStatusDashboard syncJobId="job-001" pollIntervalMs={1} />);
-    expect(await screen.findByText('플랫폼 권한을 확인해 주세요.')).toBeInTheDocument();
+    expect(await screen.findAllByText('플랫폼 권한을 확인해 주세요.')).toHaveLength(3);
     expect(screen.queryByRole('button', { name: '실패한 플랫폼 다시 시도' })).not.toBeInTheDocument();
   });
 
   test('재시작 후 FAILED로 보고된 작업을 복구 가능한 상태로 설명한다', async () => {
     server.use(http.get('/api/v1/sync-jobs/job-restarted', () => HttpResponse.json({
       success: true,
-      status: 'FAILED',
+      status: 'SUCCESS',
       data: {
         syncJobId: 'job-restarted',
         status: 'FAILED',
@@ -75,14 +75,19 @@ describe('MVP 통합 흐름', () => {
           platform,
           status: failedSyncJobFixture.platforms[platform],
           attemptCount: 3,
-          error: null,
+          error: {
+            code: 'API_TIMEOUT',
+            message: '서버 재시작으로 작업이 중단되었습니다.',
+            retryable: true,
+            platform,
+          },
         })),
       },
-      error: { code: 'API_TIMEOUT', message: '서버 재시작으로 작업이 중단되었습니다.', retryable: true },
+      error: null,
       timestamp: '2026-08-03T00:00:00Z',
     })));
     render(<SyncStatusDashboard syncJobId="job-restarted" pollIntervalMs={1} />);
-    expect(await screen.findByText('서버 재시작으로 작업이 중단되었습니다.')).toBeInTheDocument();
+    expect(await screen.findAllByText('서버 재시작으로 작업이 중단되었습니다.')).toHaveLength(3);
     expect(screen.getByRole('button', { name: '실패한 플랫폼 다시 시도' })).toBeInTheDocument();
   });
 

@@ -1,7 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { ApiClientError } from '@/services/api';
 import { acquireIdempotencyKey } from '@/services/idempotency';
-import { approveSeoGeneration, generateSeoDrafts } from '@/services/seoApi';
+import {
+  approveSeoGeneration,
+  generateSeoDrafts,
+  regenerateSeoGeneration,
+  rejectSeoGeneration,
+} from '@/services/seoApi';
 import type { SeoDraft } from '@/types/domain';
 import { seoGenerationFixture } from '@/mocks/fixtures/seoFixtures';
 
@@ -10,13 +15,23 @@ export interface SeoSyncHandoff {
   statusUrl: string;
 }
 
+export interface SeoGenerationInput {
+  purpose: 'INTRODUCTION' | 'NEWS';
+  briefText: string;
+  seedKeywords: string[];
+  sourceReviewIds: string[];
+}
+
 interface SeoGenerationFlow {
   generationId: string | null;
+  revision: number | null;
   drafts: SeoDraft[];
   isGenerating: boolean;
+  isRejecting: boolean;
   isApproving: boolean;
   errorMessage: string | null;
-  generate(request: { purpose: 'INTRODUCTION' | 'NEWS'; briefText: string; seedKeywords: string[]; sourceReviewIds: string[] }): Promise<SeoDraft[] | null>;
+  generate(request: SeoGenerationInput): Promise<SeoDraft[] | null>;
+  rejectFromButton(): Promise<boolean>;
   approveFromButton(): Promise<boolean>;
   setValidationError(message: string): void;
 }
@@ -26,6 +41,7 @@ function safeUserMessage(error: unknown): string {
   if (error.causeBody?.code === 'VALIDATION_ERROR') {
     return '선택한 리뷰와 SEO 문구 내용을 확인해 주세요.';
   }
+  if (error.causeBody?.code === 'INVALID_STATE') return error.causeBody.message;
   if (error.causeBody?.code === 'PERMISSION_DENIED' || error.status === 401 || error.status === 403) {
     return 'SEO 문구를 처리할 권한이 없습니다. 관리자에게 문의해 주세요.';
   }
@@ -39,26 +55,32 @@ export function useSeoGenerationFlow(
   onSyncHandoff?: (handoff: SeoSyncHandoff) => void,
 ): SeoGenerationFlow {
   const [generationId, setGenerationId] = useState<string | null>(null);
+  const [revision, setRevision] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<SeoDraft[]>([]);
   const [isGenerating, setGenerating] = useState(false);
+  const [isRejecting, setRejecting] = useState(false);
   const [isApproving, setApproving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const approvalLockRef = useRef(false);
 
-  const generate = useCallback(async (request: { purpose: 'INTRODUCTION' | 'NEWS'; briefText: string; seedKeywords: string[]; sourceReviewIds: string[] }) => {
+  const generate = useCallback(async (request: SeoGenerationInput) => {
     if (isGenerating) return null;
     setGenerating(true);
     setErrorMessage(null);
     try {
-      const result = await generateSeoDrafts({ storeProfileId, ...request });
+      const result = generationId
+        ? await regenerateSeoGeneration(generationId, request)
+        : await generateSeoDrafts({ storeProfileId, ...request });
       const nextDrafts = result.data.drafts.map((draft) => ({ ...draft, status: draft.status ?? 'DRAFT' }));
       setGenerationId(result.data.generationId);
+      setRevision(result.data.revision);
       setDrafts(nextDrafts);
       return nextDrafts;
     } catch (error: unknown) {
       if (import.meta.env.VITE_API_MOCKING === 'true') {
         const nextDrafts = seoGenerationFixture.drafts.map((draft) => ({ ...draft, status: draft.status ?? 'DRAFT' }));
         setGenerationId(seoGenerationFixture.generationId);
+        setRevision((current) => current === null ? seoGenerationFixture.revision : current + 1);
         setDrafts(nextDrafts);
         return nextDrafts;
       }
@@ -67,7 +89,24 @@ export function useSeoGenerationFlow(
     } finally {
       setGenerating(false);
     }
-  }, [isGenerating, storeProfileId]);
+  }, [generationId, isGenerating, storeProfileId]);
+
+  const rejectFromButton = useCallback(async () => {
+    if (!generationId || isRejecting) return false;
+    setRejecting(true);
+    setErrorMessage(null);
+    try {
+      const result = await rejectSeoGeneration(generationId);
+      setRevision(result.data.revision);
+      setDrafts((current) => current.map((draft) => ({ ...draft, status: 'REJECTED' })));
+      return result.data.status === 'REJECTED';
+    } catch (error: unknown) {
+      setErrorMessage(safeUserMessage(error));
+      return false;
+    } finally {
+      setRejecting(false);
+    }
+  }, [generationId, isRejecting]);
 
   const approveFromButton = useCallback(async () => {
     if (!generationId || drafts.length !== 3 || approvalLockRef.current) return false;
@@ -93,11 +132,14 @@ export function useSeoGenerationFlow(
 
   return {
     generationId,
+    revision,
     drafts,
     isGenerating,
+    isRejecting,
     isApproving,
     errorMessage,
     generate,
+    rejectFromButton,
     approveFromButton,
     setValidationError: setErrorMessage,
   };

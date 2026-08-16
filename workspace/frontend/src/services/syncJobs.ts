@@ -1,9 +1,9 @@
 import { apiRequest } from '@/services/api';
 import type { ApiErrorBody, GetSyncJobResponse, RetrySyncJobResponse } from '@/services/api.types';
-import type { ErrorCode, SyncJob, SyncJobStatus } from '@/types/domain';
+import type { ErrorCode, PlatformTaskDetail, SyncJob, SyncJobStatus } from '@/types/domain';
 
 const TERMINAL: ReadonlySet<SyncJobStatus> = new Set(['SUCCESS', 'PARTIAL_SUCCESS', 'FAILED']);
-const RETRYABLE: ReadonlySet<ErrorCode> = new Set(['API_TIMEOUT', 'RATE_LIMITED', 'INTERNAL_SERVER_ERROR']);
+const RETRYABLE: ReadonlySet<ErrorCode> = new Set(['API_TIMEOUT', 'RATE_LIMITED', 'PLATFORM_SERVER_ERROR']);
 
 export const isTerminalSyncStatus = (status: SyncJobStatus): boolean => TERMINAL.has(status);
 export const isRetryEligible = (code: ErrorCode | undefined, retryable?: boolean): boolean =>
@@ -11,16 +11,27 @@ export const isRetryEligible = (code: ErrorCode | undefined, retryable?: boolean
 
 function toSyncJob(response: GetSyncJobResponse): SyncJob {
   const platforms: SyncJob['platforms'] = { google: 'PENDING', naver: 'PENDING', kakao: 'PENDING' };
+  const pendingDetail = (): PlatformTaskDetail => ({ status: 'PENDING', attemptCount: 0, error: null });
+  const platformDetails: SyncJob['platformDetails'] = {
+    google: pendingDetail(),
+    naver: pendingDetail(),
+    kakao: pendingDetail(),
+  };
   const summary: SyncJob['summary'] = { total: response.platformTasks.length, succeeded: 0, failed: 0, retrying: 0 };
 
   for (const task of response.platformTasks) {
     platforms[task.platform] = task.status;
+    platformDetails[task.platform] = {
+      status: task.status,
+      attemptCount: task.attemptCount,
+      error: task.error,
+    };
     if (task.status === 'SUCCESS') summary.succeeded += 1;
     if (task.status === 'FAILED') summary.failed += 1;
     if (task.status === 'RETRYING') summary.retrying += 1;
   }
 
-  return { syncJobId: response.syncJobId, status: response.status, platforms, summary };
+  return { syncJobId: response.syncJobId, status: response.status, platforms, platformDetails, summary };
 }
 
 export async function getSyncJob(syncJobId: string, signal?: AbortSignal): Promise<SyncJob> {

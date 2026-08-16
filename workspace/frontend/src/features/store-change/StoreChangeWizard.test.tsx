@@ -37,7 +37,7 @@ describe('StoreChangeWizard', () => {
     await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
     await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '8월 10일은 임시 휴무로 해줘');
     await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
-    expect(await screen.findByText('8월 10일 임시 휴무')).toBeInTheDocument();
+    expect(await screen.findByText('2026-08-10 ~ 2026-08-10')).toBeInTheDocument();
     expect(screen.getByText('임시 휴무')).toBeInTheDocument();
     unmount();
 
@@ -78,10 +78,11 @@ describe('StoreChangeWizard', () => {
     expect(screen.getByText('2026-08-17 ~ 2026-08-17')).toBeInTheDocument();
   });
 
-  test('허용 필드 값을 수정해도 DRAFT로 유지하고 로컬 거절은 API 없이 끝낸다', async () => {
+  test('허용 필드 값을 수정하고 변경하지 않기를 선택하면 서버의 거절 상태를 확인한다', async () => {
     const user = userEvent.setup();
     let patchCalls = 0;
     let approveCalls = 0;
+    let rejectCalls = 0;
     server.use(
       http.patch('/api/v1/store-change-proposals/:proposalId', () => {
         patchCalls += 1;
@@ -101,6 +102,25 @@ describe('StoreChangeWizard', () => {
         approveCalls += 1;
         return HttpResponse.error();
       }),
+      http.post('/api/v1/store-change-proposals/:proposalId/reject', () => {
+        rejectCalls += 1;
+        return HttpResponse.json({
+          success: true,
+          status: 'SUCCESS',
+          data: {
+            proposalId: 'prop-001',
+            recognizedTextMasked: '영업시간 변경 요청',
+            changes: [{
+              field: 'businessHours',
+              currentValue: { open: '09:00', close: '22:00' },
+              proposedValue: { open: '09:00', close: '20:00' },
+            }],
+            status: 'REJECTED',
+          },
+          error: null,
+          timestamp: '2026-08-03T00:00:00Z',
+        });
+      }),
     );
     const { unmount } = render(<StoreChangeWizard storeProfileId="store-123" />);
     await createDraft(user);
@@ -112,8 +132,9 @@ describe('StoreChangeWizard', () => {
     expect(await screen.findByText('09:00-20:00')).toBeInTheDocument();
     expect(patchCalls).toBe(1);
 
-    await user.click(screen.getByRole('button', { name: '변경안 거절' }));
+    await user.click(screen.getByRole('button', { name: '이번에는 변경하지 않기' }));
     expect(screen.getByText('변경안을 적용하지 않았습니다')).toBeInTheDocument();
+    expect(rejectCalls).toBe(1);
     expect(approveCalls).toBe(0);
     unmount();
   });

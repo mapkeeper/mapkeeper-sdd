@@ -23,7 +23,7 @@ describe('접근성 회귀', () => {
   test('UC2 플랫폼 카드는 접근 가능한 이름과 충분한 대비를 갖는다', async () => {
     const { container } = render(
       <SeoDraftCard
-        draft={{ draftId: 'draft-001', platform: 'google', draftText: '구글 소개글', contentRules: ['정확한 정보'], status: 'DRAFT' }}
+        draft={{ draftId: 'draft-001', platform: 'google', draftText: '구글 소개글', keywords: ['구글'], contentRules: ['정확한 정보'], status: 'DRAFT' }}
       />,
     );
     expect(screen.getByRole('heading', { name: 'Google' })).toBeInTheDocument();

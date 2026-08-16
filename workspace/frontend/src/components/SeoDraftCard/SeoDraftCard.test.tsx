@@ -3,9 +3,9 @@ import { SeoDraftCard } from '@/components/SeoDraftCard/SeoDraftCard';
 import type { SeoDraft } from '@/types/domain';
 
 const drafts: SeoDraft[] = [
-  { draftId: 'draft-001', platform: 'google', draftText: '구글 소개글', contentRules: ['짧고 정확한 정보'], status: 'DRAFT' },
-  { draftId: 'draft-002', platform: 'naver', draftText: '네이버 소개글', contentRules: ['친근한 한국어'], status: 'DRAFT' },
-  { draftId: 'draft-003', platform: 'kakao', draftText: '카카오 소개글', contentRules: ['동네 중심 표현'], status: 'DRAFT' },
+  { draftId: 'draft-001', platform: 'google', draftText: '구글 소개글', keywords: ['구글'], contentRules: ['짧고 정확한 정보'], status: 'DRAFT' },
+  { draftId: 'draft-002', platform: 'naver', draftText: '네이버 소개글', keywords: ['네이버'], contentRules: ['친근한 한국어'], status: 'DRAFT' },
+  { draftId: 'draft-003', platform: 'kakao', draftText: '카카오 소개글', keywords: ['카카오'], contentRules: ['동네 중심 표현'], status: 'DRAFT' },
 ];
 
 describe('SeoDraftCard', () => {
@@ -20,6 +20,7 @@ describe('SeoDraftCard', () => {
     expect(screen.getByRole('heading', { name: label })).toBeInTheDocument();
     expect(screen.getByText(draft.draftText)).toBeInTheDocument();
     expect(screen.getByText(draft.contentRules[0] as string)).toBeInTheDocument();
+    expect(screen.getByText(`#${draft.keywords[0]}`)).toBeInTheDocument();
     expect(screen.getByText('검토 중')).toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();

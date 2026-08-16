@@ -5,6 +5,7 @@ import {
   approveStoreChangeProposal,
   createStoreChangeProposal,
   patchStoreChangeProposal,
+  rejectStoreChangeProposal,
 } from '@/services/storeChangeApi';
 import type { StoreChangeApprovalResponse } from '@/services/api.types';
 import { storeChangeApprovalFixture } from '@/mocks/fixtures/storeChangeFixtures';
@@ -20,10 +21,12 @@ interface StoreChangeFlow {
   proposal: StoreChangeProposal | null;
   isCreating: boolean;
   isSaving: boolean;
+  isRejecting: boolean;
   isApproving: boolean;
   errorMessage: string | null;
   create(recognizedText: string): Promise<StoreChangeProposal | null>;
   save(changes: ProposalChange[]): Promise<StoreChangeProposal | null>;
+  rejectFromButton(): Promise<boolean>;
   approveFromButton(): Promise<StoreChangeApprovalResponse | null>;
   clear(): void;
   clearError(): void;
@@ -66,6 +69,7 @@ export function useStoreChangeFlow(
   const [proposal, setProposal] = useState<StoreChangeProposal | null>(null);
   const [isCreating, setCreating] = useState(false);
   const [isSaving, setSaving] = useState(false);
+  const [isRejecting, setRejecting] = useState(false);
   const [isApproving, setApproving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const approvalLockRef = useRef(false);
@@ -101,7 +105,7 @@ export function useStoreChangeFlow(
     setSaving(true);
     setErrorMessage(null);
     try {
-      const result = await patchStoreChangeProposal(proposal.proposalId, { changes });
+      const result = await patchStoreChangeProposal(proposal.proposalId, changes);
       setProposal(result.data);
       return result.data;
     } catch (error: unknown) {
@@ -143,6 +147,22 @@ export function useStoreChangeFlow(
     }
   }, [onSyncHandoff, proposal]);
 
+  const rejectFromButton = useCallback(async () => {
+    if (!proposal || isRejecting || proposal.status !== 'DRAFT') return false;
+    setRejecting(true);
+    setErrorMessage(null);
+    try {
+      const result = await rejectStoreChangeProposal(proposal.proposalId);
+      setProposal(result.data);
+      return result.data.status === 'REJECTED';
+    } catch (error: unknown) {
+      setErrorMessage(safeUserMessage(error));
+      return false;
+    } finally {
+      setRejecting(false);
+    }
+  }, [isRejecting, proposal]);
+
   const clear = useCallback(() => {
     setProposal(null);
     setErrorMessage(null);
@@ -152,10 +172,12 @@ export function useStoreChangeFlow(
     proposal,
     isCreating,
     isSaving,
+    isRejecting,
     isApproving,
     errorMessage,
     create,
     save,
+    rejectFromButton,
     approveFromButton,
     clear,
     clearError: () => setErrorMessage(null),

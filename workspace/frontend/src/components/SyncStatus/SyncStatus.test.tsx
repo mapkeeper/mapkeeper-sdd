@@ -97,7 +97,8 @@ describe('SyncStatusDashboard', () => {
     render(<SyncStatusDashboard syncJobId="job-001" pollIntervalMs={1} />);
 
     expect(await screen.findByRole('heading', { name: '플랫폼 반영 실패' })).toBeInTheDocument();
-    expect(screen.getByText('플랫폼 권한을 확인해 주세요.')).toBeInTheDocument();
+    expect(screen.getAllByText('플랫폼 권한을 확인해 주세요.')).toHaveLength(3);
+    expect(screen.getByText('플랫폼 연결 설정을 확인해 주세요.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '실패한 플랫폼 다시 시도' })).not.toBeInTheDocument();
   });
 });

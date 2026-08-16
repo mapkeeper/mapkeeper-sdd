@@ -1,6 +1,11 @@
 import { HttpResponse, http } from 'msw';
 import { server } from '@/mocks/server';
-import { approveSeoGeneration, generateSeoDrafts } from '@/services/seoApi';
+import {
+  approveSeoGeneration,
+  generateSeoDrafts,
+  regenerateSeoGeneration,
+  rejectSeoGeneration,
+} from '@/services/seoApi';
 
 const timestamp = '2026-08-03T00:00:00Z';
 
@@ -18,7 +23,7 @@ describe('seoApi', () => {
         return HttpResponse.json({
           success: true,
           status: 'SUCCESS',
-          data: { generationId: 'gen-001', drafts: [] },
+          data: { generationId: 'gen-001', status: 'DRAFT', revision: 1, drafts: [] },
           error: null,
           timestamp,
         }, { headers: { 'X-Request-ID': 'req-seo-create' } });
@@ -34,6 +39,65 @@ describe('seoApi', () => {
     });
 
     expect(result.requestId).toBe('req-seo-create');
+  });
+
+  test('기존 Generation 재생성은 같은 ID에 수정 입력을 보내고 revision을 보존한다', async () => {
+    server.use(
+      http.post('/api/v1/seo/generations/gen-001/regenerate', async ({ request }) => {
+        expect(await request.json()).toEqual({
+          purpose: 'INTRODUCTION',
+          briefText: '수정한 매장 소개',
+          seedKeywords: ['만두전골'],
+          sourceReviewIds: ['review-001'],
+        });
+        return HttpResponse.json({
+          success: true,
+          status: 'SUCCESS',
+          data: {
+            generationId: 'gen-001',
+            status: 'DRAFT',
+            revision: 2,
+            drafts: [{
+              draftId: 'draft-001',
+              platform: 'google',
+              draftText: '수정된 문구',
+              keywords: ['만두전골'],
+              contentRules: ['rule'],
+            }],
+          },
+          error: null,
+          timestamp,
+        });
+      }),
+    );
+
+    const result = await regenerateSeoGeneration('gen-001', {
+      purpose: 'INTRODUCTION',
+      briefText: '수정한 매장 소개',
+      seedKeywords: ['만두전골'],
+      sourceReviewIds: ['review-001'],
+    });
+
+    expect(result.data).toMatchObject({ generationId: 'gen-001', revision: 2, status: 'DRAFT' });
+  });
+
+  test('전체 거절은 body 없이 Generation reject endpoint를 호출한다', async () => {
+    server.use(
+      http.post('/api/v1/seo/generations/gen-001/reject', async ({ request }) => {
+        expect(await request.text()).toBe('');
+        return HttpResponse.json({
+          success: true,
+          status: 'SUCCESS',
+          data: { generationId: 'gen-001', status: 'REJECTED', revision: 1, drafts: [] },
+          error: null,
+          timestamp,
+        });
+      }),
+    );
+
+    const result = await rejectSeoGeneration('gen-001');
+
+    expect(result.data.status).toBe('REJECTED');
   });
 
   test('승인 요청은 Body 없이 Idempotency-Key만 전송한다', async () => {

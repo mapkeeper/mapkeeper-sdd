@@ -32,16 +32,23 @@ export interface PlatformResult {
   name: string;
   status: PlatformResultStatus;
   errorMessage?: string;
+  retryable?: boolean;
+  attemptCount?: number;
 }
 
-function toPlatformResults(job: SyncJob | null, warning: ApiErrorBody | null = null): PlatformResult[] {
+function toPlatformResults(job: SyncJob | null): PlatformResult[] {
   if (!job) return [];
-  return (Object.entries(job.platforms) as Array<[Platform, PlatformTaskStatus]>).map(([id, status]) => ({
-    id,
-    name: displayPlatformLabels[id],
-    status: status === 'FAILED' ? 'FAIL' : status,
-    ...(status === 'FAILED' ? { errorMessage: warning?.code === 'API_TIMEOUT' ? '접속 시간 초과' : warning?.code === 'PERMISSION_DENIED' ? '권한 확인 필요' : '플랫폼 연결에 실패했습니다.' } : {}),
-  }));
+  return (Object.entries(job.platformDetails) as Array<[Platform, SyncJob['platformDetails'][Platform]]>)
+    .map(([id, detail]) => ({
+      id,
+      name: displayPlatformLabels[id],
+      status: detail.status === 'FAILED' ? 'FAIL' : detail.status,
+      attemptCount: detail.attemptCount,
+      ...(detail.error ? {
+        errorMessage: detail.error.message,
+        retryable: isRetryEligible(detail.error.code, detail.error.retryable),
+      } : {}),
+    }));
 }
 
 const platformLogos: Record<Platform, string> = {
@@ -133,7 +140,7 @@ export function SyncStatusDashboard({
           const snapshot = await getSyncJobSnapshot(syncJobId, controller.signal);
           setJob(snapshot.job);
           setWarning(snapshot.warning);
-          setPlatformResults(toPlatformResults(snapshot.job, snapshot.warning));
+          setPlatformResults(toPlatformResults(snapshot.job));
           setErrorMessage(null);
           if (isTerminalSyncStatus(snapshot.job.status)) return;
           await delay(pollIntervalMs, controller.signal);
@@ -177,15 +184,16 @@ export function SyncStatusDashboard({
   const progress = renderedResults.filter(({ status }) => status === 'SUCCESS').length;
   const isTerminal = isTerminalSyncStatus(job.status);
   const isAllSuccess = renderedResults.length > 0 && renderedResults.every(({ status }) => status === 'SUCCESS');
+  const isAllFailed = renderedResults.length > 0 && renderedResults.every(({ status }) => status === 'FAIL');
   const hasFailure = renderedResults.some(({ status }) => status === 'FAIL');
-  const canRetry = resultOverride !== null ? hasFailure : isRetryEligible(warning?.code, warning?.retryable);
-  const firstFailedPlatform = renderedResults.find(({ status }) => status === 'FAIL')?.id;
+  const canRetry = renderedResults.some((result) => result.status === 'FAIL' && (result.retryable ?? resultOverride !== null));
+  const firstFailedPlatform = renderedResults.find((result) => result.status === 'FAIL' && (result.retryable ?? resultOverride !== null))?.id;
   const mainTitle = isAllSuccess
     ? '3사에 반영되었습니다!'
-    : hasFailure ? '일부 플랫폼 반영에 실패했어요' : '플랫폼에 반영하고 있어요';
+    : isAllFailed ? '플랫폼 반영에 실패했어요' : hasFailure ? '일부 플랫폼 반영에 실패했어요' : '플랫폼에 반영하고 있어요';
   const mainDescription = isAllSuccess
     ? '구글, 네이버, 카카오 3사 업데이트가 모두 완료되었습니다.'
-    : hasFailure ? '실패한 플랫폼은 아래에서 재시도할 수 있습니다.' : '잠시만 기다려 주세요.';
+    : canRetry ? '실패한 플랫폼은 아래에서 재시도할 수 있습니다.' : hasFailure ? '플랫폼 연결 설정을 확인해 주세요.' : '잠시만 기다려 주세요.';
   const selectedPlatformName = selectedPlatform ? displayPlatformLabels[selectedPlatform] : '';
 
   return (
@@ -214,11 +222,11 @@ export function SyncStatusDashboard({
             if (result.status === 'SUCCESS' && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setSelectedPlatform(result.id); }
           }}>
             <img className="sync-status__brand-logo" src={platformLogos[result.id]} alt={`${accessiblePlatformLabels[result.id]} 로고`} />
-            <div className="sync-status__platform-copy"><strong>{result.name}</strong><span>{result.status === 'SUCCESS' ? '업데이트 완료' : result.status === 'FAIL' ? result.errorMessage : statusLabels[domainStatus]}</span></div>
+            <div className="sync-status__platform-copy"><strong>{result.name}</strong><span>{result.status === 'SUCCESS' ? '업데이트 완료' : result.status === 'FAIL' ? result.errorMessage : statusLabels[domainStatus]}</span>{result.attemptCount !== undefined && result.attemptCount > 1 ? <small>시도 {result.attemptCount}/3회</small> : null}</div>
             <span className="sr-only">{statusLabels[domainStatus]}</span>
             {result.status === 'SUCCESS' ? <span className="sync-status__success-check"><CheckCircle /> 반영 완료</span> : null}
             {result.status === 'SUCCESS' ? <span className="sync-status__chevron" aria-hidden="true">›</span> : null}
-            {result.status === 'FAIL' ? <div className="sync-status__failure-action"><strong><AlertCircle /> 실패</strong>{canRetry ? <button type="button" aria-label={result.id === firstFailedPlatform ? '실패한 플랫폼 다시 시도' : `${result.name} 재시도`} onClick={(event) => { event.stopPropagation(); void retry(); }} disabled={isRetrying} style={{ minHeight: 56 }}>{isRetrying ? '재시도 중…' : '↻ 재시도'}</button> : null}</div> : null}
+            {result.status === 'FAIL' ? <div className="sync-status__failure-action"><strong><AlertCircle /> 실패</strong>{(result.retryable ?? resultOverride !== null) ? <button type="button" aria-label={result.id === firstFailedPlatform ? '실패한 플랫폼 다시 시도' : `${result.name} 재시도`} onClick={(event) => { event.stopPropagation(); void retry(); }} disabled={isRetrying} style={{ minHeight: 56 }}>{isRetrying ? '재시도 중…' : '↻ 재시도'}</button> : null}</div> : null}
             {!['SUCCESS', 'FAIL'].includes(result.status) ? <span className={`sync-status__platform-icon sync-status__platform-icon--${domainStatus.toLowerCase()}`} aria-hidden="true">{statusIcons[domainStatus]}</span> : null}
           </li>
         );})}

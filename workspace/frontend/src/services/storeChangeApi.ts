@@ -5,9 +5,10 @@ import type {
   CreateStoreChangeResponse,
   PatchStoreChangeRequest,
   PatchStoreChangeResponse,
+  ProposalChangeRequest,
   StoreChangeApprovalResponse,
 } from '@/services/api.types';
-import type { ProposalField, ProposalStatus, StoreChangeProposal } from '@/types/domain';
+import type { ProposalChange, ProposalField, ProposalStatus, StoreChangeProposal } from '@/types/domain';
 
 type RawChangeValue = string | { open: string; close: string } | { startDate: string; endDate: string } | null;
 
@@ -52,6 +53,60 @@ function normalizeCreateProposal(data: RawStoreChangeProposal): CreateStoreChang
   };
 }
 
+class InvalidProposalChangeError extends Error {
+  constructor(readonly field: ProposalField, value: string) {
+    super(`${field} 값을 API 계약 형식으로 변환할 수 없습니다: ${value}`);
+    this.name = 'InvalidProposalChangeError';
+  }
+}
+
+function parseBusinessHours(field: ProposalField, value: string): { open: string; close: string } {
+  const match = value.match(/^(\d{2}:\d{2})\s*[-~]\s*(\d{2}:\d{2})$/);
+  if (!match?.[1] || !match[2]) throw new InvalidProposalChangeError(field, value);
+  return { open: match[1], close: match[2] };
+}
+
+function parseTemporaryClosure(field: ProposalField, value: string): { startDate: string; endDate: string } | null {
+  if (value === '설정 없음' || value === '영업') return null;
+  const dates = value.match(/\d{4}-\d{2}-\d{2}/g);
+  const startDate = dates?.[0];
+  const endDate = dates?.[1] ?? startDate;
+  if (!startDate || !endDate) throw new InvalidProposalChangeError(field, value);
+  return { startDate, endDate };
+}
+
+function toProposalChangeRequest(change: ProposalChange): ProposalChangeRequest {
+  switch (change.field) {
+    case 'businessHours':
+      return {
+        field: change.field,
+        currentValue: parseBusinessHours(change.field, change.currentValue),
+        proposedValue: parseBusinessHours(change.field, change.proposedValue),
+      };
+    case 'temporaryClosure': {
+      const proposedValue = parseTemporaryClosure(change.field, change.proposedValue);
+      if (proposedValue === null) throw new InvalidProposalChangeError(change.field, change.proposedValue);
+      return {
+        field: change.field,
+        currentValue: parseTemporaryClosure(change.field, change.currentValue),
+        proposedValue,
+      };
+    }
+    case 'representativeMenuName':
+      return {
+        field: change.field,
+        currentValue: change.currentValue.trim(),
+        proposedValue: change.proposedValue.trim(),
+      };
+    default:
+      return assertNever(change.field);
+  }
+}
+
+function assertNever(value: never): never {
+  throw new InvalidProposalChangeError(value, String(value));
+}
+
 export function createStoreChangeProposal(
   request: CreateStoreChangeRequest,
   signal?: AbortSignal,
@@ -65,14 +120,25 @@ export function createStoreChangeProposal(
 
 export function patchStoreChangeProposal(
   proposalId: string,
-  request: PatchStoreChangeRequest,
+  changes: ProposalChange[],
   signal?: AbortSignal,
 ): Promise<ApiResult<PatchStoreChangeResponse>> {
+  const request: PatchStoreChangeRequest = { changes: changes.map(toProposalChangeRequest) };
   return apiRequest<RawStoreChangeProposal>(`/api/v1/store-change-proposals/${encodeURIComponent(proposalId)}`, {
     method: 'PATCH',
     body: request,
     ...(signal ? { signal } : {}),
   }).then((result) => ({ ...result, data: normalizeProposal(result.data) }));
+}
+
+export function rejectStoreChangeProposal(
+  proposalId: string,
+  signal?: AbortSignal,
+): Promise<ApiResult<PatchStoreChangeResponse>> {
+  return apiRequest<RawStoreChangeProposal>(
+    `/api/v1/store-change-proposals/${encodeURIComponent(proposalId)}/reject`,
+    { method: 'POST', ...(signal ? { signal } : {}) },
+  ).then((result) => ({ ...result, data: normalizeProposal(result.data) }));
 }
 
 export function approveStoreChangeProposal(

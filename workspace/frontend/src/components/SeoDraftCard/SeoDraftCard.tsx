@@ -37,6 +37,10 @@ export function SeoDraftCard({ draft }: SeoDraftCardProps) {
 
       <p className="seo-draft-card__preview">{draft.draftText}</p>
 
+      <div className="tag-list" role="list" aria-label={`${label} 추천 키워드`}>
+        {draft.keywords.map((keyword) => <span className="tag-chip" role="listitem" key={keyword}>#{keyword}</span>)}
+      </div>
+
       <div className="seo-draft-card__rules">
         <strong>플랫폼 작성 기준</strong>
         <ul>{draft.contentRules.map((rule) => <li key={rule}>{rule}</li>)}</ul>

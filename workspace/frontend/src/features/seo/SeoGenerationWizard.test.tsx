@@ -19,7 +19,15 @@ async function reachNewsInterview(user: ReturnType<typeof userEvent.setup>): Pro
 
 async function reachRecommendation(user: ReturnType<typeof userEvent.setup>): Promise<void> {
   await reachInterview(user);
-  const answers = ['정성이 가득한 동네 맛집', '깊은 국물과 친절한 서비스', '만두전골'];
+  await answerInterview(user, ['정성이 가득한 동네 맛집', '깊은 국물과 친절한 서비스', '만두전골']);
+  await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
+  expect(await screen.findByRole('heading', { name: '3사 전체 추천 문구를 확인해 주세요' })).toBeInTheDocument();
+}
+
+async function answerInterview(
+  user: ReturnType<typeof userEvent.setup>,
+  answers: readonly [string, string, string],
+): Promise<void> {
   const nextQuestions = ['가장 내세우고 싶은 특징이 있나요?', '대표 메뉴가 무엇인가요?'];
   for (const [index, answer] of answers.entries()) {
     await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), answer);
@@ -28,8 +36,6 @@ async function reachRecommendation(user: ReturnType<typeof userEvent.setup>): Pr
       expect(await screen.findByText(nextQuestions[index] as string, {}, { timeout: 1_500 })).toBeInTheDocument();
     }
   }
-  await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
-  expect(await screen.findByRole('heading', { name: '3사 전체 추천 문구를 확인해 주세요' })).toBeInTheDocument();
 }
 
 describe('SeoGenerationWizard mobile flow', () => {
@@ -57,10 +63,12 @@ describe('SeoGenerationWizard mobile flow', () => {
         success: true, status: 'SUCCESS',
         data: {
           generationId: 'gen-001',
+          status: 'DRAFT',
+          revision: 1,
           drafts: [
-            { draftId: 'draft-001', platform: 'google', draftText: '추천 소개글', contentRules: ['rule'], status: 'DRAFT' },
-            { draftId: 'draft-002', platform: 'naver', draftText: '네이버 문구', contentRules: ['rule'], status: 'DRAFT' },
-            { draftId: 'draft-003', platform: 'kakao', draftText: '카카오 문구', contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-001', platform: 'google', draftText: '추천 소개글', keywords: ['구글추천'], contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-002', platform: 'naver', draftText: '네이버 문구', keywords: ['네이버추천'], contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-003', platform: 'kakao', draftText: '카카오 문구', keywords: ['카카오추천'], contentRules: ['rule'], status: 'DRAFT' },
           ],
         }, error: null, timestamp: '2026-08-03T00:00:00Z',
       }, { status: 201 });
@@ -71,7 +79,7 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(requestBody).toEqual({
       storeProfileId: 'store-123',
       purpose: 'INTRODUCTION',
-      briefText: '정성이 가득한 동네 맛집 깊은 국물과 친절한 서비스 만두전골',
+      briefText: '정성이 가득한 동네 맛집. 깊은 국물과 친절한 서비스. 만두전골.',
       seedKeywords: ['속이알참', '친절함', '주차편함'],
       sourceReviewIds: ['review-001'],
     });
@@ -101,6 +109,62 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(approvalRequests[0]?.body).toBe('');
     expect(screen.getByRole('heading', { name: '3사에 반영되었습니다!' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '확인 (홈으로 이동)' })).toBeInTheDocument();
+  });
+
+  test('내용 수정은 기존 Generation을 재생성하고 반영하지 않기는 전체 거절을 기록한다', async () => {
+    const user = userEvent.setup();
+    let regenerateBody: unknown;
+    let rejectCalls = 0;
+    server.use(
+      http.post('*/api/v1/seo/generations/gen-001/regenerate', async ({ request }) => {
+        regenerateBody = await request.json();
+        return HttpResponse.json({
+          success: true,
+          status: 'SUCCESS',
+          data: {
+            generationId: 'gen-001',
+            status: 'DRAFT',
+            revision: 2,
+            drafts: [
+              { draftId: 'draft-r1', platform: 'google', draftText: '수정된 구글 문구', keywords: ['재생성'], contentRules: ['rule'] },
+              { draftId: 'draft-r2', platform: 'naver', draftText: '수정된 네이버 문구', keywords: ['재생성'], contentRules: ['rule'] },
+              { draftId: 'draft-r3', platform: 'kakao', draftText: '수정된 카카오 문구', keywords: ['재생성'], contentRules: ['rule'] },
+            ],
+          },
+          error: null,
+          timestamp: '2026-08-03T00:00:00Z',
+        });
+      }),
+      http.post('*/api/v1/seo/generations/gen-001/reject', async ({ request }) => {
+        rejectCalls += 1;
+        expect(await request.text()).toBe('');
+        return HttpResponse.json({
+          success: true,
+          status: 'SUCCESS',
+          data: { generationId: 'gen-001', status: 'REJECTED', revision: 2, drafts: [] },
+          error: null,
+          timestamp: '2026-08-03T00:00:00Z',
+        });
+      }),
+    );
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachRecommendation(user);
+
+    await user.click(screen.getByRole('button', { name: '내용 수정' }));
+    await answerInterview(user, ['수정한 동네 맛집 소개', '새로운 특징', '김치만두']);
+    await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
+
+    expect(await screen.findByText('수정된 구글 문구')).toBeInTheDocument();
+    expect(screen.getAllByText('#재생성')).toHaveLength(3);
+    expect(regenerateBody).toMatchObject({
+      purpose: 'INTRODUCTION',
+      briefText: '수정한 동네 맛집 소개. 새로운 특징. 김치만두.',
+    });
+
+    await user.click(screen.getByRole('button', { name: '이번에는 반영하지 않기' }));
+
+    expect(await screen.findByRole('heading', { name: '문구를 반영하지 않았습니다' })).toBeInTheDocument();
+    expect(rejectCalls).toBe(1);
   });
 
   test('답변 누락을 막고 취소와 닫기는 승인 없이 홈 callback을 호출한다', async () => {
@@ -187,10 +251,12 @@ describe('SeoGenerationWizard mobile flow', () => {
         status: 'SUCCESS',
         data: {
           generationId: 'gen-news-001',
+          status: 'DRAFT',
+          revision: 1,
           drafts: [
-            { draftId: 'draft-news-001', platform: 'google', draftText: '새소식', contentRules: ['rule'], status: 'DRAFT' },
-            { draftId: 'draft-news-002', platform: 'naver', draftText: '새소식', contentRules: ['rule'], status: 'DRAFT' },
-            { draftId: 'draft-news-003', platform: 'kakao', draftText: '새소식', contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-news-001', platform: 'google', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-news-002', platform: 'naver', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-news-003', platform: 'kakao', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'], status: 'DRAFT' },
           ],
         },
         error: null,
@@ -225,7 +291,7 @@ describe('SeoGenerationWizard mobile flow', () => {
     await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
     expect(await screen.findByRole('heading', { name: '가게 소식 문구를 확인해 주세요' })).toBeInTheDocument();
     expect(screen.getByRole('article', { name: '가게 소식 미리보기' })).toBeInTheDocument();
-    expect(screen.getByLabelText('반영한 요청 내용')).toHaveTextContent('이번 주말 할인 이벤트 만두전골을 할인해요');
+    expect(screen.getByLabelText('반영한 요청 내용')).toHaveTextContent('이번 주말 할인 이벤트. 만두전골을 할인해요.');
     expect(screen.getByRole('button', { name: '이 소식을 3사에 게시' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '내용 수정' }));
     expect(await screen.findByText(/어떤 가게 소식을 알려드릴까요/)).toBeInTheDocument();

@@ -1,7 +1,7 @@
 import type {
   EnvelopeStatus,
   ErrorCode,
-  ProposalChange,
+  PlatformTaskError,
   SeoDraft,
   StoreChangeProposal,
   Platform,
@@ -36,7 +36,13 @@ export interface CreateStoreChangeRequest {
   locale: string;
 }
 export type CreateStoreChangeResponse = StoreChangeProposal & { recognizedTextMasked: string };
-export interface PatchStoreChangeRequest { changes: ProposalChange[] }
+export interface BusinessHoursValue { open: string; close: string }
+export interface TemporaryClosureValue { startDate: string; endDate: string }
+export type ProposalChangeRequest =
+  | { field: 'businessHours'; currentValue: BusinessHoursValue; proposedValue: BusinessHoursValue }
+  | { field: 'temporaryClosure'; currentValue: TemporaryClosureValue | null; proposedValue: TemporaryClosureValue }
+  | { field: 'representativeMenuName'; currentValue: string; proposedValue: string };
+export interface PatchStoreChangeRequest { changes: ProposalChangeRequest[] }
 export type PatchStoreChangeResponse = StoreChangeProposal;
 export interface StoreChangeApprovalResponse {
   proposalId: string;
@@ -51,7 +57,14 @@ export interface CreateSeoGenerationRequest {
   seedKeywords: string[];
   sourceReviewIds: string[];
 }
-export interface CreateSeoGenerationResponse { generationId: string; drafts: SeoDraft[] }
+export interface CreateSeoGenerationResponse {
+  generationId: string;
+  status: 'DRAFT' | 'APPROVED' | 'REJECTED';
+  revision: number;
+  drafts: SeoDraft[];
+}
+export type RegenerateSeoGenerationRequest = Omit<CreateSeoGenerationRequest, 'storeProfileId'>;
+export type RegenerateSeoGenerationResponse = CreateSeoGenerationResponse;
 export interface GetReviewSummaryResponse extends ReviewSummary {
   storeProfileId: string;
   sourceReviews: SourceReview[];
@@ -64,19 +77,7 @@ export interface SeoApprovalResponse {
   status: SyncJobStatus;
   statusUrl: string;
 }
-export type PlatformTaskErrorCode =
-  | 'API_TIMEOUT'
-  | 'RATE_LIMITED'
-  | 'PLATFORM_SERVER_ERROR'
-  | 'AUTHENTICATION_ERROR'
-  | 'PERMISSION_DENIED'
-  | 'PLATFORM_VALIDATION_ERROR';
-export interface PlatformTaskError {
-  code: PlatformTaskErrorCode;
-  message: string;
-  retryable: boolean;
-  platform: Platform;
-}
+export type { PlatformTaskError } from '@/types/domain';
 export interface PlatformTaskResponse {
   platform: Platform;
   status: Exclude<SyncJobStatus, 'PARTIAL_SUCCESS'>;

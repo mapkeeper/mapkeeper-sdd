@@ -12,7 +12,7 @@ import type { PlatformResult } from '@/components/SyncStatus/SyncStatus';
 import type { ReviewSummary, SourceReview } from '@/types/domain';
 import './seoGeneration.css';
 
-type SeoWizardStep = 'SUMMARY' | 'PURPOSE' | 'INTERVIEW' | 'RECOMMEND' | 'RESULT';
+type SeoWizardStep = 'SUMMARY' | 'PURPOSE' | 'INTERVIEW' | 'RECOMMEND' | 'RESULT' | 'REJECTED';
 type SeoPurpose = 'INTRODUCTION' | 'NEWS';
 
 const stepOrder: SeoWizardStep[] = ['SUMMARY', 'PURPOSE', 'INTERVIEW', 'RECOMMEND', 'RESULT'];
@@ -41,6 +41,11 @@ const introductionQuickPrompts = [
   { label: '대표 메뉴 소개', answer: '대표 메뉴는 고기만두예요.' },
   { label: '가게 특징 소개', answer: '매일 정성껏 준비한 음식과 친절한 서비스가 특징이에요.' },
 ] as const;
+
+function asSentence(value: string): string {
+  const trimmed = value.trim();
+  return /[.!?。]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
 
 function getNewsDetailQuestion(answer: string): string {
   const normalized = answer.replaceAll(' ', '');
@@ -82,8 +87,8 @@ interface StepHeaderProps {
 }
 
 function StepHeader({ step, onBack, onClose }: StepHeaderProps) {
-  const index = stepOrder.indexOf(step) + 1;
-  const edgeStep = step === 'SUMMARY' || step === 'RESULT';
+  const index = step === 'REJECTED' ? stepOrder.length : stepOrder.indexOf(step) + 1;
+  const edgeStep = step === 'SUMMARY' || step === 'RESULT' || step === 'REJECTED';
   return (
     <header className="mobile-step-header">
       <div className="mobile-step-header__nav">
@@ -241,7 +246,7 @@ export function SeoGenerationWizard({
       flow.setValidationError('세 가지 질문에 모두 답해 주세요.');
       return;
     }
-    const answerText = answers.map((answer) => answer.trim()).join(' ');
+    const answerText = answers.map(asSentence).join(' ');
     const newsScheduleText = purpose !== 'NEWS'
       ? ''
       : newsHasNoDate
@@ -256,7 +261,7 @@ export function SeoGenerationWizard({
       sourceReviewIds: sourceReviews.map(({ id }) => id),
     });
     if (!generated) return;
-    const context = answers.map((answer) => answer.trim()).join(' ');
+    const context = answers.map(asSentence).join(' ');
     const generatedBody = generated[0]?.draftText;
     setBody(generatedBody ?? `${context} 정성을 담아 손님을 맞이하는 매장입니다.`);
     setStep('RECOMMEND');
@@ -267,6 +272,11 @@ export function SeoGenerationWizard({
     setUploading(true);
     await flow.approveFromButton();
     setUploading(false);
+  };
+
+  const rejectGeneratedContent = async () => {
+    const rejected = await flow.rejectFromButton();
+    if (rejected) setStep('REJECTED');
   };
 
   const editGeneratedContent = () => {
@@ -293,8 +303,8 @@ export function SeoGenerationWizard({
               <span className="ai-badge">✦ AI 요약</span>
               <p>{summaryState.summary}</p>
               <strong className="keyword-title">주요 키워드</strong>
-              <div className="tag-list" aria-label="주요 리뷰 키워드">
-                {summaryState.keywords.map((tag) => <span className="tag-chip" key={tag}>#{tag}</span>)}
+              <div className="tag-list" role="list" aria-label="주요 리뷰 키워드">
+                {summaryState.keywords.map((tag) => <span className="tag-chip" role="listitem" key={tag}>#{tag}</span>)}
               </div>
             </article>
             <div className="review-count-card"><span aria-hidden="true">👥</span><div><small>분석한 리뷰 수</small><strong aria-hidden="true">총 {summaryState.reviewCount}건 <em>(최근 3개월)</em></strong><span className="sr-only">총 {summaryState.reviewCount}건 분석</span></div></div>
@@ -430,7 +440,7 @@ export function SeoGenerationWizard({
                 <p className="news-announcement-preview__body">{body}</p>
                 <div className="news-announcement-preview__source" aria-label="반영한 요청 내용">
                   <strong>반영한 요청 내용</strong>
-                  <p>{answers.filter((answer) => answer.trim()).join(' ')}</p>
+                  <p>{answers.filter((answer) => answer.trim()).map(asSentence).join(' ')}</p>
                 </div>
                 <dl className="news-announcement-preview__details">
                   <div><dt>게시 기간</dt><dd>{newsHasNoDate ? '기간 없이 게시' : newsDateRange ? `${newsDateRange.start} ~ ${newsDateRange.end}` : '기간을 확인해 주세요'}</dd></div>
@@ -443,7 +453,7 @@ export function SeoGenerationWizard({
               </article>
             ) : (
               <>
-                <div className="seo-draft-list" aria-label="3사 추천 문구">
+                <div className="seo-draft-list">
                   {flow.drafts.map((draft) => <SeoDraftCard key={draft.draftId} draft={draft} />)}
                 </div>
                 <div className="hashtag-editor">
@@ -458,7 +468,18 @@ export function SeoGenerationWizard({
           <div className="bottom-split-actions">
             <button className="bottom-secondary" type="button" onClick={editGeneratedContent}>내용 수정</button>
             <button className="bottom-primary" type="button" disabled={uploading || flow.isApproving} onClick={() => void upload()}>{uploading ? (purpose === 'NEWS' ? '게시 처리 중…' : '전체 승인 처리 중…') : purpose === 'NEWS' ? '이 소식을 3사에 게시' : '3사 전체 승인'}</button>
+            <button className="bottom-secondary bottom-split-actions__reject" type="button" disabled={flow.isRejecting || flow.isApproving} onClick={() => void rejectGeneratedContent()}>{flow.isRejecting ? '처리 중…' : '이번에는 반영하지 않기'}</button>
           </div>
+        </section>
+      ) : null}
+
+      {step === 'REJECTED' ? (
+        <section className="mobile-step-screen" aria-labelledby="rejected-title">
+          <div className="mobile-step-screen__content">
+            <h1 id="rejected-title">문구를 반영하지 않았습니다</h1>
+            <p>서버에도 반영하지 않았습니다.</p>
+          </div>
+          <button className="bottom-primary" type="button" onClick={onExit}>확인 (홈으로 이동)</button>
         </section>
       ) : null}
 

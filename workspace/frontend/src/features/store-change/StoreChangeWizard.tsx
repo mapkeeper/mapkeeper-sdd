@@ -82,10 +82,12 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
     if (proposal) setStep('REVIEW');
   };
 
-  const rejectLocally = () => {
-    flow.clear();
-    setDraftNote(null);
-    setStep('REJECTED');
+  const rejectProposal = async () => {
+    const rejected = await flow.rejectFromButton();
+    if (rejected) {
+      setDraftNote(null);
+      setStep('REJECTED');
+    }
   };
 
   if (isDraftPreparing) {
@@ -175,7 +177,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
           {flow.proposal.changes.length > 0 ? <div className="store-change-wizard__actions">
             <button type="button" aria-label="승인 단계로 이동" onClick={() => setStep('CONFIRM')}>맞아요 <small>(3사에 반영)</small></button>
             <button type="button" className="store-change-wizard__secondary" onClick={beginEdit}>변경안 수정</button>
-            <button type="button" className="store-change-wizard__danger" onClick={rejectLocally}>변경안 거절</button>
+            <button type="button" className="store-change-wizard__danger" onClick={() => void rejectProposal()} disabled={flow.isRejecting}>{flow.isRejecting ? '처리 중…' : '이번에는 변경하지 않기'}</button>
           </div> : <div className="store-change-wizard__actions">
             <p className="store-change-wizard__alert" role="alert">변경할 매장 정보를 인식하지 못했어요. 다시 입력해 주세요.</p>
             <button type="button" className="store-change-wizard__secondary" onClick={() => { flow.clear(); setDraftNote(null); setStep('INPUT'); }}>다시 입력하기</button>
@@ -214,7 +216,8 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
       {step === 'REJECTED' ? (
         <section className="store-change-wizard__step">
           <h1>변경안을 적용하지 않았습니다</h1>
-          <button type="button" onClick={() => setStep('INPUT')}>처음으로 돌아가기</button>
+          <p>서버에도 반영하지 않는 것으로 기록했습니다.</p>
+          <button type="button" onClick={() => { flow.clear(); setStep('INPUT'); }}>처음으로 돌아가기</button>
         </section>
       ) : null}
 

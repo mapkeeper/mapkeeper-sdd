@@ -1,10 +1,9 @@
 import { http, HttpResponse } from 'msw';
 import { errorEnvelope, mockDelay, nextRequestId, successEnvelope } from '@/mocks/factories/envelopeFactory';
-import { editedStoreChangeDraftFixture, storeChangeApprovalFixture, storeChangeValidationErrorFixture } from '@/mocks/fixtures/storeChangeFixtures';
+import { storeChangeApprovalFixture, storeChangeValidationErrorFixture } from '@/mocks/fixtures/storeChangeFixtures';
 import { getMockScenario, scenarioLatency } from '@/mocks/scenarios';
-import type { CreateStoreChangeRequest, PatchStoreChangeRequest, StoreChangeApprovalResponse } from '@/services/api.types';
+import type { CreateStoreChangeRequest, PatchStoreChangeRequest, ProposalChangeRequest, StoreChangeApprovalResponse } from '@/services/api.types';
 import { PROPOSAL_FIELDS } from '@/types/domain';
-import type { ProposalChange } from '@/types/domain';
 import { storeProfileFixture } from '@/mocks/fixtures/storeFixtures';
 
 const approvalReplay = new Map<string, StoreChangeApprovalResponse>();
@@ -13,31 +12,34 @@ const multipleMenuRequest = /(?:와|과|및|그리고)/;
 const validCreate = (body: Partial<CreateStoreChangeRequest>): body is CreateStoreChangeRequest =>
   typeof body.storeProfileId === 'string' && typeof body.recognizedText === 'string' && typeof body.locale === 'string';
 
-export function parseStoreChangeText(recognizedText: string): ProposalChange[] {
+export function parseStoreChangeText(recognizedText: string): ProposalChangeRequest[] {
   const text = recognizedText.trim();
   if (/영업\s*시간|시까지/.test(text)) {
     const time = text.match(/(오후\s*)?(\d{1,2})\s*시/);
     if (!time) {
       return [{
         field: 'businessHours',
-        currentValue: storeProfileFixture.businessHours,
-        proposedValue: '09:00-22:00',
+        currentValue: { open: '09:00', close: '22:00' },
+        proposedValue: { open: '09:00', close: '22:00' },
       }];
     }
     const rawHour = Number(time[2]);
     const hour = time[1] && rawHour < 12 ? rawHour + 12 : rawHour;
     return [{
       field: 'businessHours',
-      currentValue: storeProfileFixture.businessHours,
-      proposedValue: `09:00-${String(hour).padStart(2, '0')}:00`,
+      currentValue: { open: '09:00', close: '22:00' },
+      proposedValue: { open: '09:00', close: `${String(hour).padStart(2, '0')}:00` },
     }];
   }
   if (/휴무|쉬(?:어요|겠습니다|는 날)/.test(text)) {
-    const date = text.match(/\d{1,2}월\s*\d{1,2}일/)?.[0];
+    const dateParts = text.match(/(\d{1,2})월\s*(\d{1,2})일/);
+    const date = dateParts?.[1] && dateParts[2]
+      ? `2026-${dateParts[1].padStart(2, '0')}-${dateParts[2].padStart(2, '0')}`
+      : '2026-08-18';
     return [{
       field: 'temporaryClosure',
-      currentValue: '영업',
-      proposedValue: date ? `${date} 임시 휴무` : '임시 휴무',
+      currentValue: null,
+      proposedValue: { startDate: date, endDate: date },
     }];
   }
   if (/대표\s*메뉴|메뉴를/.test(text)) {
@@ -59,7 +61,7 @@ export const storeChangeHandlers = [
     const body = await request.json() as Partial<CreateStoreChangeRequest>;
     if (!validCreate(body)) return HttpResponse.json(errorEnvelope(storeChangeValidationErrorFixture), { status: 422, ...responseOptions() });
     const changes = parseStoreChangeText(body.recognizedText);
-    if (changes.length > 0 && changes.every((change) => change.currentValue === change.proposedValue)) {
+    if (changes.length > 0 && changes.every((change) => JSON.stringify(change.currentValue) === JSON.stringify(change.proposedValue))) {
       return HttpResponse.json(errorEnvelope({ code: 'INVALID_STATE', message: '현재 매장 정보와 달라진 내용이 없습니다.', details: [] }), { status: 409, ...responseOptions() });
     }
     return HttpResponse.json(successEnvelope({
@@ -74,7 +76,12 @@ export const storeChangeHandlers = [
     const body = await request.json() as Partial<PatchStoreChangeRequest>;
     const valid = params.proposalId === 'prop-001' && body.changes?.every((change) => PROPOSAL_FIELDS.includes(change.field));
     if (!valid) return HttpResponse.json(errorEnvelope(storeChangeValidationErrorFixture), { status: 422, ...responseOptions() });
-    return HttpResponse.json(successEnvelope({ ...editedStoreChangeDraftFixture, changes: body.changes ?? [] }), responseOptions());
+    return HttpResponse.json(successEnvelope({
+      proposalId: 'prop-001',
+      recognizedTextMasked: '수정된 변경안',
+      changes: body.changes ?? [],
+      status: 'DRAFT' as const,
+    }), responseOptions());
   }),
   http.post('*/api/v1/store-change-proposals/:proposalId/approve', async ({ params, request }) => {
     await mockDelay(scenarioLatency());
@@ -83,6 +90,22 @@ export const storeChangeHandlers = [
     const data = approvalReplay.get(key) ?? storeChangeApprovalFixture;
     approvalReplay.set(key, data);
     return HttpResponse.json(successEnvelope(data, 'PROCESSING'), responseOptions());
+  }),
+  http.post('*/api/v1/store-change-proposals/:proposalId/reject', async ({ params, request }) => {
+    await mockDelay(scenarioLatency());
+    if (params.proposalId !== 'prop-001' || await request.text() !== '') {
+      return HttpResponse.json(errorEnvelope(storeChangeValidationErrorFixture), { status: 422, ...responseOptions() });
+    }
+    return HttpResponse.json(successEnvelope({
+      proposalId: 'prop-001',
+      recognizedTextMasked: '반영하지 않은 변경안',
+      changes: [{
+        field: 'businessHours' as const,
+        currentValue: { open: '09:00', close: '22:00' },
+        proposedValue: { open: '09:00', close: '20:00' },
+      }],
+      status: 'REJECTED' as const,
+    }), responseOptions());
   }),
 ];
 
