@@ -127,6 +127,31 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(screen.getByRole('textbox', { name: '사장님 답변 입력' })).toHaveValue('대표 메뉴는 고기만두예요.');
   });
 
+  test('완료한 답변도 수정하면 이후 질문부터 다시 답할 수 있다', async () => {
+    const user = userEvent.setup();
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachInterview(user);
+    const answers = ['정성이 가득한 동네 맛집', '깊은 국물과 친절한 서비스', '만두전골'];
+    for (const [index, answer] of answers.entries()) {
+      await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), answer);
+      await user.click(screen.getByRole('button', { name: '전송' }));
+      if (index < answers.length - 1) {
+        const nextQuestion = index === 0 ? '가장 내세우고 싶은 특징이 있나요?' : '대표 메뉴가 무엇인가요?';
+        expect(await screen.findByText(nextQuestion, {}, { timeout: 1_500 })).toBeInTheDocument();
+      }
+    }
+
+    await user.click(screen.getByRole('button', { name: '질문 1 답변 수정' }));
+    expect(screen.getByRole('textbox', { name: '사장님 답변 입력' })).toHaveValue(answers[0]);
+    await user.clear(screen.getByRole('textbox', { name: '사장님 답변 입력' }));
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '새롭게 정리한 동네 맛집 소개');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    expect(await screen.findByText('가장 내세우고 싶은 특징이 있나요?', {}, { timeout: 1_500 })).toBeInTheDocument();
+    expect(screen.getByText('새롭게 정리한 동네 맛집 소개')).toBeInTheDocument();
+    expect(screen.queryByText('깊은 국물과 친절한 서비스')).not.toBeInTheDocument();
+  });
+
   test('답변을 보낼 때 사용자 말풍선과 타이핑 상태를 거쳐 질문을 하나씩 공개한다', async () => {
     const user = userEvent.setup();
     render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);

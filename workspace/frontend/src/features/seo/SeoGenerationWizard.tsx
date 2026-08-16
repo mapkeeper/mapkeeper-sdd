@@ -120,6 +120,7 @@ export function SeoGenerationWizard({
   const [answers, setAnswers] = useState<string[]>(['', '', '']);
   const [extraQuestion, setExtraQuestion] = useState<string | null>(null);
   const [currentAnswer, setCurrentAnswer] = useState('');
+  const [editingAnswerIndex, setEditingAnswerIndex] = useState<number | null>(null);
   const [visibleQuestionCount, setVisibleQuestionCount] = useState(1);
   const [isAiTyping, setAiTyping] = useState(false);
   const [body, setBody] = useState('');
@@ -161,11 +162,21 @@ export function SeoGenerationWizard({
 
   const submitInterviewAnswer = useCallback((value: string) => {
     const answer = value.trim();
-    if (!answer || isAiTyping || interviewComplete) return;
-    const questionIndex = visibleQuestionCount - 1;
-    setAnswers((current) => current.length > questionIndex
-      ? current.map((savedAnswer, index) => index === questionIndex ? answer : savedAnswer)
-      : [...current, answer]);
+    if (!answer || isAiTyping || (interviewComplete && editingAnswerIndex === null)) return;
+    const isEditing = editingAnswerIndex !== null;
+    const questionIndex = editingAnswerIndex ?? visibleQuestionCount - 1;
+    setAnswers((current) => isEditing
+      ? current.map((savedAnswer, index) => index < questionIndex ? savedAnswer : index === questionIndex ? answer : '')
+      : current.length > questionIndex
+        ? current.map((savedAnswer, index) => index === questionIndex ? answer : savedAnswer)
+        : [...current, answer]);
+    if (isEditing) {
+      setEditingAnswerIndex(null);
+      setExtraQuestion(null);
+      setNewsDateRange(null);
+      setNewsDateConfirmed(false);
+      setNewsHasNoDate(false);
+    }
     if (purpose === 'NEWS' && questionIndex >= baseQuestions.length - 1) {
       const parsedSchedule = parseNewsSchedule(answer);
       if (parsedSchedule.range || parsedSchedule.hasNoDate) {
@@ -188,19 +199,31 @@ export function SeoGenerationWizard({
     if (needsNewsFollowUp || needsNewsDateClarification) {
       setExtraQuestion(needsNewsDateClarification ? getNewsDateClarificationQuestion() : '구체적인 날짜, 기간 또는 할인 혜택을 알려주실 수 있을까요?');
     }
-    if (questionIndex >= questions.length - 1 && !needsNewsFollowUp && !needsNewsDateClarification) return;
+    if (questionIndex >= questions.length - 1 && !needsNewsFollowUp && !needsNewsDateClarification) {
+      if (isEditing) setVisibleQuestionCount(Math.min(questionIndex + 1, baseQuestions.length));
+      return;
+    }
     const nextQuestionCount = needsNewsFollowUp || needsNewsDateClarification ? baseQuestions.length + 1 : questions.length;
     setAiTyping(true);
     typingTimerRef.current = window.setTimeout(() => {
-      setVisibleQuestionCount((count) => Math.min(count + 1, nextQuestionCount));
+      setVisibleQuestionCount((count) => isEditing
+        ? Math.min(questionIndex + 2, nextQuestionCount)
+        : Math.min(count + 1, nextQuestionCount));
       setAiTyping(false);
       typingTimerRef.current = null;
     }, 500);
-  }, [baseQuestions.length, extraQuestion, interviewComplete, isAiTyping, purpose, questions.length, visibleQuestionCount]);
+  }, [baseQuestions.length, editingAnswerIndex, extraQuestion, interviewComplete, isAiTyping, purpose, questions.length, visibleQuestionCount]);
 
   const sendInterviewAnswer = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     submitInterviewAnswer(currentAnswer);
+  };
+
+  const beginEditingAnswer = (index: number) => {
+    const answer = answers[index];
+    if (!answer || isAiTyping) return;
+    setEditingAnswerIndex(index);
+    setCurrentAnswer(answer);
   };
 
   useEffect(() => {
@@ -328,7 +351,10 @@ export function SeoGenerationWizard({
                   </div>
                   {answers[index] ? (
                     <div className="chat-message chat-message--owner">
-                      <p className="chat-bubble chat-bubble--owner">{answers[index]}</p>
+                      <div className="chat-owner-answer">
+                        <p className="chat-bubble chat-bubble--owner">{answers[index]}</p>
+                        <button type="button" className="chat-answer-edit" onClick={() => beginEditingAnswer(index)} disabled={isAiTyping} aria-label={`질문 ${index + 1} 답변 수정`}>답변 수정</button>
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -346,8 +372,9 @@ export function SeoGenerationWizard({
               <div ref={conversationEndRef} aria-hidden="true" />
             </div>
           </div>
-          {!interviewComplete ? (
+          {!interviewComplete || editingAnswerIndex !== null ? (
             <form className="chat-input-bar" onSubmit={sendInterviewAnswer}>
+              {editingAnswerIndex !== null ? <p className="chat-editing-notice" role="status">질문 {editingAnswerIndex + 1}의 답변을 수정하고 있어요. 다시 보내면 이후 답변을 이어서 확인할게요.</p> : null}
               {speech.state === 'LISTENING' ? <div className="chat-voice-listening" role="status"><span className="chat-wave" aria-hidden="true"><i /><i /><i /><i /></span><span>맵지기가 듣고 있어요... 편하게 말씀해 주세요</span></div> : null}
               {speech.state === 'FAILED' ? <p className="chat-voice-error" role="alert">음성을 인식하지 못했어요. 다시 시도하거나 직접 입력해 주세요.</p> : null}
               <div className="chat-input-row">
