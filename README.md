@@ -5,10 +5,11 @@
 ## 현재 구성
 
 ```text
+docs/sdd/         최신 설계 문서(SDD) — 최종 제출 산출물이 아님
+
 workspace/
 ├── backend/        FastAPI와 Dockerfile
 ├── frontend/       React/Vite와 Dockerfile
-├── docs/sdd/       코드와 함께 버전 관리하는 최신 SDD
 ├── compose.yaml    로컬·개발 서버 실행 설정
 └── .env.example    공개 가능한 환경변수 예시
 
