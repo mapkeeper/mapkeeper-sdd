@@ -3,7 +3,7 @@
   gap: 20px;
   padding: 20px;
   border: 0;
-  border-radius: 20px;
+  border-radius:var(--radius-lg);
   background: #fff;
   color: #191f28;
   font-family: Pretendard, sans-serif;
@@ -38,7 +38,7 @@
 .seo-draft-card__status {
   margin-left: auto;
   padding: 5px 10px;
-  border-radius: 999px;
+  border-radius:var(--radius-pill);
   background: #e8eef7;
   font-weight: 800;
   white-space: nowrap;
@@ -48,7 +48,7 @@
   min-height: 76px;
   margin: 0;
   padding: 20px;
-  border-radius: 12px;
+  border-radius:var(--radius-sm);
   background: #f8fafc;
   font-size: 18px;
   line-height: 1.6;
@@ -78,8 +78,8 @@
   min-height: 56px;
   padding: 12px 18px;
   border: 0;
-  border-radius: 16px;
-  background: #3182f6;
+  border-radius:var(--radius-md);
+  background: #b54c26;
   color: #fff;
   font-family: Pretendard, sans-serif;
   font-size: 18px;
@@ -97,7 +97,7 @@
   min-height: 120px;
   padding: 20px;
   border: 0;
-  border-radius: 20px;
+  border-radius:var(--radius-lg);
   background: #f2f4f6;
   color: #191f28;
   box-shadow: 0 4px 20px rgba(0,0,0,.04);

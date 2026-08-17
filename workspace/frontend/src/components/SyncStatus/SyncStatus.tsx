@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CheckCircle, WarningCircle as AlertCircle } from '@phosphor-icons/react';
 import { ApiClientError } from '@/services/api';
 import { retryStartedMessage, SYNC_COPY, SYNC_STATUS_TITLES } from '@/content/syncMessages';
 import {
@@ -72,14 +73,6 @@ const statusLabels: Record<PlatformTaskStatus, string> = {
   SUCCESS: '반영 완료',
   FAILED: '반영 실패',
 };
-
-function CheckCircle() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.6 2.6L16.5 9"/></svg>;
-}
-
-function AlertCircle() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></svg>;
-}
 
 export interface SyncStatusDashboardProps {
   syncJobId: string;
@@ -247,9 +240,9 @@ export function SyncStatusDashboard({
             <img className="sync-status__brand-logo" src={platformLogos[result.id]} alt={`${accessiblePlatformLabels[result.id]} 로고`} />
             <div className="sync-status__platform-copy"><strong>{result.name}</strong><span>{result.status === 'SUCCESS' ? '업데이트 완료' : result.status === 'FAIL' ? result.errorMessage : statusLabels[domainStatus]}</span>{result.attemptCount !== undefined && result.attemptCount > 1 ? <small>시도 {result.attemptCount}/3회</small> : null}</div>
             <span className="sr-only">{statusLabels[domainStatus]}</span>
-            {result.status === 'SUCCESS' ? <span className="sync-status__success-check"><CheckCircle /> 반영 완료</span> : null}
+            {result.status === 'SUCCESS' ? <span className="sync-status__success-check"><CheckCircle aria-hidden="true" /> 반영 완료</span> : null}
             {result.status === 'SUCCESS' ? <span className="sync-status__chevron" aria-hidden="true">›</span> : null}
-            {result.status === 'FAIL' ? <div className="sync-status__failure-action"><strong><AlertCircle /> 실패</strong>{(result.retryable ?? resultOverride !== null) ? <button type="button" aria-label={result.id === firstFailedPlatform ? '실패한 플랫폼 다시 시도' : `${result.name} 재시도`} onClick={(event) => { event.stopPropagation(); void retry(); }} disabled={isRetrying} style={{ minHeight: 56 }}>{isRetrying ? '재시도 중…' : '↻ 재시도'}</button> : null}</div> : null}
+            {result.status === 'FAIL' ? <div className="sync-status__failure-action"><strong><AlertCircle aria-hidden="true" /> 실패</strong>{(result.retryable ?? resultOverride !== null) ? <button type="button" aria-label={result.id === firstFailedPlatform ? '실패한 플랫폼 다시 시도' : `${result.name} 재시도`} onClick={(event) => { event.stopPropagation(); void retry(); }} disabled={isRetrying} style={{ minHeight: 56 }}>{isRetrying ? '재시도 중…' : '↻ 재시도'}</button> : null}</div> : null}
             {!['SUCCESS', 'FAIL'].includes(result.status) ? <span className={`sync-status__platform-icon sync-status__platform-icon--${domainStatus.toLowerCase()}`} aria-hidden="true">{statusIcons[domainStatus]}</span> : null}
           </li>
         );})}
@@ -280,7 +273,7 @@ export function SyncStatusDashboard({
           {viewMode === 'seo' ? <div className="sync-detail-modal__content">
             <section><small>AI 추천 홍보 문구</small><p>{seoContent}</p></section>
             <section><small>적용된 이벤트·키워드 태그</small><div className="sync-detail-modal__tags">{seoTags.map((tag) => <span key={tag}>#{tag.replace(/^#/, '')}</span>)}</div></section>
-            <dl className="sync-detail-modal__publish"><dt>발행 상태</dt><dd><CheckCircle /> 정상 등록</dd></dl>
+            <dl className="sync-detail-modal__publish"><dt>발행 상태</dt><dd><CheckCircle aria-hidden="true" /> 정상 등록</dd></dl>
           </div> : <div className="sync-detail-modal__content">
             <small>매장 정보 변경 비교</small>
             <dl className="sync-detail-modal__changes">

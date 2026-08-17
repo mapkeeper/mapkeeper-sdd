@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { CalendarBlank } from '@phosphor-icons/react';
 import type { NewsDateRange } from './newsDate';
 
 interface NewsDateRangePickerProps {
@@ -40,10 +41,7 @@ export function NewsDateRangePicker({ initialRange = null, initialNoDate = false
     <form className="news-date-picker" onSubmit={submit} aria-labelledby="news-date-title">
       <div className="news-date-picker__heading">
         <span className="news-date-picker__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false">
-            <rect x="3" y="5" width="18" height="16" rx="2" />
-            <path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01" />
-          </svg>
+          <CalendarBlank weight="regular" />
         </span>
         <div>
           <h2 id="news-date-title">소식 기간을 확인해 주세요</h2>

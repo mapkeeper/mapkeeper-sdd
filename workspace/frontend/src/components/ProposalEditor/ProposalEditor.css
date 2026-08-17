@@ -27,7 +27,7 @@
   box-sizing: border-box;
   padding: 12px 16px;
   border: 0;
-  border-radius: 16px;
+  border-radius:var(--radius-md);
   background: #fff;
   color: #191f28;
   box-shadow: 0 4px 20px rgba(0,0,0,.04);
@@ -41,8 +41,8 @@
   min-height: 56px;
   padding: 12px 18px;
   border: 0;
-  border-radius: 16px;
-  background: #3182f6;
+  border-radius:var(--radius-md);
+  background: #b54c26;
   color: white;
   font-family: Pretendard, sans-serif;
   font-size: 18px;

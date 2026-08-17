@@ -1,4 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  Bell,
+  ChartBar,
+  ClockCounterClockwise,
+  Gear,
+  House,
+  Microphone,
+  Sparkle,
+  Storefront,
+} from '@phosphor-icons/react';
 import { SeoGenerationWizard } from '@/features/seo/SeoGenerationWizard';
 import { StoreChangeWizard } from '@/features/store-change/StoreChangeWizard';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
@@ -15,20 +25,20 @@ import './App.css';
 
 type AppScreen = 'HOME' | 'STORE_CHANGE' | 'SEO' | 'STORE_SYNC';
 
-function Icon({ name, className = 'h-6 w-6' }: { name: 'bell' | 'mic' | 'chart' | 'store' | 'sparkle' | 'home' | 'info' | 'copy' | 'history' | 'settings'; className?: string }) {
-  const paths = {
-    bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></>,
-    mic: <><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/></>,
-    chart: <><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/><path d="m4 7 6-4 6 6 5-4"/></>,
-    store: <><path d="M3 10h18l-2-6H5l-2 6Z"/><path d="M5 10v10h14V10M9 20v-6h6v6M3 10c0 2 3 3 4.5 0 1.5 3 4.5 3 6 0 1.5 3 4.5 3 7.5 0"/></>,
-    sparkle: <><path d="m12 3 1.3 3.7L17 8l-3.7 1.3L12 13l-1.3-3.7L7 8l3.7-1.3L12 3ZM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14ZM19 13l.7 1.8 1.8.7-1.8.7L19 18l-.7-1.8-1.8-.7 1.8-.7L19 13Z"/></>,
-    home: <><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></>,
-    info: <><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></>,
-    copy: <><rect x="8" y="8" width="11" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2"/></>,
-    history: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></>,
-    settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></>,
-  };
-  return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+const iconComponents = {
+  bell: Bell,
+  mic: Microphone,
+  chart: ChartBar,
+  store: Storefront,
+  sparkle: Sparkle,
+  home: House,
+  history: ClockCounterClockwise,
+  settings: Gear,
+};
+
+function Icon({ name, className = 'h-6 w-6' }: { name: keyof typeof iconComponents; className?: string }) {
+  const Component = iconComponents[name];
+  return <Component className={className} weight="regular" aria-hidden="true" />;
 }
 
 const platforms = [
@@ -169,7 +179,7 @@ function Home({ onStore, onSeo, reviewSummary }: { onStore(): void; onSeo(): voi
     </div> : null}
 
     <nav className="home-nav" aria-label="하단 메뉴">
-      {[['home','홈'],['store','매장 정보'],['sparkle','홍보문구'],['history','기록'],['settings','설정']].map(([icon,label], index) => <button key={label} type="button" className={index === 0 ? 'is-active' : ''}><Icon name={icon as 'home'} />{label}</button>)}
+      {([['home','홈'],['store','매장 정보'],['sparkle','홍보문구'],['history','기록'],['settings','설정']] as const).map(([icon,label], index) => <button key={label} type="button" className={index === 0 ? 'is-active' : ''}><Icon name={icon} />{label}</button>)}
     </nav>
   </main>;
 }

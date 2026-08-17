@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { Microphone } from '@phosphor-icons/react';
 import type { VoiceUiState } from '@/types/domain';
 import './VoicePanel.css';
 
@@ -44,12 +45,12 @@ export function VoicePanel({ state, recognizedText, error, onStart, onManualSubm
 
       {state === 'IDLE' ? (
         <button className="voice-panel__primary" type="button" onClick={onStart} aria-label="음성 인식 시작" style={{ minHeight: 56 }}>
-          <span className="voice-panel__waves" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 10.5a6.5 6.5 0 0 0 13 0M12 17v4M9 21h6"/></svg></span>
+          <span className="voice-panel__waves" aria-hidden="true"><Microphone weight="regular" /></span>
           <span>마이크를 눌러<br />말씀해 주세요</span>
         </button>
       ) : null}
 
-      {state === 'LISTENING' ? <div className="voice-panel__listening"><span className="voice-panel__pulse" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 10.5a6.5 6.5 0 0 0 13 0M12 17v4M9 21h6"/></svg></span><p className="voice-panel__hint">말을 마치면 자동으로 정리해 드려요.</p></div> : null}
+      {state === 'LISTENING' ? <div className="voice-panel__listening"><span className="voice-panel__pulse" aria-hidden="true"><Microphone weight="regular" /></span><p className="voice-panel__hint">말을 마치면 자동으로 정리해 드려요.</p></div> : null}
       {state === 'RECOGNIZED' ? <p className="voice-panel__transcript">“{recognizedText}”</p> : null}
 
       {state === 'FAILED' ? (
