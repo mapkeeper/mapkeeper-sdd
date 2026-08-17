@@ -430,9 +430,12 @@ export function SeoGenerationWizard({
               }}
             />
           ) : (
-            <button className="bottom-primary interview-recommend-button" type="button" disabled={flow.isGenerating} onClick={() => void generateRecommendation()}>
-              {flow.isGenerating ? '추천 문구 만드는 중…' : '문구 추천받기'}
-            </button>
+            <>
+              <button className="bottom-primary interview-recommend-button" type="button" disabled={flow.isGenerating} onClick={() => void generateRecommendation()}>
+                {flow.isGenerating ? '추천 문구 만드는 중…' : '문구 추천받기'}
+              </button>
+              {flow.isGenerating ? <p className="interview-generating-hint" role="status">AI가 3사 문구를 만들고 있어요. 네트워크 상황에 따라 최대 1분 정도 걸릴 수 있어요.</p> : null}
+            </>
           )}
         </section>
       ) : null}

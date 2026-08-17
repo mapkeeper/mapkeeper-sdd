@@ -141,7 +141,8 @@
 .bottom-primary:disabled { background:#dbe3ee; color:#fff; box-shadow:none; }
 .bottom-split-actions { position:sticky; bottom:0; display:grid; grid-template-columns:.7fr 1.3fr; gap:9px; margin-top:auto; padding:12px 22px calc(16px + env(safe-area-inset-bottom)); background:rgba(248,250,252,.96); }.bottom-split-actions .bottom-primary { background:#2563eb; color:#fff; }.bottom-secondary { border:1px solid #e2e8f0; background:#fff; color:#475569; }
 .bottom-split-actions__reject { grid-column:1 / -1; min-height:44px; border:0; background:transparent; color:#64748b; }
-.interview-recommend-button { font-size:15px; }.seo-mobile-flow__alert { margin:12px 22px 0; padding:12px 14px; border:1px solid #fecaca; border-radius:14px; background:#fff1f2; color:#be123c; font-size:12px; font-weight:700; }
+.interview-recommend-button { font-size:15px; }
+.interview-generating-hint { margin:8px 22px 0; color:#64748b; font-size:12px; text-align:center; }.seo-mobile-flow__alert { margin:12px 22px 0; padding:12px 14px; border:1px solid #fecaca; border-radius:14px; background:#fff1f2; color:#be123c; font-size:12px; font-weight:700; }
 .result-content { display:flex; min-height:0; flex-direction:column; padding-top:28px; padding-bottom:104px; overflow-y:auto; text-align:center; }.result-content > .sync-status { width:100%; margin-block:auto; }.result-content .sync-status__hero { padding-top:0; }
 .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
 @media (prefers-reduced-motion:no-preference) { .mobile-step-screen { animation:step-in .2s ease-out; }.chat-thread { scroll-behavior:smooth; } }

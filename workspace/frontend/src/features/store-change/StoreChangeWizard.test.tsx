@@ -254,6 +254,7 @@ describe('StoreChangeWizard', () => {
     await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
 
     expect(screen.getByRole('status')).toHaveTextContent('AI가 변경안을 작성 중입니다...');
+    expect(screen.getByRole('status')).toHaveTextContent('최대 1분 정도 걸릴 수 있어요.');
     expect(await screen.findByRole('heading', { name: '변경안을 확인해 주세요' }, { timeout: 1_500 })).toBeInTheDocument();
     expect(screen.getByText('요청 메모')).toBeInTheDocument();
     expect(screen.getByText('전화번호 바꿔줘')).toBeInTheDocument();

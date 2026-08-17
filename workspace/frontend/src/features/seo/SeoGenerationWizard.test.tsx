@@ -88,6 +88,34 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(screen.getByText('#속이알참')).toBeInTheDocument();
   });
 
+  test('문구 생성이 오래 걸리는 동안 대기 안내 문구를 보여준다', async () => {
+    const user = userEvent.setup();
+    server.use(http.post('*/api/v1/seo/generations', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return HttpResponse.json({
+        success: true, status: 'SUCCESS',
+        data: {
+          generationId: 'gen-001',
+          status: 'DRAFT',
+          revision: 1,
+          drafts: [
+            { draftId: 'draft-001', platform: 'google', draftText: '추천 소개글', keywords: ['구글추천'], contentRules: ['rule'] },
+            { draftId: 'draft-002', platform: 'naver', draftText: '네이버 문구', keywords: ['네이버추천'], contentRules: ['rule'] },
+            { draftId: 'draft-003', platform: 'kakao', draftText: '카카오 문구', keywords: ['카카오추천'], contentRules: ['rule'] },
+          ],
+        }, error: null, timestamp: '2026-08-03T00:00:00Z',
+      }, { status: 201 });
+    }));
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachInterview(user);
+    await answerInterview(user, ['정성이 가득한 동네 맛집', '깊은 국물과 친절한 서비스', '만두전골']);
+    await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
+
+    expect(screen.getByRole('button', { name: '추천 문구 만드는 중…' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('최대 1분 정도 걸릴 수 있어요.');
+    expect(await screen.findByRole('heading', { name: '3사 전체 추천 문구를 확인해 주세요' })).toBeInTheDocument();
+  });
+
   test('업로드 버튼 클릭만 한 번의 전체 승인과 SyncJob handoff를 실행한다', async () => {
     const user = userEvent.setup();
     const approvalRequests: Array<{ key: string | null; body: string }> = [];

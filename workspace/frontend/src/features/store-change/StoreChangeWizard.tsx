@@ -98,6 +98,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
           <span className="store-change-wizard__spinner" aria-hidden="true" />
           <h1>AI가 변경안을 작성 중입니다...</h1>
           <p>입력하신 내용을 보기 쉽게 정리하고 있어요.</p>
+          <p>네트워크 상황에 따라 최대 1분 정도 걸릴 수 있어요.</p>
         </section>
       </main>
     );
