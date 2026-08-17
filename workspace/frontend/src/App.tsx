@@ -108,7 +108,7 @@ function Home({ onStore, onSeo, reviewSummary }: { onStore(): void; onSeo(): voi
 
       <button type="button" onClick={() => setReviewSummaryOpen(true)} className="home-card" aria-label="우리 가게 리뷰 분석 확인하기">
         <span className="home-card__copy">
-          <small className="home-card__eyebrow">02 · 리뷰 인사이트</small>
+          <small className="home-card__eyebrow">02 · 리뷰 인사이트 · {reviewSummary.reviewCount}건</small>
           <strong>우리 가게 리뷰 분석 확인하기</strong>
           <small>손님들의 최근 리뷰 요약과 핵심 키워드를 한눈에 확인하세요</small>
         </span>

@@ -24,12 +24,13 @@ describe('App mobile routing', () => {
   beforeEach(() => vi.stubEnv('VITE_API_MOCKING', 'true'));
   afterEach(() => vi.unstubAllEnvs());
 
-  test('480px 모바일 홈에는 세 가지 핵심 행동만 보이고 개발 도구는 없다', () => {
+  test('480px 모바일 홈에는 세 가지 핵심 행동만 보이고 개발 도구는 없다', async () => {
     render(<App />);
     expect(screen.getByTestId('dashboard-container')).toHaveClass('app-phone');
     expect(screen.getByRole('button', { name: 'AI 가게 홍보 & 소문내기' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '음성으로 매장 정보 변경하기' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '우리 가게 리뷰 분석 확인하기' })).toBeInTheDocument();
+    expect(await screen.findByText('02 · 리뷰 인사이트 · 128건')).toBeInTheDocument();
     expect(screen.getAllByText('연결됨')).toHaveLength(3);
     expect(screen.getByRole('heading', { name: '만두전골 하우스' })).toBeInTheDocument();
     expect(screen.queryByText('개발자용 모의 응답 설정')).not.toBeInTheDocument();
