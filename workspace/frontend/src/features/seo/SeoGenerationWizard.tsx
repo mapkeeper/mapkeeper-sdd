@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Megaphone, Microphone } from '@phosphor-icons/react';
+import { Lightbulb, Megaphone, Microphone, Robot, Sparkle, Storefront, UsersThree } from '@phosphor-icons/react';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
 import { SeoDraftCard } from '@/components/SeoDraftCard/SeoDraftCard';
 import { useSeoGenerationFlow } from '@/features/seo/useSeoGenerationFlow';
@@ -312,7 +312,7 @@ export function SeoGenerationWizard({
       {step === 'SUMMARY' ? (
         <section className="mobile-step-screen" aria-labelledby="summary-title">
           <div className="mobile-step-screen__content">
-            <div className="seo-greeting"><span aria-hidden="true">🤖</span><div><h1 id="summary-title" aria-label="사장님! 손님들 리뷰를 분석해 보았어요">사장님!<br />손님들 리뷰를 분석해 보았어요</h1><p>우리 가게에 대해 이렇게 말하고 있어요 😊</p></div></div>
+            <div className="seo-greeting"><span aria-hidden="true"><Robot weight="regular" /></span><div><h1 id="summary-title" aria-label="사장님! 손님들 리뷰를 분석해 보았어요">사장님!<br />손님들 리뷰를 분석해 보았어요</h1><p>우리 가게에 대해 이렇게 말하고 있어요 😊</p></div></div>
             <article className="review-summary-card">
               <span className="ai-badge">✦ AI 요약</span>
               <p>{summaryState.summary}</p>
@@ -321,7 +321,7 @@ export function SeoGenerationWizard({
                 {summaryState.keywords.map((tag) => <span className="tag-chip" role="listitem" key={tag}>#{tag}</span>)}
               </div>
             </article>
-            <div className="review-count-card"><span aria-hidden="true">👥</span><div><small>분석한 리뷰 수</small><strong aria-hidden="true">총 {summaryState.reviewCount}건 <em>(최근 3개월)</em></strong><span className="sr-only">총 {summaryState.reviewCount}건 분석</span></div></div>
+            <div className="review-count-card"><span aria-hidden="true"><UsersThree weight="regular" /></span><div><small>분석한 리뷰 수</small><strong aria-hidden="true">총 {summaryState.reviewCount}건 <em>(최근 3개월)</em></strong><span className="sr-only">총 {summaryState.reviewCount}건 분석</span></div></div>
           </div>
           <button className="bottom-primary" type="button" onClick={() => setStep('PURPOSE')}>다음 (문구 만들기)</button>
         </section>
@@ -330,23 +330,22 @@ export function SeoGenerationWizard({
       {step === 'PURPOSE' ? (
         <section className="mobile-step-screen" aria-labelledby="purpose-title">
           <div className="mobile-step-screen__content">
-            <p className="eyebrow">작성 목적</p>
             <h1 id="purpose-title">어떤 문구를 작성할까요?</h1>
             <fieldset className="purpose-options">
               <legend className="sr-only">작성 목적 선택</legend>
               <label className={purpose === 'INTRODUCTION' ? 'purpose-card purpose-card--selected' : 'purpose-card'}>
-                <span className="purpose-icon" aria-hidden="true">🏪</span>
+                <span className="purpose-icon" aria-hidden="true"><Storefront weight="regular" /></span>
                 <input type="radio" name="purpose" checked={purpose === 'INTRODUCTION'} onChange={() => setPurpose('INTRODUCTION')} />
                 <span><strong>1. 매장 대표 소개글<br />&amp; 해시태그 만들기</strong><small>가게 전체를 소개할 때 사용해요.</small><em>예) 우리 가게를 처음 찾는 손님에게<br />알리고 싶을 때</em></span>
               </label>
               <label className={purpose === 'NEWS' ? 'purpose-card purpose-card--selected' : 'purpose-card'}>
-                <span className="purpose-icon" aria-hidden="true">📣</span>
+                <span className="purpose-icon" aria-hidden="true"><Megaphone weight="regular" /></span>
                 <input type="radio" name="purpose" checked={purpose === 'NEWS'} onChange={() => setPurpose('NEWS')} />
                 <span><strong>2. 오늘의 가게 소식<br />&amp; 이벤트 작성하기</strong><small>신메뉴, 휴무, 할인 등 소식을 알릴 때 사용해요.</small></span>
               </label>
             </fieldset>
             <aside className="purpose-preview" aria-live="polite">
-              <header><span aria-hidden="true">{purpose === 'NEWS' ? '📣' : purpose === 'INTRODUCTION' ? '✨' : '💡'}</span><div><strong>{purpose === 'NEWS' ? '가게 소식은 이렇게 만들어져요' : purpose === 'INTRODUCTION' ? '소개글은 이렇게 만들어져요' : '하나를 선택해 보세요'}</strong><small>질문 3개 · 약 1분 소요</small></div></header>
+              <header><span aria-hidden="true">{purpose === 'NEWS' ? <Megaphone weight="regular" /> : purpose === 'INTRODUCTION' ? <Sparkle weight="regular" /> : <Lightbulb weight="regular" />}</span><div><strong>{purpose === 'NEWS' ? '가게 소식은 이렇게 만들어져요' : purpose === 'INTRODUCTION' ? '소개글은 이렇게 만들어져요' : '하나를 선택해 보세요'}</strong><small>질문 3개 · 약 1분 소요</small></div></header>
               {purpose === 'INTRODUCTION' ? <div className="purpose-preview__example">
                 <span>미리보기</span><p>“정성껏 빚은 만두와 깊은 국물로 따뜻한 한 끼를 준비합니다.”</p>
                 <div><i>구글</i><i>네이버</i><i>카카오</i></div>
@@ -372,7 +371,7 @@ export function SeoGenerationWizard({
               {questions.slice(0, visibleQuestionCount).map((question, index) => (
                 <div className="chat-exchange" key={question}>
                   <div className="chat-message chat-message--ai">
-                    <span className="chat-avatar" aria-hidden="true">🤖</span>
+                    <span className="chat-avatar" aria-hidden="true"><Robot weight="regular" /></span>
                     <p className="chat-bubble chat-bubble--ai">{question}</p>
                   </div>
                   {answers[index] ? (
@@ -387,14 +386,14 @@ export function SeoGenerationWizard({
               ))}
               {isAiTyping ? (
                 <div className="chat-message chat-message--ai">
-                  <span className="chat-avatar" aria-hidden="true">🤖</span>
+                  <span className="chat-avatar" aria-hidden="true"><Robot weight="regular" /></span>
                   <div className="chat-bubble chat-bubble--ai chat-typing" role="status">
                     <span className="sr-only">AI가 답변을 작성하고 있습니다.</span>
                     <span aria-hidden="true" /><span aria-hidden="true" /><span aria-hidden="true" />
                   </div>
                 </div>
               ) : null}
-              {!isAiTyping && !interviewComplete ? <p className="chat-guidance">💡 맵지기가 사장님의 답변을 듣고<br />멋진 홍보 문구를 고민할게요!</p> : null}
+              {!isAiTyping && !interviewComplete ? <p className="chat-guidance"><Lightbulb weight="regular" aria-hidden="true" /> 맵지기가 사장님의 답변을 듣고<br />멋진 홍보 문구를 고민할게요!</p> : null}
               <div ref={conversationEndRef} aria-hidden="true" />
             </div>
           </div>

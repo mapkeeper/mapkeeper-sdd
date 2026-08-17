@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { Robot } from '@phosphor-icons/react';
 import { ProposalEditor } from '@/components/ProposalEditor/ProposalEditor';
 import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
@@ -111,7 +112,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
 
       {step === 'INPUT' ? (
         <section className="store-change-wizard__step">
-          <div className="store-change-wizard__bot"><span aria-hidden="true">🤖</span><p>사장님,<br />영업시간이나 메뉴를 바꿀까요?</p></div>
+          <div className="store-change-wizard__bot"><span aria-hidden="true"><Robot weight="regular" /></span><p>사장님,<br />영업시간이나 메뉴를 바꿀까요?</p></div>
           <VoicePanel
             state={speech.state}
             recognizedText={speech.recognizedText}
@@ -160,7 +161,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
         <section className="store-change-wizard__step">
           <h1 className="sr-only">변경안을 확인해 주세요</h1>
           <span className="sr-only">{flow.proposal.status}</span>
-          <div className="store-change-wizard__bot"><span aria-hidden="true">🤖</span><p>아래 내용이 맞는지<br />확인해 주세요</p></div>
+          <div className="store-change-wizard__bot"><span aria-hidden="true"><Robot weight="regular" /></span><p>아래 내용이 맞는지<br />확인해 주세요</p></div>
           <dl className="store-change-wizard__changes">
             {flow.proposal.changes.map((change) => (
               <div key={change.field}>
