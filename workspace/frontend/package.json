@@ -11,6 +11,7 @@
     "format": "prettier --write .",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:backend-contract": "vitest run --config vitest.backend.config.ts",
     "coverage": "vitest run --coverage"
   },
   "dependencies": {

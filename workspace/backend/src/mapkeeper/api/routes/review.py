@@ -25,8 +25,7 @@ ReviewEnvelope = ApiEnvelope[ReviewSummaryResponse]
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 REPRESENTATIVE_REVIEW_LIMIT = 10
 DEMO_REVIEW_SUMMARY = (
-    "속이 꽉 찬 만두와 깊고 깔끔한 국물 맛에 대한 칭찬이 가장 많아요. "
-    "직원의 친절한 응대와 넉넉한 양도 좋은 반응을 얻고 있어요."
+    "속이 꽉 찬 만두와 깔끔한 국물이 인기예요. 친절한 응대와 넉넉한 양도 자주 칭찬해요."
 )
 DEMO_REVIEW_KEYWORDS = ("속이알참", "친절함", "주차편함")
 STORE_NOT_FOUND_MESSAGE = "매장 정보를 찾을 수 없습니다."

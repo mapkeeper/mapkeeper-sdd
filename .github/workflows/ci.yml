@@ -104,11 +104,83 @@ jobs:
           --cov-report=term-missing
           --cov-fail-under=90
 
+  frontend-backend-contract:
+    name: Frontend and backend contract gate
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mapkeeper
+          POSTGRES_PASSWORD: local
+          POSTGRES_DB: mapkeeper_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mapkeeper -d mapkeeper_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+asyncpg://mapkeeper:local@127.0.0.1:5432/mapkeeper_test
+      MVP_ACTOR_ID: 99999999-9999-4999-8999-999999999999
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+
+      - name: Install Python and uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          python-version: "3.11"
+          working-directory: workspace/backend
+          enable-cache: true
+          cache-dependency-glob: workspace/backend/uv.lock
+
+      - name: Install Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: workspace/frontend/package-lock.json
+
+      - name: Install locked dependencies
+        run: |
+          uv --project workspace/backend sync --locked --all-groups
+          npm ci --prefix workspace/frontend
+
+      - name: Prepare canonical demo database
+        run: |
+          uv --project workspace/backend run --locked alembic -c workspace/backend/alembic.ini upgrade head
+          uv --project workspace/backend run --locked python -m mapkeeper.db.seed
+
+      - name: Run actual FastAPI contract regression
+        env:
+          VITE_API_MOCKING: "false"
+          VITE_API_BASE_URL: http://127.0.0.1:18000
+        run: |
+          uv --project workspace/backend run --locked uvicorn mapkeeper.main:app \
+            --app-dir workspace/backend/src --host 127.0.0.1 --port 18000 \
+            > "$RUNNER_TEMP/mapkeeper-backend.log" 2>&1 &
+          backend_pid=$!
+          trap 'kill "$backend_pid"' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:18000/health > /dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              cat "$RUNNER_TEMP/mapkeeper-backend.log"
+              exit 1
+            fi
+            sleep 1
+          done
+          npm --prefix workspace/frontend run test:backend-contract
+
   container:
     name: Container build gate
     needs:
       - frontend
       - backend
+      - frontend-backend-contract
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository

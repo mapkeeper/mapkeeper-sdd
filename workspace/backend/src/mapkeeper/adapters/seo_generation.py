@@ -12,12 +12,14 @@ from mapkeeper.api.schemas.seo import (
 )
 from mapkeeper.core.config import get_settings
 from mapkeeper.models import ContentPurpose, Platform, StoreProfile
+from mapkeeper.services.pii_masking import mask_customer_pii
 
 PLATFORM_RULES: Final[dict[Platform, tuple[str, str]]] = {
     Platform.GOOGLE: ("사실 중심", "Google용 매장 안내"),
     Platform.NAVER: ("검색어 자연스러운 포함", "Naver용 지역 검색 안내"),
     Platform.KAKAO: ("짧고 읽기 쉬운 안내", "Kakao용 매장 안내"),
 }
+REVIEW_EXCERPT_MAX_LENGTH: Final = 120
 
 
 class SEOContentGenerator(Protocol):
@@ -44,7 +46,11 @@ class DeterministicSEOStub:
         source_reviews: tuple[str, ...],
     ) -> tuple[PlatformContentResult, ...]:
         """Create contract-valid platform-specific copy without external I/O."""
-        del source_reviews
+        review_excerpt = (
+            mask_customer_pii(source_reviews[0])[:REVIEW_EXCERPT_MAX_LENGTH]
+            if source_reviews
+            else ""
+        )
         results: list[PlatformContentResult] = []
         for platform, (rule, prefix) in PLATFORM_RULES.items():
             keywords = normalize_keywords(
@@ -53,9 +59,13 @@ class DeterministicSEOStub:
             match content_input.purpose:
                 case ContentPurpose.INTRODUCTION:
                     prefix_text = f"{prefix}: {profile.store_name}."
-                    suffix = f"대표 메뉴는 {profile.representative_menu_name}입니다."
+                    review_text = f" 리뷰에서는 {review_excerpt}" if review_excerpt else ""
+                    suffix = (
+                        f"{content_input.brief_text} "
+                        f"대표 메뉴는 {profile.representative_menu_name}입니다.{review_text}"
+                    )
                 case ContentPurpose.NEWS:
-                    prefix_text = f"{prefix}: {content_input.brief_text}"
+                    prefix_text = f"{prefix}: {profile.store_name} 소식. {content_input.brief_text}"
                     suffix = ""
             results.append(
                 PlatformContentResult(

@@ -7,6 +7,7 @@ import { getReviewSummary } from '@/services/reviewApi';
 import type { GetReviewSummaryResponse } from '@/services/api.types';
 import type { ProposalChange } from '@/types/domain';
 import { reviewSummaryFixture, sourceReviewFixtures } from '@/mocks/fixtures/storeFixtures';
+import { DEMO_STORE } from '@/config/demoStore';
 import googleLogo from '@/assets/platforms/google.svg';
 import naverLogo from '@/assets/platforms/naver.svg';
 import kakaoLogo from '@/assets/platforms/kakao.svg';
@@ -65,7 +66,7 @@ function Home({ onStore, onSeo, reviewSummary }: { onStore(): void; onSeo(): voi
         <div className="home__brand"><span aria-hidden="true">M</span><h1>MapKeeper</h1></div>
         <div className="home__header-actions">
           <button type="button" aria-label="알림" className="home__notification"><Icon name="bell" /></button>
-          <span className="home__profile" aria-label="성경만두 요리전문점 프로필"><Icon name="store" /></span>
+          <span className="home__profile" role="img" aria-label={`${DEMO_STORE.name} 프로필`}><Icon name="store" /></span>
         </div>
       </div>
       <div className="home__welcome"><p>안녕하세요, 사장님</p><strong>오늘도 가게 관리를<br />쉽고 빠르게 시작해 볼까요?</strong></div>
@@ -75,13 +76,13 @@ function Home({ onStore, onSeo, reviewSummary }: { onStore(): void; onSeo(): voi
     <div className="home__content">
       <section className="connection-card" aria-label="3사 연동 상태">
         <div className="connection-card__heading">
-          <h2>성경만두 요리전문점</h2>
+          <h2>{DEMO_STORE.name}</h2>
           <span className="connection-card__badge">3사 연동 상태</span>
         </div>
         <div className="connection-card__platforms">
           {platforms.map((platform) => {
             const connected = platform.status === 'connected';
-            return <div key={platform.name} className={`connection-card__platform connection-card__platform--${platform.status}`} aria-label={`${platform.name} ${connected ? '연결됨' : '확인 필요'}`}>
+            return <div key={platform.name} role="group" className={`connection-card__platform connection-card__platform--${platform.status}`} aria-label={`${platform.name} ${connected ? '연결됨' : '확인 필요'}`}>
               <span className="connection-card__logo"><img src={platform.logo} alt={`${platform.name} 로고`} /></span>
               <strong>{platform.name}</strong>
               <span className="connection-card__status">
@@ -153,12 +154,12 @@ function Home({ onStore, onSeo, reviewSummary }: { onStore(): void; onSeo(): voi
         </header>
         <div className="review-modal__count"><strong>{reviewSummary.reviewCount}</strong><span>건의 리뷰를 분석했어요</span></div>
         <p className="review-modal__summary">{reviewSummary.summary}</p>
-        <div className="review-modal__keywords" aria-label="핵심 리뷰 키워드">
+        <div className="review-modal__keywords" role="group" aria-label="핵심 리뷰 키워드">
           {reviewSummary.keywords.map((keyword) => <span key={keyword}>#{keyword}</span>)}
         </div>
         <section className="review-platforms" aria-labelledby="platform-reactions-title">
           <h3 id="platform-reactions-title">플랫폼별 주요 반응</h3>
-          {[{ name: '구글', logo: googleLogo, text: '외국인 손님도 메뉴를 고르기 쉽고 응대가 친절해요.' }, { name: '네이버', logo: naverLogo, text: '만두전골 국물과 푸짐한 양에 대한 칭찬이 많아요.' }, { name: '카카오', logo: kakaoLogo, text: '가족 식사와 재방문 장소로 추천하는 반응이 많아요.' }].map((platform) => <article key={platform.name}>
+          {[{ name: '구글', logo: googleLogo, text: '외국인 손님도 메뉴 선택과 응대가 편해요.' }, { name: '네이버', logo: naverLogo, text: '만두전골 국물과 푸짐한 양을 많이 칭찬해요.' }, { name: '카카오', logo: kakaoLogo, text: '가족 식사와 재방문 장소로 많이 추천해요.' }].map((platform) => <article key={platform.name}>
             <span><img src={platform.logo} alt="" /><strong>{platform.name}</strong></span><p>{platform.text}</p>
           </article>)}
         </section>
@@ -185,7 +186,7 @@ export function App() {
   const [screen, setScreen] = useState<AppScreen>('HOME');
   const [syncJobId, setSyncJobId] = useState('');
   const [storeChanges, setStoreChanges] = useState<ProposalChange[]>([]);
-  const storeProfileId = import.meta.env.VITE_STORE_PROFILE_ID ?? '11111111-1111-4111-8111-111111111111';
+  const storeProfileId = import.meta.env.VITE_STORE_PROFILE_ID ?? DEMO_STORE.id;
   const [reviewSummary, setReviewSummary] = useState<GetReviewSummaryResponse>(initialReviewSummary);
   useEffect(() => {
     let active = true;

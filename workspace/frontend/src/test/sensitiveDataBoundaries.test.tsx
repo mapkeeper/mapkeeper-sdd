@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
+import { DEMO_SOURCE_REVIEW_ID } from '@/config/demoStore';
 import { SeoGenerationWizard } from '@/features/seo/SeoGenerationWizard';
 import { sourceReviewFixtures } from '@/mocks/fixtures/storeFixtures';
 import { server } from '@/mocks/server';
@@ -60,11 +61,11 @@ describe('민감정보 경계', () => {
       purpose: 'INTRODUCTION',
       briefText: '따뜻한 가게. 친절함. 만두전골.',
       seedKeywords: ['맛있는메뉴', '친절함', '다시찾는집'],
-      sourceReviewIds: ['review-001'],
+      sourceReviewIds: [DEMO_SOURCE_REVIEW_ID],
     });
     expect(JSON.stringify(body)).not.toContain(sensitiveReview);
     expect(await screen.findByRole('alert')).not.toHaveTextContent(sensitiveReview);
-    expect(window.location.href).not.toContain('review-001');
+    expect(window.location.href).not.toContain(DEMO_SOURCE_REVIEW_ID);
     expect(JSON.stringify(localStorage)).not.toContain(sensitiveReview);
   });
 

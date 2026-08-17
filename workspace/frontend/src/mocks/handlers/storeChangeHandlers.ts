@@ -15,7 +15,7 @@ const validCreate = (body: Partial<CreateStoreChangeRequest>): body is CreateSto
 export function parseStoreChangeText(recognizedText: string): ProposalChangeRequest[] {
   const text = recognizedText.trim();
   if (/영업\s*시간|시까지/.test(text)) {
-    const time = text.match(/(오후\s*)?(\d{1,2})\s*시/);
+    const time = text.match(/(새벽|아침|오전|점심|오후|저녁|밤)?\s*(\d{1,2})\s*시/);
     if (!time) {
       return [{
         field: 'businessHours',
@@ -23,8 +23,11 @@ export function parseStoreChangeText(recognizedText: string): ProposalChangeRequ
         proposedValue: { open: '09:00', close: '22:00' },
       }];
     }
+    const meridiem = time[1];
     const rawHour = Number(time[2]);
-    const hour = time[1] && rawHour < 12 ? rawHour + 12 : rawHour;
+    const hour = meridiem === '밤' && rawHour === 12
+      ? 0
+      : (['오후', '저녁', '밤', '점심'].includes(meridiem ?? '') && rawHour < 12 ? rawHour + 12 : rawHour);
     return [{
       field: 'businessHours',
       currentValue: { open: '09:00', close: '22:00' },

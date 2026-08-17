@@ -6,7 +6,7 @@ import { StoreChangeWizard } from '@/features/store-change/StoreChangeWizard';
 
 async function createDraft(user: ReturnType<typeof userEvent.setup>): Promise<void> {
   await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
-  await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '영업시간을 밤 10시까지로 바꿔줘');
+  await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '영업시간을 밤 11시까지로 바꿔줘');
   await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
   expect(await screen.findByRole('heading', { name: '변경안을 확인해 주세요' })).toBeInTheDocument();
 }
@@ -27,7 +27,7 @@ describe('StoreChangeWizard', () => {
     const user = userEvent.setup();
     render(<StoreChangeWizard storeProfileId="store-123" />);
     await createDraft(user);
-    expect(screen.getByText('09:00-10:00')).toBeInTheDocument();
+    expect(screen.getByText('09:00-23:00')).toBeInTheDocument();
     expect(screen.getByText('DRAFT')).toBeInTheDocument();
   });
 
@@ -43,9 +43,10 @@ describe('StoreChangeWizard', () => {
 
     render(<StoreChangeWizard storeProfileId="store-123" />);
     await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
-    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '대표 메뉴를 만두전골로 바꿔줘');
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '대표 메뉴를 김치만두로 바꿔줘');
     await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
-    expect(await screen.findByText('만두전골')).toBeInTheDocument();
+    expect(await screen.findByText('김치만두')).toBeInTheDocument();
+    expect(screen.getByText('만두전골')).toBeInTheDocument();
     expect(screen.getByText('대표 메뉴')).toBeInTheDocument();
   });
 
@@ -174,7 +175,7 @@ describe('StoreChangeWizard', () => {
     await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({
       syncJobId: 'job-001',
       statusUrl: '/api/v1/sync-jobs/job-001',
-      changes: [{ field: 'businessHours', currentValue: '09:00-22:00', proposedValue: '09:00-10:00' }],
+      changes: [{ field: 'businessHours', currentValue: '09:00-22:00', proposedValue: '09:00-23:00' }],
     }));
   });
 

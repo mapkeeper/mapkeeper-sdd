@@ -44,28 +44,27 @@ VITE_MOCK_SCENARIO=default
 MSW service worker는 로컬 개발에서만 사용하며 `VITE_API_MOCKING=false`일 때 로드되지 않습니다.
 mock 모드에서는 Vite의 `/api` 백엔드 프록시가 비활성화되고, `VITE_API_BASE_URL` 값이 있더라도 API 요청은 service worker가 제어하는 same-origin `/api` 경로를 사용합니다. 미등록 `/api` 요청은 실제 네트워크로 우회하지 않고 오류로 보고됩니다.
 
-## 세 가지 연동 모드
+## 두 가지 실행 모드와 실제 계약 검증
 
-프론트엔드는 서로 다른 트랜스포트를 쓰는 세 가지 모드를 지원합니다. 코드 경로(`apiRequestParsed`, 서비스 래퍼)는 모드와 무관하게 동일합니다.
+프론트엔드는 화면 개발용 MSW와 실제 FastAPI 연결을 지원합니다. 두 모드 모두 같은 서비스 함수를 사용합니다.
 
-1. **Mock 개발/배포 (기본값)** — `VITE_API_MOCKING=true`. MSW service worker가 same-origin `/api`를 가로챕니다. 로컬 개발과 자동 배포(`.github/workflows/deploy.yml`)의 기본값이며, 실제 v0.2 백엔드가 나오기 전까지 유지합니다.
-2. **로컬 mock-off contract transport (필수 검증)** — MSW 없이 실제 TCP로 `apiRequestParsed`가 계약을 검증합니다.
-   - 자동화: `npm run test:transport` — `node:http`로 띄운 임시 v0.2 계약 stub에 실제 HTTP 요청을 보내 UC1/UC2/Sync 흐름과 실패 케이스(비 JSON 응답, 손상된 envelope, 409, 422, 연결 끊김, timeout)를 검증합니다.
-   - 수동 스모크: 터미널 두 개에서 각각 `npm run stub:contract`(포트 8000의 계약 stub)와 `VITE_API_MOCKING=false npm run dev -- --host 127.0.0.1`을 실행한 뒤, 브라우저에서 상대 경로 `/api/v1/...` 요청이 Vite 프록시를 거쳐 stub에 도달하는지, service worker가 등록되지 않는지 확인합니다.
-3. **실제 백엔드 v0.2 (외부 opt-in 게이트)** — `VITE_API_BASE_URL`에 도달 가능한 백엔드 주소를, `VITE_STORE_PROFILE_ID`에 유효한 UUID를 설정합니다(선택적으로 리뷰 UUID도). 현재 배포된 백엔드는 `/health`만 제공하는 상태이므로 이 모드는 **NOT RUN: health-only backend lacks v0.2 endpoints**로 기록합니다 — `/health` 통과를 API 계약 완료로 해석하지 않습니다.
+1. **MSW 화면 개발** — `VITE_API_MOCKING=true`. service worker가 same-origin `/api`를 가로채며 실제 네트워크로 우회하지 않습니다.
+2. **실제 FastAPI 연결** — `VITE_API_MOCKING=false`. 로컬 Compose와 배포 앱이 사용하는 모드입니다.
+
+CI의 `Frontend and backend contract gate`는 PostgreSQL 16에 migration과 공식 데모 seed를 적용하고 FastAPI를 실제로 실행합니다. 그 다음 `npm run test:backend-contract`가 프론트 프로덕션 서비스 함수로 UC1의 `{open, close}` 응답과 UC2 생성 근거를 검증합니다. MSW나 별도 계약 stub은 사용하지 않습니다.
 
 ## 실제 백엔드로 전환
 
 ```dotenv
-VITE_API_BASE_URL=http://localhost:8000
+VITE_API_BASE_URL=
 VITE_API_MOCKING=false
 VITE_MOCK_SCENARIO=default
 VITE_STORE_PROFILE_ID=11111111-1111-4111-8111-111111111111
 ```
 
-같은 origin에서 Vite `/api` proxy를 사용하려면 `VITE_API_BASE_URL`을 비워 둡니다. 컴포넌트는 mock 모듈이나 시나리오에 따라 API 동작을 분기하지 않습니다.
+로컬 브라우저에서는 backend를 `127.0.0.1:8000`에 실행하고 `VITE_API_BASE_URL`을 비워 Vite의 same-origin `/api` proxy를 사용합니다. 절대 URL을 지정하면 backend가 해당 frontend origin을 CORS로 허용해야 합니다. 배포 환경도 frontend Nginx가 `/api`를 backend로 전달하므로 브라우저에는 same-origin으로 보입니다. 컴포넌트는 mock 모듈이나 시나리오에 따라 API 동작을 분기하지 않습니다.
 
-백엔드는 API Contract v0.2의 공통 envelope(§1)와 다음 10개 endpoint만 구현하면 됩니다. 개별 Draft PATCH·선택 승인이나 SyncJob 취소처럼 이 목록에 없는 endpoint는 만들지 않습니다.
+백엔드는 API Contract v0.2의 공통 envelope와 다음 제품 endpoint 11개를 구현합니다. 개별 Draft PATCH·선택 승인이나 SyncJob 취소는 만들지 않습니다.
 
 | 기능 | 메서드와 경로 | HTTP |
 | --- | --- | ---: |
@@ -79,6 +78,7 @@ VITE_STORE_PROFILE_ID=11111111-1111-4111-8111-111111111111
 | UC2 전체 승인 | `POST /api/v1/seo/generations/{generationId}/approve` | 202 |
 | SyncJob 상태 조회 | `GET /api/v1/sync-jobs/{syncJobId}` | 200 |
 | SyncJob 재시도 | `POST /api/v1/sync-jobs/{syncJobId}/retry` | 202 |
+| 리뷰 요약 | `GET /api/v1/store-profiles/{storeProfileId}/reviews/summary` | 200 |
 
 ## 검증 명령
 
@@ -86,8 +86,15 @@ VITE_STORE_PROFILE_ID=11111111-1111-4111-8111-111111111111
 npm run lint
 npm run typecheck
 npm run test:run
-npm run test:transport
 npm run build
+```
+
+실제 FastAPI 계약 검증은 backend와 PostgreSQL이 실행 중인 상태에서 수행합니다.
+
+```bash
+VITE_API_MOCKING=false \
+VITE_API_BASE_URL=http://127.0.0.1:18000 \
+npm run test:backend-contract
 ```
 
 ## 컨테이너 실행
@@ -119,7 +126,7 @@ npm run test:run -- src/test/mvpFlows.test.tsx
 
 1. HTTPS 또는 `localhost`로 접속합니다.
 2. “음성 인식 시작”을 누르고 마이크 권한을 허용합니다.
-3. “영업시간을 밤 10시까지로 바꿔줘”처럼 허용된 매장정보 변경을 말합니다.
+3. “영업시간을 밤 11시까지로 바꿔줘”처럼 현재 값과 다른 매장정보 변경을 말합니다.
 4. 인식 실패 또는 권한 거부 시 큰 직접 입력 UI가 즉시 표시되는지 확인합니다.
 5. 음성이나 Enter 키만으로 승인되지 않고, 최종 “승인” 버튼 클릭 후에만 동기화가 시작되는지 확인합니다.
 

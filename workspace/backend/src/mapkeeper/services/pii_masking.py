@@ -12,10 +12,14 @@ ADDRESS_PATTERN: Final[re.Pattern[str]] = re.compile(
 CUSTOMER_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(
     r"((?:고객|손님|예약자)\s*(?:이름|명)\s*(?:은|는|:)?\s*)([가-힣]{2,4})",
 )
+CUSTOMER_REFERENCE_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"((?:고객|손님|예약자)\s+)([가-힣]{2,4})(?=의(?:\s|$))",
+)
 
 
 def mask_customer_pii(text: str) -> str:
     """Mask explicit customer phone, address and name values without masking hours."""
     masked = PHONE_PATTERN.sub("[MASKED_PHONE]", text)
     masked = ADDRESS_PATTERN.sub(r"\1[MASKED_ADDRESS]", masked)
-    return CUSTOMER_NAME_PATTERN.sub(r"\1[MASKED_NAME]", masked)
+    masked = CUSTOMER_NAME_PATTERN.sub(r"\1[MASKED_NAME]", masked)
+    return CUSTOMER_REFERENCE_NAME_PATTERN.sub(r"\1[MASKED_NAME]", masked)

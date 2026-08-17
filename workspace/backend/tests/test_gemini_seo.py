@@ -174,6 +174,25 @@ async def test_news_stub_does_not_append_the_representative_menu() -> None:
 
 
 @pytest.mark.asyncio
+async def test_introduction_stub_is_grounded_in_profile_brief_and_allowed_review() -> None:
+    # Given: an offline introduction request and one already-masked allowed review.
+    allowed_review = "국물이 깊고 재료가 신선하다는 평가가 많아요."
+
+    # When: the no-key fallback generates all platform drafts.
+    results = await DeterministicSEOStub().generate(
+        make_input(),
+        make_profile(),
+        (allowed_review,),
+    )
+
+    # Then: every draft is composed from the canonical profile, user brief and review.
+    for result in results:
+        assert make_profile().store_name in result.draft_text
+        assert BRIEF in result.draft_text
+        assert allowed_review in result.draft_text
+
+
+@pytest.mark.asyncio
 async def test_a_response_wrapped_in_a_code_fence_is_accepted() -> None:
     # Given: a model that wrapped its JSON in a markdown fence.
     fenced = f"```json\n{model_output()}\n```"

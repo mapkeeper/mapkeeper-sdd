@@ -15,12 +15,12 @@ describe('MVP 통합 흐름', () => {
     const onSyncHandoff = vi.fn();
     render(<StoreChangeWizard storeProfileId="store-123" onSyncHandoff={onSyncHandoff} />);
     await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
-    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '영업시간을 밤 10시까지로 바꿔줘');
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '영업시간을 밤 11시까지로 바꿔줘');
     await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
     await screen.findByRole('heading', { name: '변경안을 확인해 주세요' });
     await user.click(screen.getByRole('button', { name: '승인 단계로 이동' }));
     await user.click(screen.getByRole('button', { name: '승인' }));
-    await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({ syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001', changes: [{ field: 'businessHours', currentValue: '09:00-22:00', proposedValue: '09:00-10:00' }] }));
+    await waitFor(() => expect(onSyncHandoff).toHaveBeenCalledWith({ syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001', changes: [{ field: 'businessHours', currentValue: '09:00-22:00', proposedValue: '09:00-23:00' }] }));
   });
 
   test('UC2 세 플랫폼 생성부터 전체 승인과 SyncJob handoff까지 완료한다', async () => {

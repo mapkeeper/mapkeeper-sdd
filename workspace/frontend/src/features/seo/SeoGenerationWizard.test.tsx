@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
+import { DEMO_SOURCE_REVIEW_ID } from '@/config/demoStore';
 import { reviewSummaryFixture, sourceReviewFixtures } from '@/mocks/fixtures/storeFixtures';
 import { server } from '@/mocks/server';
 import { SeoGenerationWizard } from '@/features/seo/SeoGenerationWizard';
@@ -81,7 +82,7 @@ describe('SeoGenerationWizard mobile flow', () => {
       purpose: 'INTRODUCTION',
       briefText: '정성이 가득한 동네 맛집. 깊은 국물과 친절한 서비스. 만두전골.',
       seedKeywords: ['속이알참', '친절함', '주차편함'],
-      sourceReviewIds: ['review-001'],
+      sourceReviewIds: [DEMO_SOURCE_REVIEW_ID],
     });
     expect(screen.getByText('추천 소개글')).toBeInTheDocument();
     expect(screen.getByText('#속이알참')).toBeInTheDocument();

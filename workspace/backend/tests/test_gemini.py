@@ -40,6 +40,20 @@ async def test_gemini_boundary_receives_masked_text_and_preserves_business_hours
 
 
 @pytest.mark.asyncio
+async def test_night_clock_is_converted_to_24_hour_time_by_the_offline_fallback() -> None:
+    # Given: the direct offline fallback receives a Korean night-time expression.
+    stub = DeterministicGeminiStub()
+
+    # When: it structures the business-hours change.
+    changes = await stub.generate("영업시간을 밤 10시까지로 바꿔줘", _profile())
+
+    # Then: 10 at night is 22:00, never 10:00.
+    change = changes[0]
+    assert change.field == "businessHours"
+    assert change.proposed_value.close == "22:00"
+
+
+@pytest.mark.asyncio
 async def test_ambiguous_time_is_rejected() -> None:
     # Given: a request with no precise clock value.
     stub = DeterministicGeminiStub()

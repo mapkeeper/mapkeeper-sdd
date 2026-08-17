@@ -27,7 +27,11 @@ DATE_COUNT: Final = 2
 MAX_MINUTE: Final = 59
 MAX_12_HOUR_CLOCK: Final = 12
 MAX_24_HOUR_CLOCK: Final = 23
-_TIME_PATTERN: Final = re.compile(r"(?:(오전|오후)\s*)?(\d{1,2})(?:시(?:(\d{1,2})분?)?|:(\d{2}))")
+_AFTERNOON_MERIDIEMS: Final = frozenset({"오후", "저녁", "밤"})
+_MORNING_MERIDIEMS: Final = frozenset({"새벽", "아침", "오전"})
+_TIME_PATTERN: Final = re.compile(
+    r"(?:(새벽|아침|오전|점심|오후|저녁|밤)\s*)?(\d{1,2})(?:시(?:(\d{1,2})분?)?|:(\d{2}))"
+)
 _DATE_PATTERN: Final = re.compile(r"(\d{4}-\d{2}-\d{2})")
 _OPENING_WORDS: Final = re.compile(r"(?:문\s*을?\s*)?(?:열|오픈|시작)")
 _MENU_PREFIX: Final = re.compile(r"^.*?대표\s*메뉴(?:를|은|는)?\s*")
@@ -126,10 +130,12 @@ def _to_hour_minute(match: re.Match[str]) -> str:
     minute = int(minute_text or colon_minute or "0")
     if minute > MAX_MINUTE or (hour > MAX_12_HOUR_CLOCK if meridiem else hour > MAX_24_HOUR_CLOCK):
         raise invalid_change_error()
-    if meridiem == "오후" and hour < MAX_12_HOUR_CLOCK:
-        hour += 12
-    if meridiem == "오전" and hour == MAX_12_HOUR_CLOCK:
-        hour = 0
+    if meridiem in _AFTERNOON_MERIDIEMS:
+        hour = 0 if meridiem == "밤" and hour == MAX_12_HOUR_CLOCK else hour % 12 + 12
+    elif meridiem in _MORNING_MERIDIEMS:
+        hour = 0 if hour == MAX_12_HOUR_CLOCK else hour
+    elif meridiem == "점심":
+        hour = hour if hour == MAX_12_HOUR_CLOCK else hour + 12
     return f"{hour:02d}:{minute:02d}"
 
 
