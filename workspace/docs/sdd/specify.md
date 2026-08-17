@@ -1,7 +1,7 @@
 # MapKeeper 기능 명세
 
 > 상태: **Canonical / current implementation aligned with known gaps**
-> 기준 커밋: `206ad82198aa8c76652f3001ee6bd31d24cd360d`
+> 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
 > 최종 대조일: `2026-08-17`
 > 담당: PM
 
@@ -147,8 +147,8 @@
 | FR-005 | 소개글·새소식 목적별 생성 | Implemented after v0.2 |
 | FR-006 | 리뷰 요약을 홈과 UC2에서 공유 | Implemented after v0.2 |
 | FR-007 | 승인 멱등성·원자 트랜잭션 | Implemented |
-| FR-008 | 플랫폼별 상태·오류·재시도 | Implemented with backoff gap |
-| FR-009 | 2초·60초 Polling UX | **Not implemented** |
-| FR-010 | 고객 PII 완전 마스킹 | **Implemented with coverage gap** |
+| FR-008 | 플랫폼별 상태·오류·재시도 | Implemented |
+| FR-009 | 2초·60초 Polling UX | Implemented |
+| FR-010 | 고객 PII 마스킹·안전 로그 | Implemented for defined MVP patterns |
 | FR-011 | 실제 Google·Naver·Kakao 발행 | **Simulated / live integration not verified** |
-| FR-012 | 실제 Gemini 생성 | Implemented, deployment verification must be recorded separately |
+| FR-012 | 실제 Gemini 생성 | Implemented, `gemini-3.6-flash` deployment verified 2026-08-17 |

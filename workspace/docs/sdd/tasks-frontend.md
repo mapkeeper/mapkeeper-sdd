@@ -2,17 +2,17 @@
 
 > 담당: 프론트엔드
 > 상태: **Canonical / current implementation mapped**
-> 기준 커밋: `206ad82198aa8c76652f3001ee6bd31d24cd360d`
+> 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
 
 ## 1. 완료된 계약·공통 작업
 
 | ID | 작업 | 상태 | 완료 기준 |
 |---|---|---|---|
 | T205 | API 상태와 도메인 상태 분리 | Done | PARTIAL_SUCCESS는 SyncJob에만 존재 |
-| T207 | UC1 변경값 변환 | Done with gap | API 경계 구조화, UI 내부 문자열 표현 사용 |
+| T207 | UC1 변경값 변환 | Done | API 경계 구조화, UI 내부 문자열 표현 사용 |
 | T209 | UC2 Generation 전체 계약 | Done | create·regenerate·reject·approve |
 | T211 | MSW fixture·handler | Done | 실제 Endpoint 형태 사용 |
-| T240 | 실제 backend 연결 | Done with gap | 수동 타입·unchecked generic cast 보완 필요 |
+| T240 | 실제 backend 연결 | Done | 제품 서비스 함수에 Zod strict runtime schema 적용 |
 
 ## 2. UC1
 
@@ -42,7 +42,7 @@
 | Generation 전체 재생성 | Done |
 | Generation 전체 거절 | Done |
 | Generation 전체 승인, draftIds 없음 | Done |
-| 실제 FastAPI UC1·UC2 계약 회귀 | Implemented / PR CI pending |
+| 실제 FastAPI UC1·UC2 계약 회귀 | Done |
 | 내부 status를 사용자 문구로 변환 | Done |
 
 현재 제품은 `briefText`와 `seedKeywords`를 별도 폼에서 직접 편집하지 않는다. 인터뷰 답변과 리뷰 요약에서 구성하는 방식이 최신 기준이다.
@@ -55,21 +55,21 @@
 | retryable 플랫폼만 재시도 표시 | Done |
 | 성공 플랫폼 결과 보존 | Done |
 | 화면 이탈 시 AbortController 취소 | Done |
-| 기본 2초 Polling | **Planned** |
-| 최대 60초 후 중단 | **Planned** |
-| 지연 안내·다시 확인 버튼 | **Planned** |
+| 기본 2초 Polling | Done |
+| 최대 60초 후 중단 | Done |
+| 지연 안내·다시 확인 버튼 | Done |
 
-현재 `SyncStatusDashboard` 기본값은 500ms이고 UC1·UC2 화면은 100ms를 전달하며 무기한 반복한다. T252에서 수정한다.
+`SyncStatusDashboard`는 2초 간격으로 조회하고 60초가 지나면 자동 조회를 멈춘다. 사용자가 `다시 확인`을 누르면 새 60초 조회 구간을 시작한다.
 
-## 5. 계약 자동화 과제
+## 5. 계약 자동화
 
-현재 `apiRequest<T>`는 Envelope를 얕게 확인한 뒤 `payload.data as T`로 처리한다. 다음을 보완한다.
+제품 서비스 함수는 `apiRequestParsed`와 Zod strict schema를 사용한다.
 
-1. OpenAPI에서 TypeScript 타입과 런타임 schema를 생성하거나 동일한 Zod schema를 유지한다.
-2. UC1 structured response를 UI 표현 타입과 명확히 분리한다.
-3. Proposal 승인 응답의 `proposalStatus`, `status`를 타입에 포함한다.
-4. Retry 응답의 `status`, `statusUrl`을 타입에 포함한다.
-5. 알 수 없는 응답 필드·Enum·손상된 data를 API 경계에서 거절한다.
+1. UC1 structured response와 UI 표현 타입을 분리한다.
+2. Proposal 승인 응답의 `proposalStatus`, `status`를 검증한다.
+3. Retry 응답의 `status`, `statusUrl`을 검증한다.
+4. 알 수 없는 응답 필드·잘못된 Enum·필수 필드 누락을 API 경계에서 거절한다.
+5. 직접 Mock transport를 점검하는 레거시 테스트 이외의 제품 호출은 unchecked generic cast를 사용하지 않는다.
 
 ## 6. 검증 명령
 
@@ -81,13 +81,13 @@ npm run test:run
 npm run build
 ```
 
-현재 기준: 18 files, 110 tests passed.
+현재 기준: 19 files, 115 tests passed.
 
 ## 7. 남은 우선순위
 
 | 우선순위 | 작업 |
 |---:|---|
-| P0 | 2초·60초 Polling과 다시 확인 UX |
-| P1 | OpenAPI 기반 응답 런타임 검증 |
-| P1 | 네트워크 오류·지연 수동 QA |
+| P0 | 최신 변경 CI·개발 배포 검증 |
+| P1 | 실제 모바일 마이크·네트워크 지연 수동 QA |
+| P1 | OpenAPI 변경 시 Zod schema 동시 갱신 검토 |
 | P2 | URL 기반 화면 이동·새로고침 복구 검토 |

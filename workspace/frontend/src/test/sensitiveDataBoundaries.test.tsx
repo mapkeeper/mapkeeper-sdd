@@ -18,7 +18,16 @@ describe('민감정보 경계', () => {
       return HttpResponse.json({
         success: true,
         status: 'SUCCESS',
-        data: { proposalId: 'prop-001', recognizedTextMasked: '***', changes: [], status: 'DRAFT' },
+        data: {
+          proposalId: 'prop-001',
+          recognizedTextMasked: '***',
+          changes: [{
+            field: 'businessHours',
+            currentValue: { open: '09:00', close: '22:00' },
+            proposedValue: { open: '09:00', close: '23:00' },
+          }],
+          status: 'DRAFT',
+        },
         error: null,
         timestamp: '2026-08-03T00:00:00Z',
       });

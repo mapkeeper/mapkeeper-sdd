@@ -1,5 +1,6 @@
 import { HttpResponse, http } from 'msw';
 import { server } from '@/mocks/server';
+import { seoGenerationFixture } from '@/mocks/fixtures/seoFixtures';
 import {
   approveSeoGeneration,
   generateSeoDrafts,
@@ -23,7 +24,7 @@ describe('seoApi', () => {
         return HttpResponse.json({
           success: true,
           status: 'SUCCESS',
-          data: { generationId: 'gen-001', status: 'DRAFT', revision: 1, drafts: [] },
+          data: seoGenerationFixture,
           error: null,
           timestamp,
         }, { headers: { 'X-Request-ID': 'req-seo-create' } });
@@ -54,16 +55,9 @@ describe('seoApi', () => {
           success: true,
           status: 'SUCCESS',
           data: {
-            generationId: 'gen-001',
-            status: 'DRAFT',
+            ...seoGenerationFixture,
             revision: 2,
-            drafts: [{
-              draftId: 'draft-001',
-              platform: 'google',
-              draftText: '수정된 문구',
-              keywords: ['만두전골'],
-              contentRules: ['rule'],
-            }],
+            drafts: seoGenerationFixture.drafts.map((draft) => ({ ...draft, draftText: `수정된 ${draft.platform} 문구` })),
           },
           error: null,
           timestamp,
@@ -88,7 +82,7 @@ describe('seoApi', () => {
         return HttpResponse.json({
           success: true,
           status: 'SUCCESS',
-          data: { generationId: 'gen-001', status: 'REJECTED', revision: 1, drafts: [] },
+          data: { ...seoGenerationFixture, status: 'REJECTED' },
           error: null,
           timestamp,
         });

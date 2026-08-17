@@ -15,6 +15,9 @@ export const SYNC_COPY = {
   retryingAction: '재시도 요청 중…',
   pollingError: '동기화 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
   networkError: '동기화 상태를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.',
+  pollingDelayed: '처리가 평소보다 오래 걸리고 있어요.',
+  pollingDelayedHelp: '잠시 후 상태를 다시 확인할 수 있습니다.',
+  checkAgainAction: '다시 확인',
 } as const;
 
 export function retryStartedMessage(platformLabels: readonly string[]): string {

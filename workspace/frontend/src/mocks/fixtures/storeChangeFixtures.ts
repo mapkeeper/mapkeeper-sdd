@@ -21,6 +21,8 @@ export const storeChangeValidationErrorFixture: ApiErrorBody = {
 
 export const storeChangeApprovalFixture: StoreChangeApprovalResponse = {
   proposalId: 'prop-001',
+  proposalStatus: 'APPROVED',
   syncJobId: 'job-001',
+  status: 'PENDING',
   statusUrl: '/api/v1/sync-jobs/job-001',
 };

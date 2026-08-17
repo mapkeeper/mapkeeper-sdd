@@ -1,5 +1,6 @@
 """Every failure leaves the API in the envelope the contract publishes."""
 
+import logging
 from typing import Final
 
 import pytest
@@ -137,6 +138,33 @@ def test_an_unexpected_failure_is_replaced_with_a_safe_message() -> None:
     assert "hunter2" not in response.text
     error = obj(body_of(response.text)["error"])
     assert text_of(error["message"]) == SAFE_INTERNAL_MESSAGE
+
+
+def test_an_unexpected_failure_log_never_contains_the_exception_message(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Given: an unexpected exception whose message contains customer PII.
+    broken = FastAPI()
+    install_error_handlers(broken)
+
+    async def boom() -> None:
+        message = "고객 홍길동 전화 010-1234-5678"
+        raise RuntimeError(message)
+
+    _ = broken.get("/boom")(boom)
+
+    # When: the boundary records the failure for operators.
+    with (
+        caplog.at_level(logging.ERROR, logger="mapkeeper.api.error_handlers"),
+        TestClient(broken, raise_server_exceptions=False) as broken_client,
+    ):
+        response = broken_client.get("/boom")
+
+    # Then: logs preserve the exception type but never the sensitive message.
+    assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert "RuntimeError" in caplog.text
+    assert "홍길동" not in caplog.text
+    assert "010-1234-5678" not in caplog.text
 
 
 def test_a_retryable_flag_can_be_reported_on_an_error() -> None:

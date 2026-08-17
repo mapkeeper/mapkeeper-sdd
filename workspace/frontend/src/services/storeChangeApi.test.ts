@@ -195,7 +195,9 @@ describe('storeChangeApi', () => {
             status: 'PROCESSING',
             data: {
               proposalId: 'prop-001',
+              proposalStatus: 'APPROVED',
               syncJobId: 'job-001',
+              status: 'PENDING',
               statusUrl: '/api/v1/sync-jobs/job-001',
             },
             error: null,

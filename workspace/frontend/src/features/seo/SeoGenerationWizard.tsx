@@ -487,7 +487,7 @@ export function SeoGenerationWizard({
         <section className="mobile-step-screen" aria-labelledby="result-title">
           <div className="mobile-step-screen__content result-content">
             <h1 id="result-title" className="sr-only">3사에 반영되었습니다!</h1>
-            <SyncStatusDashboard syncJobId={handoff.syncJobId} pollIntervalMs={100} resultOverride={syncResultOverride} viewMode="seo" seoContent={body} seoTags={tags} />
+            <SyncStatusDashboard syncJobId={handoff.syncJobId} resultOverride={syncResultOverride} viewMode="seo" seoContent={body} seoTags={tags} />
           </div>
           <button className="bottom-primary" type="button" onClick={onExit}>확인 (홈으로 이동)</button>
         </section>

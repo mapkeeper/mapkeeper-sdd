@@ -1,5 +1,6 @@
-import { apiRequest } from '@/services/api';
+import { apiRequestParsed } from '@/services/api';
 import type { ApiErrorBody, GetSyncJobResponse, RetrySyncJobResponse } from '@/services/api.types';
+import { retrySyncJobResponseSchema, syncJobResponseSchema } from '@/services/contracts/sync';
 import type { ErrorCode, PlatformTaskDetail, SyncJob, SyncJobStatus } from '@/types/domain';
 
 const TERMINAL: ReadonlySet<SyncJobStatus> = new Set(['SUCCESS', 'PARTIAL_SUCCESS', 'FAILED']);
@@ -36,7 +37,11 @@ function toSyncJob(response: GetSyncJobResponse): SyncJob {
 
 export async function getSyncJob(syncJobId: string, signal?: AbortSignal): Promise<SyncJob> {
   const options: RequestInit = signal === undefined ? {} : { signal };
-  return toSyncJob((await apiRequest<GetSyncJobResponse>(`/api/v1/sync-jobs/${syncJobId}`, options)).data);
+  return toSyncJob((await apiRequestParsed(
+    `/api/v1/sync-jobs/${syncJobId}`,
+    syncJobResponseSchema,
+    options,
+  )).data);
 }
 
 export interface SyncJobSnapshot {
@@ -49,13 +54,17 @@ export async function getSyncJobSnapshot(
   signal?: AbortSignal,
 ): Promise<SyncJobSnapshot> {
   const options: RequestInit = signal === undefined ? {} : { signal };
-  const result = await apiRequest<GetSyncJobResponse>(`/api/v1/sync-jobs/${syncJobId}`, options);
+  const result = await apiRequestParsed(`/api/v1/sync-jobs/${syncJobId}`, syncJobResponseSchema, options);
   return { job: toSyncJob(result.data), warning: result.warning };
 }
 
 export async function retrySyncJob(syncJobId: string, signal?: AbortSignal): Promise<RetrySyncJobResponse> {
   const options: RequestInit = signal === undefined ? { method: 'POST' } : { method: 'POST', signal };
-  return (await apiRequest<RetrySyncJobResponse>(`/api/v1/sync-jobs/${syncJobId}/retry`, options)).data;
+  return (await apiRequestParsed(
+    `/api/v1/sync-jobs/${syncJobId}/retry`,
+    retrySyncJobResponseSchema,
+    options,
+  )).data;
 }
 
 export interface PollSyncJobOptions {

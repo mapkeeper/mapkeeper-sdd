@@ -1,7 +1,7 @@
 # MapKeeper Data Model
 
 > 상태: **Canonical / migration head 0003**
-> 기준 커밋: `206ad82198aa8c76652f3001ee6bd31d24cd360d`
+> 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
 > 최종 대조일: `2026-08-17`
 > 담당: 백엔드
 

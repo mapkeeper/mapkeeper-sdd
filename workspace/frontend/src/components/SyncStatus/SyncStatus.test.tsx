@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HttpResponse, http } from 'msw';
 import {
   failedSyncJobFixture,
   partialSuccessSyncJobFixture,
@@ -9,6 +10,7 @@ import {
   successSyncJobFixture,
 } from '@/mocks/fixtures/syncJobFixtures';
 import { setMockScenario } from '@/mocks/scenarios';
+import { server } from '@/mocks/server';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
 
 const localizedStatus = {
@@ -43,6 +45,46 @@ describe('SyncStatusDashboard', () => {
 
     expect(await screen.findByRole('heading', { name: '모든 플랫폼 반영 완료' })).toBeInTheDocument();
     expect(screen.getByLabelText('동기화 진행률')).toHaveAttribute('value', '3');
+  });
+
+  test('조회 제한을 넘기면 자동 조회를 멈추고 사용자가 다시 확인할 수 있다', async () => {
+    // Given: the backend keeps one job in PROCESSING beyond the polling window.
+    const user = userEvent.setup();
+    let requestCount = 0;
+    server.use(http.get('*/api/v1/sync-jobs/job-delayed', () => {
+      requestCount += 1;
+      return HttpResponse.json({
+        success: true,
+        status: 'SUCCESS',
+        data: {
+          syncJobId: 'job-delayed',
+          status: 'PROCESSING',
+          platformTasks: [
+            { platform: 'google', status: 'PROCESSING', attemptCount: 1, error: null },
+            { platform: 'naver', status: 'PENDING', attemptCount: 0, error: null },
+            { platform: 'kakao', status: 'PENDING', attemptCount: 0, error: null },
+          ],
+        },
+        error: null,
+        timestamp: '2026-08-17T00:00:00Z',
+      });
+    }));
+    render(
+      <SyncStatusDashboard
+        syncJobId="job-delayed"
+        pollIntervalMs={1}
+        pollTimeoutMs={20}
+      />,
+    );
+    const checkAgain = await screen.findByRole('button', { name: '다시 확인' });
+    const requestsBeforeRestart = requestCount;
+
+    // When: the owner explicitly restarts status checking.
+    await user.click(checkAgain);
+
+    // Then: a fresh request is made and the delayed notice leaves the screen.
+    await waitFor(() => expect(requestCount).toBeGreaterThan(requestsBeforeRestart));
+    expect(screen.queryByText('처리가 평소보다 오래 걸리고 있어요.')).not.toBeInTheDocument();
   });
 
   test('Google, Naver, Kakao를 식별할 수 있는 로컬 SVG 브랜드 로고를 표시한다', () => {

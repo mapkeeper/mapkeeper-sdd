@@ -1,4 +1,6 @@
+import type { ZodType } from 'zod';
 import type { ApiEnvelope, ApiErrorBody, ApiResult } from '@/services/api.types';
+import { apiEnvelopeSchema } from '@/services/contracts/common';
 
 export class ApiClientError extends Error {
   constructor(
@@ -16,22 +18,13 @@ interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+interface FetchedEnvelope {
+  envelope: ApiEnvelope<unknown>;
+  httpStatus: number;
+  requestId: string | null;
 }
 
-function isEnvelope(value: unknown): value is ApiEnvelope<unknown> {
-  return (
-    isRecord(value) &&
-    typeof value.success === 'boolean' &&
-    typeof value.status === 'string' &&
-    'data' in value &&
-    'error' in value &&
-    typeof value.timestamp === 'string'
-  );
-}
-
-export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<ApiResult<T>> {
+async function fetchEnvelope(path: string, options: ApiRequestOptions): Promise<FetchedEnvelope> {
   // MSW's browser worker owns same-origin /api requests in mock mode. Ignoring an
   // accidentally configured backend URL here prevents mock traffic escaping to it.
   const baseUrl = import.meta.env.VITE_API_MOCKING === 'true'
@@ -59,22 +52,48 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   } catch {
     throw new ApiClientError('서버 응답 형식이 올바르지 않습니다.', response.status, requestId);
   }
-  if (!isEnvelope(payload)) {
+  const parsedEnvelope = apiEnvelopeSchema.safeParse(payload);
+  if (!parsedEnvelope.success) {
     throw new ApiClientError('공통 응답 규격과 일치하지 않습니다.', response.status, requestId);
   }
-  if (!response.ok || !payload.success || payload.data === null) {
+  const envelope = parsedEnvelope.data;
+  if (!response.ok || !envelope.success || envelope.data === null) {
     throw new ApiClientError(
-      payload.error?.message ?? '요청을 처리하지 못했습니다.',
+      envelope.error?.message ?? '요청을 처리하지 못했습니다.',
       response.status,
       requestId,
-      payload.error,
+      envelope.error,
     );
   }
+  return { envelope, httpStatus: response.status, requestId };
+}
+
+export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<ApiResult<T>> {
+  const { envelope, requestId } = await fetchEnvelope(path, options);
   return {
-    data: payload.data as T,
-    status: payload.status,
-    timestamp: payload.timestamp,
+    data: envelope.data as T,
+    status: envelope.status,
+    timestamp: envelope.timestamp,
     requestId,
-    warning: payload.error,
+    warning: envelope.error,
+  };
+}
+
+export async function apiRequestParsed<T>(
+  path: string,
+  dataSchema: ZodType<T>,
+  options: ApiRequestOptions = {},
+): Promise<ApiResult<T>> {
+  const { envelope, httpStatus, requestId } = await fetchEnvelope(path, options);
+  const parsedData = dataSchema.safeParse(envelope.data);
+  if (!parsedData.success) {
+    throw new ApiClientError('서버 응답이 API 계약과 일치하지 않습니다.', httpStatus, requestId);
+  }
+  return {
+    data: parsedData.data,
+    status: envelope.status,
+    timestamp: envelope.timestamp,
+    requestId,
+    warning: envelope.error,
   };
 }

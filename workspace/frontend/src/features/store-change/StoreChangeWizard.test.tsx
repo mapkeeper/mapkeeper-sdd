@@ -92,7 +92,12 @@ describe('StoreChangeWizard', () => {
           status: 'SUCCESS',
           data: {
             proposalId: 'prop-001',
-            changes: [{ field: 'businessHours', currentValue: '09:00-22:00', proposedValue: '09:00-20:00' }],
+            recognizedTextMasked: '영업시간 변경 요청',
+            changes: [{
+              field: 'businessHours',
+              currentValue: { open: '09:00', close: '22:00' },
+              proposedValue: { open: '09:00', close: '20:00' },
+            }],
             status: 'DRAFT',
           },
           error: null,
@@ -152,7 +157,13 @@ describe('StoreChangeWizard', () => {
         return HttpResponse.json({
           success: true,
           status: 'PROCESSING',
-          data: { proposalId: 'prop-001', syncJobId: 'job-001', statusUrl: '/api/v1/sync-jobs/job-001' },
+          data: {
+            proposalId: 'prop-001',
+            proposalStatus: 'APPROVED',
+            syncJobId: 'job-001',
+            status: 'PENDING',
+            statusUrl: '/api/v1/sync-jobs/job-001',
+          },
           error: null,
           timestamp: '2026-08-03T00:00:00Z',
         });

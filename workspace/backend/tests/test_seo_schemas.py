@@ -247,6 +247,20 @@ def test_seed_keywords_reject_a_list_that_normalizes_to_nothing() -> None:
         _ = CreateContentGenerationRequest.model_validate(payload)
 
 
+@pytest.mark.parametrize("invalid_keyword", [123, None, {"value": "가족외식"}])
+def test_seed_keywords_reject_non_text_items(invalid_keyword: object) -> None:
+    # Given: one keyword array mixes a valid keyword with a non-text value.
+    payload = {
+        "storeProfileId": "11111111-1111-4111-8111-111111111111",
+        "briefText": "만두전골을 알리고 싶어요.",
+        "seedKeywords": ["만두전골", invalid_keyword],
+    }
+
+    # When / Then: the whole request is rejected instead of silently dropping the value.
+    with pytest.raises(ValidationError):
+        _ = CreateContentGenerationRequest.model_validate(payload)
+
+
 def test_brief_text_is_capped_at_five_hundred_characters() -> None:
     # Given: a brief one character over the limit.
     payload = {

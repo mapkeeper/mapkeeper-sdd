@@ -87,6 +87,7 @@ export interface SyncStatusDashboardProps {
   resultOverride?: PlatformResult[] | null;
   autoPoll?: boolean;
   pollIntervalMs?: number;
+  pollTimeoutMs?: number;
   viewMode?: 'store-change' | 'seo';
   storeChanges?: ProposalChange[];
   seoContent?: string;
@@ -95,11 +96,15 @@ export interface SyncStatusDashboardProps {
 
 function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(resolve, milliseconds);
-    signal.addEventListener('abort', () => {
+    const handleAbort = () => {
       window.clearTimeout(timer);
       reject(new DOMException('Polling aborted', 'AbortError'));
-    }, { once: true });
+    };
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener('abort', handleAbort);
+      resolve();
+    }, milliseconds);
+    signal.addEventListener('abort', handleAbort, { once: true });
   });
 }
 
@@ -115,7 +120,8 @@ export function SyncStatusDashboard({
   initialJob,
   resultOverride = null,
   autoPoll = true,
-  pollIntervalMs = 500,
+  pollIntervalMs = 2_000,
+  pollTimeoutMs = 60_000,
   viewMode = 'store-change',
   storeChanges = [],
   seoContent = '정성으로 준비한 대표 메뉴와 따뜻한 서비스를 만나보세요.',
@@ -126,6 +132,7 @@ export function SyncStatusDashboard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const [isRetrying, setRetrying] = useState(false);
+  const [isPollingDelayed, setPollingDelayed] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
   const [platformResults, setPlatformResults] = useState<PlatformResult[]>(() => toPlatformResults(initialJob ?? null));
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
@@ -133,6 +140,7 @@ export function SyncStatusDashboard({
   useEffect(() => {
     if (!autoPoll) return;
     const controller = new AbortController();
+    const deadline = Date.now() + pollTimeoutMs;
 
     const poll = async () => {
       try {
@@ -143,7 +151,16 @@ export function SyncStatusDashboard({
           setPlatformResults(toPlatformResults(snapshot.job));
           setErrorMessage(null);
           if (isTerminalSyncStatus(snapshot.job.status)) return;
-          await delay(pollIntervalMs, controller.signal);
+          const remainingMs = deadline - Date.now();
+          if (remainingMs <= 0) {
+            setPollingDelayed(true);
+            return;
+          }
+          await delay(Math.min(pollIntervalMs, remainingMs), controller.signal);
+          if (Date.now() >= deadline) {
+            setPollingDelayed(true);
+            return;
+          }
         }
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
@@ -153,7 +170,12 @@ export function SyncStatusDashboard({
 
     void poll();
     return () => controller.abort();
-  }, [autoPoll, pollIntervalMs, refreshToken, syncJobId]);
+  }, [autoPoll, pollIntervalMs, pollTimeoutMs, refreshToken, syncJobId]);
+
+  const checkAgain = () => {
+    setPollingDelayed(false);
+    setRefreshToken((current) => current + 1);
+  };
 
   const retry = async () => {
     if (isRetrying) return;
@@ -163,6 +185,7 @@ export function SyncStatusDashboard({
       const result = await retrySyncJob(syncJobId);
       const labels = result.retryingPlatforms.map((platform) => platformLabels[platform]).join(', ');
       setRetryMessage(retryStartedMessage(labels.split(', ')));
+      setPollingDelayed(false);
       setRefreshToken((current) => current + 1);
     } catch (error: unknown) {
       setErrorMessage(safePollingError(error));
@@ -239,6 +262,10 @@ export function SyncStatusDashboard({
       ) : null}
       {warning ? <p className="sync-status__warning">{warning.message}</p> : null}
       {errorMessage ? <p role="alert">{errorMessage}</p> : null}
+      {isPollingDelayed ? <div className="sync-status__delay" role="status">
+        <div><strong>{SYNC_COPY.pollingDelayed}</strong><span>{SYNC_COPY.pollingDelayedHelp}</span></div>
+        <button type="button" onClick={checkAgain}>{SYNC_COPY.checkAgainAction}</button>
+      </div> : null}
       {retryMessage ? <p role="status">{retryMessage}</p> : null}
       {canRetry && !hasFailure ? (
         <button type="button" onClick={() => void retry()} disabled={isRetrying} style={{ minHeight: 56 }}>

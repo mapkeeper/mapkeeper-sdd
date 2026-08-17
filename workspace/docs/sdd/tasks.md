@@ -1,7 +1,7 @@
 # MapKeeper 통합 TASK
 
 > 상태: **Canonical task index**
-> 기준 커밋: `206ad82198aa8c76652f3001ee6bd31d24cd360d`
+> 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
 > 최종 대조일: `2026-08-17`
 > 담당: PM 관리, 각 영역 담당자가 상태 갱신
 
@@ -21,9 +21,9 @@
 |---|---|---|---|---|
 | T200 | 전원 | MVP 범위·승인 단위 확정 | Done | Constitution·Specify |
 | T201 | 백엔드 | 입력 제한·콘텐츠 규칙 확정 | Done | API schemas |
-| T202 | 전원 | 상태·오류·재시도 UX 문구 | Done with gap | Polling gap |
+| T202 | 전원 | 상태·오류·재시도 UX 문구 | Done | 지연 안내·다시 확인 포함 |
 | T203 | 전원 | API Contract 공유 | Done | 새 API·purpose 포함 기준본 작성 |
-| T204~T210 | FE·BE | 공통 Enum·UC1/UC2 schema·OpenAPI | Done with gap | FE runtime parsing 보완 필요 |
+| T204~T210 | FE·BE | 공통 Enum·UC1/UC2 schema·OpenAPI | Done | FE Zod runtime parsing 포함 |
 | T211 | FE·BE | fixture·Mock 계약 | Done | MSW fixture 사용 |
 | T212~T217 | 백엔드 | PostgreSQL·ORM·migration·seed | Done | migration `0003`, 리뷰 128건 |
 
@@ -31,14 +31,14 @@
 
 | ID | 담당 | 작업 | 상태 | 근거 |
 |---|---|---|---|---|
-| T218 | 백엔드 | Request ID·안전 로그 | Done with gap | 예상 밖 예외 로그 재검토 필요 |
+| T218 | 백엔드 | Request ID·안전 로그 | Done | 예외 타입만 기록, 메시지·PII 차단 |
 | T219 | 백엔드 | 멱등성 replay·conflict | Done | 승인 서비스·DB Unique |
 | T220~T221 | 백엔드 | UC1·UC2 승인 원자 트랜잭션 | Done | row lock·commit 후 runner |
 | T222~T223 | 백엔드 | Adapter 오류 정규화·상태 집계 | Done | unit/integration tests |
-| T224 | 백엔드 | 최대 3회 지수 백오프 | **Done with gap** | `nextRetryAt` 미준수 |
+| T224 | 백엔드 | 최대 3회 지수 백오프 | Done | `nextRetryAt` 이전 실행 차단 |
 | T225~T226 | 백엔드 | 상태 API·retry·재시작 복구 | Done | SyncJob services |
 | T227 | 백엔드 | Proposal create·patch·reject | Done | UC1 routes |
-| T228 | 백엔드 | PII 마스킹·Gemini 구조화 | **Done with gap** | 마스킹 범위 보완 필요 |
+| T228 | 백엔드 | PII 마스킹·Gemini 구조화 | Done | 이름·전화·상세 주소·로그 경계 테스트 |
 | T229 | 백엔드 | Proposal approve | Done | approve route |
 | T230~T231 | 프론트엔드 | 음성 fallback·UC1 Wizard | Done | frontend flow |
 
@@ -48,10 +48,10 @@
 |---|---|---|---|---|
 | T232~T234 | 백엔드 | 3사 생성·재생성·거절·전체 승인 | Done | SEO routes/services |
 | T235~T236 | 프론트엔드 | 3사 결과·재생성·거절·전체 승인 | Done | SEO Wizard |
-| T237 | 프론트엔드 | 2초 Polling·60초 중단·다시 확인 | **Planned** | 현재 무기한 100~500ms |
+| T237 | 프론트엔드 | 2초 Polling·60초 중단·다시 확인 | Done | timeout·수동 재개 테스트 |
 | T238 | 프론트엔드 | 플랫폼 오류·retryable UI | Done | SyncStatus |
-| T239 | 백엔드 | UC1·UC2 E2E API 테스트 | Done | PostgreSQL 16에서 555개·93.48% |
-| T240 | 전원 | 실제 FE·BE 계약 통합 | Done with gap | 실제 FastAPI 회귀 추가, 런타임 schema 보완 필요 |
+| T239 | 백엔드 | UC1·UC2 E2E API 테스트 | Done | PostgreSQL 16에서 561개·93.55% |
+| T240 | 전원 | 실제 FE·BE 계약 통합 | Done | 실제 FastAPI 회귀·FE Zod strict parsing |
 
 ## 4. 후속 구현으로 추가된 범위
 
@@ -68,14 +68,14 @@
 
 | ID | 담당 | 작업 | 상태 |
 |---|---|---|---|
-| T241 | 전원 | 최신 배포에서 최종 시연 점검 | Verification needed |
+| T241 | 전원 | 최신 배포에서 최종 시연 점검 | Done with manual mic gap |
 | T242 | 백엔드 | Quickstart 명령·수치·SHA 갱신 | Done |
 | T243 | 백엔드 | Compose·LXC·배포 환경 연결 | Done |
-| T244 | 프론트엔드 | lint·typecheck·test·build 검증 | Done, 110 tests |
+| T244 | 프론트엔드 | lint·typecheck·test·build 검증 | Done, 115 tests |
 | T245 | 전원 | 문서 정합성 최종 검수 | Done |
-| T252 | 프론트엔드 | 2초·60초 Polling 구현 | Planned |
-| T253 | 백엔드 | 실제 retry backoff 실행 | Planned |
-| T254 | 백엔드 | PII 마스킹·로그 경계 강화 | Planned |
-| T255 | FE·BE | 실제 FastAPI 기반 FE 계약 자동 검증 | **Implemented / PR CI pending** |
+| T252 | 프론트엔드 | 2초·60초 Polling 구현 | Done |
+| T253 | 백엔드 | 실제 retry backoff 실행 | Done |
+| T254 | 백엔드 | PII 마스킹·로그 경계 강화 | Done |
+| T255 | FE·BE | 실제 FastAPI 기반 FE 계약 자동 검증 | Done, current changes need remote CI rerun |
 
 세부 작업은 `tasks-frontend.md`, `tasks-backend.md`에서 관리한다.

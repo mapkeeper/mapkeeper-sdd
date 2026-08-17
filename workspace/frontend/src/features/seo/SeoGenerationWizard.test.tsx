@@ -67,9 +67,9 @@ describe('SeoGenerationWizard mobile flow', () => {
           status: 'DRAFT',
           revision: 1,
           drafts: [
-            { draftId: 'draft-001', platform: 'google', draftText: '추천 소개글', keywords: ['구글추천'], contentRules: ['rule'], status: 'DRAFT' },
-            { draftId: 'draft-002', platform: 'naver', draftText: '네이버 문구', keywords: ['네이버추천'], contentRules: ['rule'], status: 'DRAFT' },
-            { draftId: 'draft-003', platform: 'kakao', draftText: '카카오 문구', keywords: ['카카오추천'], contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-001', platform: 'google', draftText: '추천 소개글', keywords: ['구글추천'], contentRules: ['rule'] },
+            { draftId: 'draft-002', platform: 'naver', draftText: '네이버 문구', keywords: ['네이버추천'], contentRules: ['rule'] },
+            { draftId: 'draft-003', platform: 'kakao', draftText: '카카오 문구', keywords: ['카카오추천'], contentRules: ['rule'] },
           ],
         }, error: null, timestamp: '2026-08-03T00:00:00Z',
       }, { status: 201 });
@@ -142,7 +142,16 @@ describe('SeoGenerationWizard mobile flow', () => {
         return HttpResponse.json({
           success: true,
           status: 'SUCCESS',
-          data: { generationId: 'gen-001', status: 'REJECTED', revision: 2, drafts: [] },
+          data: {
+            generationId: 'gen-001',
+            status: 'REJECTED',
+            revision: 2,
+            drafts: [
+              { draftId: 'draft-r1', platform: 'google', draftText: '수정된 구글 문구', keywords: ['재생성'], contentRules: ['rule'] },
+              { draftId: 'draft-r2', platform: 'naver', draftText: '수정된 네이버 문구', keywords: ['재생성'], contentRules: ['rule'] },
+              { draftId: 'draft-r3', platform: 'kakao', draftText: '수정된 카카오 문구', keywords: ['재생성'], contentRules: ['rule'] },
+            ],
+          },
           error: null,
           timestamp: '2026-08-03T00:00:00Z',
         });
@@ -255,9 +264,9 @@ describe('SeoGenerationWizard mobile flow', () => {
           status: 'DRAFT',
           revision: 1,
           drafts: [
-            { draftId: 'draft-news-001', platform: 'google', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'], status: 'DRAFT' },
-            { draftId: 'draft-news-002', platform: 'naver', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'], status: 'DRAFT' },
-            { draftId: 'draft-news-003', platform: 'kakao', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'], status: 'DRAFT' },
+            { draftId: 'draft-news-001', platform: 'google', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'] },
+            { draftId: 'draft-news-002', platform: 'naver', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'] },
+            { draftId: 'draft-news-003', platform: 'kakao', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'] },
           ],
         },
         error: null,

@@ -1,7 +1,7 @@
 # MapKeeper 개발·검증 Quickstart
 
 > 상태: **Canonical commands / local FE·BE boundary verified**
-> 기준 커밋: `206ad82198aa8c76652f3001ee6bd31d24cd360d`
+> 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
 > 최종 대조일: `2026-08-17`
 > 담당: 백엔드 작성, 프론트엔드 공동 검증
 
@@ -23,10 +23,8 @@
 ### 구현 또는 검증 격차
 
 - Google·Naver·Kakao 실제 운영 API 발행: 시뮬레이션
-- Polling 2초·60초 계약: 미구현
-- retry 지수 백오프 실제 대기: 미구현
-- PII 마스킹 범위: 보완 필요
-- 새 FE·BE 계약 게이트의 원격 CI 결과: Pull Request에서 확인 필요
+- 최신 작업 트리의 원격 CI·배포: 커밋 후 재검증 필요
+- 실제 모바일 마이크 입력: 브라우저 자동화가 아닌 기기 수동 점검 필요
 
 ## 2. 사전 준비
 
@@ -140,22 +138,23 @@ npm run build
 
 | 항목 | 현재 기준 결과 |
 |---|---|
-| 기준 SHA | `206ad82198aa8c76652f3001ee6bd31d24cd360d` |
-| Frontend tests | 18 files, **110 passed** |
+| 기준 코드 | `2026-08-17 current working tree`, base `12687c2...` |
+| Frontend tests | 19 files, **115 passed** |
 | Actual FE·BE contract | 1 file, **3 passed** — 리뷰 공유·UC1 구조·UC2 근거 |
+| Frontend runtime contract | Zod strict schema — Enum·필수 필드·알 수 없는 필드 거절 |
 | Frontend lint/typecheck/build | passed |
-| Current local backend | **555 passed**, **93.48%** — PostgreSQL 16, skip 0 |
-| Latest successful CI backend | **553 passed**, **93.57%** — SHA `3b1b977...` |
+| Current local backend | **561 passed**, **93.55%** — PostgreSQL 16, skip 0 |
+| Latest successful CI | all gates passed — base SHA `12687c2...` |
 | Backend Ruff/basedpyright | passed |
 | Coverage gate | CI `>= 90%` |
 | OpenAPI | 11 `/api/v1` operations, 12 paths including `/health` |
 | Migration | `0003 (head)` |
 | Seed | StoreProfile 1건, SourceReview 128건 |
 
-최신 성공 CI: <https://github.com/mapkeeper/mapkeeper-sdd/actions/runs/31945560292>
-최신 성공 배포: <https://github.com/mapkeeper/mapkeeper-sdd/actions/runs/31946194685>
+최신 성공 CI: <https://github.com/mapkeeper/mapkeeper-sdd/actions/runs/31986731766>
+최신 성공 배포: <https://github.com/mapkeeper/mapkeeper-sdd/actions/runs/31986861893>
 
-위 원격 기록은 SHA `3b1b977...`의 증빙이다. 555개·93.48%는 현재 브랜치 작업 트리의 로컬 PostgreSQL 16 실행 결과이며, 새 계약 게이트와 함께 Pull Request CI에서 다시 확인한다. DB 연결 실패로 skip 또는 error가 발생한 실행은 전체 통과로 기록하지 않는다.
+원격 기록은 base SHA `12687c2...`의 증빙이다. 561개·93.55%와 프론트 115개는 현재 작업 트리의 로컬 실행 결과이므로 커밋 후 CI에서 다시 확인한다. DB 연결 실패로 skip 또는 error가 발생한 실행은 전체 통과로 기록하지 않는다.
 
 ## 8. 주요 E2E 시나리오
 
@@ -213,8 +212,8 @@ Migration은 이전 애플리케이션 버전과 호환되게 단계적으로 �
 
 | 영역 | 구현 | 검증 상태 |
 |---|---|---|
-| PostgreSQL | 실제 LXC 연결 | 배포 환경 사용 중, 최신 E2E 재기록 필요 |
-| Gemini | 실제 HTTP adapter + Stub | 키 설정 여부에 따라 분기, live evidence 별도 기록 |
+| PostgreSQL | 실제 LXC 연결 | 배포 환경 사용 중 |
+| Gemini | 실제 HTTP adapter + Stub | 배포 환경 `gemini-3.6-flash`로 UC2 생성 201 확인 |
 | Google 발행 | AcceptingAdapter | Simulated |
 | Naver 발행 | AcceptingAdapter | Simulated |
 | Kakao 발행 | AcceptingAdapter | Simulated |

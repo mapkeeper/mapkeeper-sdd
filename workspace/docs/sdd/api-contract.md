@@ -2,7 +2,7 @@
 
 > 상태: **Canonical human-readable contract**
 > 기계 판독 기준: `workspace/backend/openapi.json`
-> 기준 커밋: `206ad82198aa8c76652f3001ee6bd31d24cd360d`
+> 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
 > 최종 대조일: `2026-08-17`
 > 담당: 백엔드, 프론트엔드 교차 검토
 
@@ -95,6 +95,9 @@
 | `attemptCount` | 0~3 |
 
 키워드는 앞의 `#`과 주변 공백을 제거하고 입력 순서대로 중복을 정리한다.
+`seedKeywords`에 문자열이 아닌 값이 하나라도 포함되면 해당 값을 삭제해 계속하지 않고 요청 전체를 `422 VALIDATION_ERROR`로 거절한다.
+
+프론트 제품 서비스는 동일 계약을 Zod strict schema로 파싱한다. 잘못된 Enum, 필수 필드 누락, 정의되지 않은 응답 필드는 UI 상태로 변환하기 전에 거절한다.
 
 플랫폼별 콘텐츠 생성 규칙:
 

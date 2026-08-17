@@ -75,7 +75,12 @@ class ContentGenerationInput(ApiSchema):
     @classmethod
     def _normalize_seed_keywords(cls, value: object) -> object:
         if isinstance(value, Sequence) and not isinstance(value, str):
-            return normalize_keywords([item for item in value if isinstance(item, str)])
+            keywords: list[str] = []
+            for item in value:
+                if not isinstance(item, str):
+                    return value
+                keywords.append(item)
+            return normalize_keywords(keywords)
         return value
 
     @model_validator(mode="after")

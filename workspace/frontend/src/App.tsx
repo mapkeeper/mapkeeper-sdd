@@ -175,10 +175,12 @@ function Home({ onStore, onSeo, reviewSummary }: { onStore(): void; onSeo(): voi
 }
 
 function SyncResult({ onHome, syncJobId, resultOverride, storeChanges }: { onHome(): void; syncJobId: string; resultOverride: PlatformResult[] | null; storeChanges: ProposalChange[] }) {
-  return <main className="flex min-h-dvh flex-col bg-gray-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] font-pretendard">
+  return <main className="flex h-dvh flex-col overflow-hidden bg-gray-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] font-pretendard">
     <button type="button" aria-label="홈으로 나가기" onClick={onHome} className="ml-auto grid h-12 w-12 place-items-center rounded-full bg-white text-3xl shadow-card">×</button>
-    <SyncStatusDashboard syncJobId={syncJobId} pollIntervalMs={100} resultOverride={resultOverride} viewMode="store-change" storeChanges={storeChanges} />
-    <button type="button" onClick={onHome} className="sticky bottom-[calc(16px+env(safe-area-inset-bottom))] mt-auto h-14 w-full rounded-[18px] bg-blue-600 text-[17px] font-bold text-white shadow-md active:scale-[.985]">확인 (홈으로 이동)</button>
+    <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+      <SyncStatusDashboard syncJobId={syncJobId} resultOverride={resultOverride} viewMode="store-change" storeChanges={storeChanges} />
+    </div>
+    <button type="button" onClick={onHome} className="mt-4 min-h-14 w-full shrink-0 rounded-[18px] bg-blue-600 text-[17px] font-bold text-white shadow-md active:scale-[.985]">확인 (홈으로 이동)</button>
   </main>;
 }
 

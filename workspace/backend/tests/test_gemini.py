@@ -23,6 +23,21 @@ def _profile() -> StoreProfile:
     )
 
 
+def test_customer_reference_and_unlabelled_road_address_are_masked() -> None:
+    # Given: a review identifies one customer before the label and includes a road address.
+    original = (
+        "홍길동 고객님이 서울특별시 강남구 테헤란로 1에서 방문했고 영업시간은 09:00-22:00입니다."
+    )
+
+    # When: the review crosses the model privacy boundary.
+    masked = mask_customer_pii(original)
+
+    # Then: customer identity and address disappear while public hours stay usable.
+    assert "홍길동" not in masked
+    assert "테헤란로 1" not in masked
+    assert "09:00-22:00" in masked
+
+
 @pytest.mark.asyncio
 async def test_gemini_boundary_receives_masked_text_and_preserves_business_hours() -> None:
     # Given: a sentence containing customer PII and public business hours.

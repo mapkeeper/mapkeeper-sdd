@@ -75,6 +75,11 @@ describe('API contract mocks', () => {
     const before = await apiRequest<GetSyncJobResponse>('/api/v1/sync-jobs/job-001');
     expect(before.data.platformTasks.find(({ platform }) => platform === 'google')?.status).toBe('SUCCESS');
     const retried = await apiRequest<RetrySyncJobResponse>('/api/v1/sync-jobs/job-001/retry', { method: 'POST' });
-    expect(retried.data).toEqual({ syncJobId: 'job-001', retryingPlatforms: ['naver'] });
+    expect(retried.data).toEqual({
+      syncJobId: 'job-001',
+      status: 'RETRYING',
+      retryingPlatforms: ['naver'],
+      statusUrl: '/api/v1/sync-jobs/job-001',
+    });
   });
 });

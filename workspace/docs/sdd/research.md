@@ -2,7 +2,7 @@
 
 > 문서 역할: 결정 배경을 설명하는 참고 자료
 > 상태: **Informative / current decisions**
-> 기준 커밋: `206ad82198aa8c76652f3001ee6bd31d24cd360d`
+> 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
 > 최종 대조일: `2026-08-17`
 
 ## 1. UC2 승인 단위
@@ -88,7 +88,8 @@ Compose에 DB 컨테이너를 추가하지 않고 Proxmox의 PostgreSQL LXC를 �
 ### 한계
 
 - 프로세스 재시작에 강한 작업 큐가 아니다.
-- 실제 예약 재시도는 별도 scheduler 또는 task queue가 더 적합하다.
+- MVP는 DB의 `nextRetryAt`까지 BackgroundTasks runner가 대기한 뒤 재시도한다.
+- 다중 인스턴스·장기 운영에서는 별도 scheduler 또는 task queue가 더 적합하다.
 
 ## 7. Gemini와 결정적 Stub
 

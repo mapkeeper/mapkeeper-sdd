@@ -7,6 +7,7 @@ tasks the runner is given are executed, and the caller decides which those are.
 from datetime import UTC, datetime
 from uuid import UUID
 
+import anyio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -18,8 +19,6 @@ from mapkeeper.models import PlatformSyncTask, PlatformSyncTaskStatus, SyncJob
 from mapkeeper.services.status_aggregation import aggregate_task_status
 
 logger = get_logger(__name__)
-
-RUNNABLE_STATUSES = frozenset({PlatformSyncTaskStatus.PENDING, PlatformSyncTaskStatus.RETRYING})
 
 
 async def load_tasks(session: AsyncSession, sync_job_id: UUID) -> list[PlatformSyncTask]:
@@ -43,6 +42,29 @@ async def refresh_job_status(session: AsyncSession, sync_job_id: UUID) -> SyncJo
     job.status = aggregate_task_status(tasks)
     await session.flush()
     return job
+
+
+def _is_ready(task: PlatformSyncTask, now: datetime) -> bool:
+    match task.status:
+        case PlatformSyncTaskStatus.PENDING:
+            return True
+        case PlatformSyncTaskStatus.RETRYING:
+            return task.next_retry_at is not None and task.next_retry_at <= now
+        case (
+            PlatformSyncTaskStatus.PROCESSING
+            | PlatformSyncTaskStatus.SUCCESS
+            | PlatformSyncTaskStatus.FAILED
+        ):
+            return False
+
+
+def _next_retry_time(tasks: list[PlatformSyncTask]) -> datetime | None:
+    scheduled = (
+        task.next_retry_at
+        for task in tasks
+        if task.status is PlatformSyncTaskStatus.RETRYING and task.next_retry_at is not None
+    )
+    return min(scheduled, default=None)
 
 
 async def _execute(task: PlatformSyncTask, store_profile_id: UUID) -> None:
@@ -90,15 +112,21 @@ async def run_task(session: AsyncSession, task: PlatformSyncTask, store_profile_
     await session.flush()
 
 
-async def run_job(session: AsyncSession, sync_job_id: UUID) -> SyncJob | None:
+async def run_job(
+    session: AsyncSession,
+    sync_job_id: UUID,
+    *,
+    now: datetime | None = None,
+) -> SyncJob | None:
     """Run every task of the job that is waiting, then update the job status."""
     job = await session.get(SyncJob, sync_job_id)
     if job is None:
         logger.warning("sync job %s disappeared before it could run", sync_job_id)
         return None
 
+    run_at = now or datetime.now(UTC)
     for task in await load_tasks(session, sync_job_id):
-        if task.status in RUNNABLE_STATUSES:
+        if _is_ready(task, run_at):
             await run_task(session, task, job.store_profile_id)
 
     return await refresh_job_status(session, sync_job_id)
@@ -109,5 +137,11 @@ async def run_job_in_background(
     sync_job_id: UUID,
 ) -> None:
     """Run a job in its own transaction, for use after the approving request commits."""
-    async with session_factory() as session, session.begin():
-        _ = await run_job(session, sync_job_id)
+    while True:
+        async with session_factory() as session, session.begin():
+            _ = await run_job(session, sync_job_id)
+            next_retry_at = _next_retry_time(await load_tasks(session, sync_job_id))
+        if next_retry_at is None:
+            return
+        wait_seconds = max(0.0, (next_retry_at - datetime.now(UTC)).total_seconds())
+        await anyio.sleep(wait_seconds)

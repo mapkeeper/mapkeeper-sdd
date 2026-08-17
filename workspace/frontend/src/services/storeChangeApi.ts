@@ -1,4 +1,4 @@
-import { apiRequest } from '@/services/api';
+import { apiRequestParsed } from '@/services/api';
 import type {
   ApiResult,
   CreateStoreChangeRequest,
@@ -8,22 +8,14 @@ import type {
   ProposalChangeRequest,
   StoreChangeApprovalResponse,
 } from '@/services/api.types';
-import type { ProposalChange, ProposalField, ProposalStatus, StoreChangeProposal } from '@/types/domain';
+import type { ProposalChange, ProposalField, StoreChangeProposal } from '@/types/domain';
+import {
+  storeChangeApprovalResponseSchema,
+  storeChangeProposalResponseSchema,
+  type RawStoreChangeProposal,
+} from '@/services/contracts/storeChange';
 
 type RawChangeValue = string | { open: string; close: string } | { startDate: string; endDate: string } | null;
-
-interface RawProposalChange {
-  field: ProposalField;
-  currentValue: RawChangeValue;
-  proposedValue: RawChangeValue;
-}
-
-interface RawStoreChangeProposal {
-  proposalId: string;
-  recognizedTextMasked?: string;
-  changes: RawProposalChange[];
-  status: ProposalStatus;
-}
 
 function displayChangeValue(field: ProposalField, value: RawChangeValue): string {
   if (value === null) return '설정 없음';
@@ -111,7 +103,7 @@ export function createStoreChangeProposal(
   request: CreateStoreChangeRequest,
   signal?: AbortSignal,
 ): Promise<ApiResult<CreateStoreChangeResponse>> {
-  return apiRequest<RawStoreChangeProposal>('/api/v1/store-change-proposals', {
+  return apiRequestParsed('/api/v1/store-change-proposals', storeChangeProposalResponseSchema, {
     method: 'POST',
     body: request,
     ...(signal ? { signal } : {}),
@@ -124,19 +116,24 @@ export function patchStoreChangeProposal(
   signal?: AbortSignal,
 ): Promise<ApiResult<PatchStoreChangeResponse>> {
   const request: PatchStoreChangeRequest = { changes: changes.map(toProposalChangeRequest) };
-  return apiRequest<RawStoreChangeProposal>(`/api/v1/store-change-proposals/${encodeURIComponent(proposalId)}`, {
+  return apiRequestParsed(
+    `/api/v1/store-change-proposals/${encodeURIComponent(proposalId)}`,
+    storeChangeProposalResponseSchema,
+    {
     method: 'PATCH',
     body: request,
     ...(signal ? { signal } : {}),
-  }).then((result) => ({ ...result, data: normalizeProposal(result.data) }));
+    },
+  ).then((result) => ({ ...result, data: normalizeProposal(result.data) }));
 }
 
 export function rejectStoreChangeProposal(
   proposalId: string,
   signal?: AbortSignal,
 ): Promise<ApiResult<PatchStoreChangeResponse>> {
-  return apiRequest<RawStoreChangeProposal>(
+  return apiRequestParsed(
     `/api/v1/store-change-proposals/${encodeURIComponent(proposalId)}/reject`,
+    storeChangeProposalResponseSchema,
     { method: 'POST', ...(signal ? { signal } : {}) },
   ).then((result) => ({ ...result, data: normalizeProposal(result.data) }));
 }
@@ -146,9 +143,13 @@ export function approveStoreChangeProposal(
   idempotencyKey: string,
   signal?: AbortSignal,
 ): Promise<ApiResult<StoreChangeApprovalResponse>> {
-  return apiRequest(`/api/v1/store-change-proposals/${encodeURIComponent(proposalId)}/approve`, {
+  return apiRequestParsed(
+    `/api/v1/store-change-proposals/${encodeURIComponent(proposalId)}/approve`,
+    storeChangeApprovalResponseSchema,
+    {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
     ...(signal ? { signal } : {}),
-  });
+    },
+  );
 }

@@ -2,7 +2,7 @@
 
 > 담당: 백엔드
 > 상태: **Canonical / current implementation mapped**
-> 기준 커밋: `206ad82198aa8c76652f3001ee6bd31d24cd360d`
+> 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
 
 ## 1. 완료된 기반 작업
 
@@ -21,13 +21,13 @@
 
 | ID | 작업 | 상태 | 비고 |
 |---|---|---|---|
-| T218 | Request ID·안전 오류 Envelope | Done with review gap | traceback 민감값 검토 필요 |
+| T218 | Request ID·안전 오류 Envelope | Done | 예상 밖 예외도 타입만 기록, 메시지·PII 비노출 테스트 |
 | T219 | 멱등성 replay·conflict | Done | actor + key Unique |
 | T220 | UC1 승인 트랜잭션 | Done | StoreProfile 포함 원자 처리 |
 | T221 | UC2 전체 승인 트랜잭션 | Done | draftIds 없음 |
 | T222 | Adapter Protocol·오류 정규화 | Done | 6개 플랫폼 오류 |
 | T223 | Job 상태 집계 | Done | PARTIAL_SUCCESS Job 전용 |
-| T224 | 최대 3회 지수 백오프 | **Done with gap** | 실제 대기 미구현 |
+| T224 | 최대 3회 지수 백오프 | Done | `nextRetryAt` 이전 실행 차단·예약 시각까지 대기 |
 | T225 | 상태 조회·retry API | Done | retryable 실패만 |
 | T226 | 재시작 복구 | Done | 미완료 Task FAILED 전환 |
 
@@ -36,18 +36,18 @@
 | ID | 작업 | 상태 |
 |---|---|---|
 | T227 | create·patch·reject | Done |
-| T228 | PII 마스킹·Gemini 구조화 | Done with gap |
+| T228 | PII 마스킹·Gemini 구조화 | Done |
 | T229 | approve·statusUrl·BackgroundTasks | Done |
 | 추가 | 동일 값 변경 거절 | Done |
 | 추가 | 여러 대표 메뉴 거절 | Done |
 | 추가 | 상대 날짜·다양한 발화 parser | Done |
 
-### PII 남은 과제
+### PII 검증 범위
 
-- 고객 식별자 패턴 추가
-- 접두어 없는 상세 주소와 이름 처리 전략 확정
-- 정상 영업시간·공개 매장 정보가 과잉 마스킹되지 않는 회귀 테스트
-- unexpected exception 로그에 민감 입력이 포함되지 않는 테스트
+- 고객 이름·전화번호·상세 도로명 주소를 Gemini 호출 전에 마스킹한다.
+- 공개 영업시간은 PII로 마스킹하지 않는다.
+- 예상 밖 예외 로그에는 예외 타입만 남기고 메시지·민감 입력은 남기지 않는다.
+- 실제 운영에서 새 PII 표현을 발견하면 패턴과 회귀 테스트를 함께 추가한다.
 
 ## 4. UC2와 리뷰
 
@@ -62,9 +62,9 @@
 | 추가 | 목적별 Gemini prompt | Done |
 | 추가 | 마스킹 리뷰 최대 10건 전달 | Done |
 
-### 입력 검증 남은 과제
+### 입력 검증
 
-`seedKeywords` 배열의 비문자 원소를 현재 전처리에서 제거한다. 계약대로 전체 요청을 422로 거절하도록 validator를 수정하고 테스트한다.
+`seedKeywords` 배열에 숫자·null·객체 등 비문자 원소가 하나라도 있으면 조용히 제거하지 않고 요청 전체를 422로 거절한다.
 
 ## 5. 외부 Adapter 상태
 
@@ -89,14 +89,12 @@ uv run --locked basedpyright
 uv run --locked pytest --cov=mapkeeper --cov-report=term-missing --cov-fail-under=90
 ```
 
-현재 테스트 inventory는 555개이며 로컬 PostgreSQL 16에서 555개 전체 통과, 커버리지 93.48%를 확인했다. Pull Request CI가 성공하면 해당 SHA와 원격 실행 링크를 추가한다.
+현재 테스트 inventory는 561개이며 로컬 PostgreSQL 16에서 561개 전체 통과, skip 0, 커버리지 93.55%를 확인했다. 현재 변경을 커밋한 뒤 원격 CI 증거를 추가한다.
 
 ## 7. 남은 우선순위
 
 | 우선순위 | 작업 | 완료 조건 |
 |---:|---|---|
-| P0 | 실제 retry backoff | `nextRetryAt` 이전 실행 0회 |
-| P0 | PII 마스킹 강화 | Constitution 대상 누락 0건 |
-| P1 | 비문자 keyword 422 | 잘못된 배열을 조용히 정리하지 않음 |
-| P1 | 최신 DB E2E·coverage 기록 | 로컬 555개·93.48%, PR CI 재확인 |
+| P0 | 최신 변경 CI·개발 배포 | 561개·93.55% 원격 재확인 |
+| P1 | 실제 모바일 음성 QA 지원 | 수동 테스트의 backend 요청·로그 확인 |
 | P2 | 실제 3사 Adapter | 별도 sandbox/운영 계약 검증 |

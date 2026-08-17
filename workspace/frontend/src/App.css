@@ -8,6 +8,15 @@
   --font-body: Pretendard, sans-serif;
   --text-primary: #191f28;
   --text-secondary: #8b95a1;
+  --color-brand: #2563eb;
+  --color-brand-soft: #eff6ff;
+  --color-text: #191f28;
+  --color-text-muted: #64748b;
+  --color-surface: #ffffff;
+  --color-canvas: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-success: #059669;
+  --color-danger: #e11d48;
 }
 html, body, #root { min-height: 100%; margin: 0; }
 body { background: #f2f4f6; }

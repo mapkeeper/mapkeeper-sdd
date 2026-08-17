@@ -1,7 +1,7 @@
 """T224 and T226 against live PostgreSQL: retry preserves success, restart recovers."""
 
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Final
 from uuid import UUID, uuid4
 
@@ -200,6 +200,8 @@ async def test_running_a_retry_reruns_only_the_waiting_platform(
         ],
     )
     _ = await schedule_retry(db_session, job.id)
+    tasks = await _tasks_by_platform(db_session, job.id)
+    tasks[Platform.NAVER].next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
 
     # When: the runner processes the job.
     _ = await run_job(db_session, job.id)
@@ -212,10 +214,31 @@ async def test_running_a_retry_reruns_only_the_waiting_platform(
     assert job.status is SyncJobStatus.SUCCESS
 
 
+async def test_retry_does_not_run_before_its_scheduled_time(
+    db_session: AsyncSession,
+) -> None:
+    # Given: a failed platform was scheduled with a future nextRetryAt.
+    job = await _job_with_tasks(
+        db_session,
+        [(Platform.NAVER, PlatformSyncTaskStatus.FAILED)],
+    )
+    _ = await schedule_retry(db_session, job.id)
+
+    # When: the runner is invoked before that time.
+    _ = await run_job(db_session, job.id)
+
+    # Then: no adapter attempt starts early and the task keeps waiting.
+    tasks = await _tasks_by_platform(db_session, job.id)
+    assert tasks[Platform.NAVER].status is PlatformSyncTaskStatus.RETRYING
+    assert tasks[Platform.NAVER].attempt_count == 1
+
+
 async def test_a_successful_run_clears_the_previous_error(db_session: AsyncSession) -> None:
     # Given: a platform that failed and is being retried.
     job = await _job_with_tasks(db_session, [(Platform.NAVER, PlatformSyncTaskStatus.FAILED)])
     _ = await schedule_retry(db_session, job.id)
+    tasks = await _tasks_by_platform(db_session, job.id)
+    tasks[Platform.NAVER].next_retry_at = datetime.now(UTC) - timedelta(seconds=1)
 
     # When: the retry succeeds.
     _ = await run_job(db_session, job.id)

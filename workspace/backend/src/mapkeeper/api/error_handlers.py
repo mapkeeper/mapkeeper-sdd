@@ -157,10 +157,10 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> Response:
 
 def _report_unexpected(request: Request, exc: Exception) -> Response:
     logger.error(
-        "%s %s failed unexpectedly",
+        "%s %s failed unexpectedly exceptionType=%s",
         request.method,
         request.url.path,
-        exc_info=exc,
+        type(exc).__name__,
     )
     error = ApiError(
         code=ApiErrorCode.INTERNAL_SERVER_ERROR,

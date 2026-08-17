@@ -101,5 +101,7 @@ export const nonRetryableSyncErrorFixture: ApiErrorBody = {
 };
 export const retrySyncFixture: RetrySyncJobResponse = {
   syncJobId: 'job-001',
+  status: 'RETRYING',
   retryingPlatforms: ['naver'],
+  statusUrl: '/api/v1/sync-jobs/job-001',
 };

@@ -1,7 +1,7 @@
 # MapKeeper 구현 계획과 현재 아키텍처
 
 > 상태: **Canonical / implemented baseline with remaining gaps**
-> 기준 커밋: `206ad82198aa8c76652f3001ee6bd31d24cd360d`
+> 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
 > 최종 대조일: `2026-08-17`
 > 공동 담당: 프론트엔드·백엔드
 
@@ -32,7 +32,7 @@ flowchart LR
   G --> DB
   N --> DB
   K --> DB
-  FE -->|2초 Polling 목표| API
+  FE -->|2초 Polling, 최대 60초| API
 ```
 
 현재 세 플랫폼 Adapter는 실제 외부 호출 대신 성공을 재현한다.
@@ -105,19 +105,17 @@ OpenAPI는 backend 코드에서 생성하고 CI에서 커밋된 파일과 drift�
 | 4 | UC1 API·Gemini 구조화·FE 흐름 | Implemented |
 | 5 | UC2 3사 생성·전체 승인·FE 흐름 | Implemented |
 | 6 | 리뷰 요약·128건 seed·NEWS 목적 | Implemented after original v0.2 |
-| 7 | 플랫폼별 오류·재시도 UI | Implemented with backoff gap |
-| 8 | 2초·60초 Polling | Not implemented |
+| 7 | 플랫폼별 오류·실제 예약 재시도 | Implemented |
+| 8 | 2초·60초 Polling·다시 확인 | Implemented |
 | 9 | CI/CD·Ubuntu VM 배포 | Implemented |
 | 10 | 문서 기준본 재정리 | Implemented |
 
 ## 8. 남은 구현 우선순위
 
-1. Polling을 2초 간격·60초 제한·다시 확인 방식으로 수정한다.
-2. runner가 `nextRetryAt` 이후에만 RETRYING Task를 실행하도록 한다.
-3. PII 마스킹 범위와 로그 안전 테스트를 강화한다.
-4. 프론트 응답을 OpenAPI 기반 런타임 스키마로 검증한다.
-5. 비문자 키워드를 조용히 삭제하지 않고 422로 거절한다.
-6. 실제 3사 Adapter는 MVP 이후 별도 연동 검증으로 진행한다.
+1. 현재 작업 트리를 커밋한 뒤 CI·개발 배포를 다시 검증한다.
+2. 실제 모바일 기기에서 마이크 입력과 음성 실패 fallback을 수동 점검한다.
+3. 실제 3사 Adapter는 MVP 이후 별도 연동 검증으로 진행한다.
+4. 장기 운영 단계에서는 in-process BackgroundTasks를 내구성 있는 작업 큐로 교체할지 검토한다.
 
 ## 9. 검증 전략
 

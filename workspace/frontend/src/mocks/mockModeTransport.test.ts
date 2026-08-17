@@ -27,15 +27,16 @@ describe('MSW browser transport boundary', () => {
       body: JSON.stringify({ storeProfileId: 'store-123', purpose: 'INTRODUCTION', briefText: '따뜻한 동네 맛집', seedKeywords: ['친절함'], sourceReviewIds: ['review-001'] }),
     });
     const envelope = await response.json() as {
-      data: { generationId: string; drafts: Array<{ platform: string; status: string; draftText: string }> };
+      data: { generationId: string; status: string; drafts: Array<{ platform: string; draftText: string }> };
     };
 
     expect(response.status).toBe(201);
     expect(envelope.data.generationId).toBe('gen-001');
+    expect(envelope.data.status).toBe('DRAFT');
     expect(envelope.data.drafts).toEqual(expect.arrayContaining([
-      expect.objectContaining({ platform: 'google', status: 'DRAFT' }),
-      expect.objectContaining({ platform: 'naver', status: 'DRAFT' }),
-      expect.objectContaining({ platform: 'kakao', status: 'DRAFT' }),
+      expect.objectContaining({ platform: 'google' }),
+      expect.objectContaining({ platform: 'naver' }),
+      expect.objectContaining({ platform: 'kakao' }),
     ]));
     expect(envelope.data.drafts.find((draft) => draft.platform === 'google')?.draftText).toContain('따뜻한 동네 맛집');
   });

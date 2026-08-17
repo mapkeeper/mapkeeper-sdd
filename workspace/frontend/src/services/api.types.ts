@@ -19,7 +19,7 @@ export interface ApiErrorBody {
   code: ErrorCode;
   message: string;
   details?: ValidationDetail[];
-  retryable?: boolean;
+  retryable?: boolean | null;
 }
 
 export interface ApiEnvelope<T> {
@@ -46,7 +46,9 @@ export interface PatchStoreChangeRequest { changes: ProposalChangeRequest[] }
 export type PatchStoreChangeResponse = StoreChangeProposal;
 export interface StoreChangeApprovalResponse {
   proposalId: string;
+  proposalStatus: 'APPROVED';
   syncJobId: string;
+  status: SyncJobStatus;
   statusUrl: string;
 }
 
@@ -89,7 +91,12 @@ export interface GetSyncJobResponse {
   status: SyncJobStatus;
   platformTasks: PlatformTaskResponse[];
 }
-export interface RetrySyncJobResponse { syncJobId: string; retryingPlatforms: Platform[] }
+export interface RetrySyncJobResponse {
+  syncJobId: string;
+  status: SyncJobStatus;
+  retryingPlatforms: Platform[];
+  statusUrl: string;
+}
 
 export interface ApiResult<T> {
   data: T;
