@@ -280,13 +280,11 @@ export function SeoGenerationWizard({
   };
 
   const editGeneratedContent = () => {
-    setAnswers(['', '', '']);
-    setExtraQuestion(null);
+    // Return to the interview with prior answers intact so the owner can use
+    // the existing per-question "답변 수정" control, rather than losing every
+    // answer and retyping the whole interview from question 1.
     setCurrentAnswer('');
-    setVisibleQuestionCount(1);
-    setNewsDateRange(null);
-    setNewsDateConfirmed(false);
-    setNewsHasNoDate(false);
+    setVisibleQuestionCount(questions.length);
     setStep('INTERVIEW');
   };
 

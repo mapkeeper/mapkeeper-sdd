@@ -112,7 +112,7 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(screen.getByRole('button', { name: '확인 (홈으로 이동)' })).toBeInTheDocument();
   });
 
-  test('내용 수정은 기존 Generation을 재생성하고 반영하지 않기는 전체 거절을 기록한다', async () => {
+  test('내용 수정은 인터뷰로 돌아가 기존 답변을 유지하고, 답변 수정 후 재생성한다', async () => {
     const user = userEvent.setup();
     let regenerateBody: unknown;
     let rejectCalls = 0;
@@ -161,14 +161,23 @@ describe('SeoGenerationWizard mobile flow', () => {
     await reachRecommendation(user);
 
     await user.click(screen.getByRole('button', { name: '내용 수정' }));
-    await answerInterview(user, ['수정한 동네 맛집 소개', '새로운 특징', '김치만두']);
+
+    // Prior answers are kept, not wiped, so the owner edits only what changed.
+    expect(await screen.findByText('정성이 가득한 동네 맛집')).toBeInTheDocument();
+    expect(screen.getByText('깊은 국물과 친절한 서비스')).toBeInTheDocument();
+    expect(screen.getByText('만두전골')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '질문 3 답변 수정' }));
+    await user.clear(screen.getByRole('textbox', { name: '사장님 답변 입력' }));
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '김치만두');
+    await user.click(screen.getByRole('button', { name: '전송' }));
     await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
 
     expect(await screen.findByText('수정된 구글 문구')).toBeInTheDocument();
     expect(screen.getAllByText('#재생성')).toHaveLength(3);
     expect(regenerateBody).toMatchObject({
       purpose: 'INTRODUCTION',
-      briefText: '수정한 동네 맛집 소개. 새로운 특징. 김치만두.',
+      briefText: '정성이 가득한 동네 맛집. 깊은 국물과 친절한 서비스. 김치만두.',
     });
 
     await user.click(screen.getByRole('button', { name: '이번에는 반영하지 않기' }));
@@ -304,9 +313,16 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(screen.getByLabelText('반영한 요청 내용')).toHaveTextContent('이번 주말 할인 이벤트. 만두전골을 할인해요.');
     expect(screen.getByRole('button', { name: '이 소식을 3사에 게시' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '내용 수정' }));
+
+    // The interview is shown again, but prior answers are kept rather than
+    // wiped: no quick-start prompt for a fresh answer, and no input box
+    // since every question is already answered.
     expect(await screen.findByText(/어떤 가게 소식을 알려드릴까요/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '신메뉴' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: '사장님 답변 입력' })).toHaveValue('');
+    expect(screen.getByText('이번 주말 할인 이벤트')).toBeInTheDocument();
+    expect(screen.getByText('만두전골을 할인해요')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '신메뉴' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '사장님 답변 입력' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '문구 추천받기' })).toBeInTheDocument();
     expect(requestBody).toMatchObject({
       purpose: 'NEWS',
       briefText: expect.stringContaining('행사 기간은 2026-08-15부터 2026-08-17까지입니다.'),
