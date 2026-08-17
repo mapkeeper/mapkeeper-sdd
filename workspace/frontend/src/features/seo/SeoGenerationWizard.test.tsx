@@ -327,6 +327,55 @@ describe('SeoGenerationWizard mobile flow', () => {
       purpose: 'NEWS',
       briefText: expect.stringContaining('행사 기간은 2026-08-15부터 2026-08-17까지입니다.'),
     });
+    // The raw interview answer that stated the date is superseded by the
+    // structured schedule sentence above, so it is not sent twice.
+    expect((requestBody as { briefText: string }).briefText).not.toContain('8월 15일부터 16일까지예요');
+  });
+
+  test('소식 기간을 "기간 없이 게시"로 바꾸면 이전에 답한 날짜 문구가 함께 전송되지 않는다', async () => {
+    const user = userEvent.setup();
+    let requestBody: unknown;
+    server.use(http.post('*/api/v1/seo/generations', async ({ request }) => {
+      requestBody = await request.json();
+      return HttpResponse.json({
+        success: true,
+        status: 'SUCCESS',
+        data: {
+          generationId: 'gen-news-002',
+          status: 'DRAFT',
+          revision: 1,
+          drafts: [
+            { draftId: 'draft-news-101', platform: 'google', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'] },
+            { draftId: 'draft-news-102', platform: 'naver', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'] },
+            { draftId: 'draft-news-103', platform: 'kakao', draftText: '새소식', keywords: ['새소식'], contentRules: ['rule'] },
+          ],
+        },
+        error: null,
+        timestamp: '2026-08-03T00:00:00Z',
+      }, { status: 201 });
+    }));
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachNewsInterview(user);
+
+    await user.click(screen.getByRole('button', { name: '신메뉴' }));
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/새 메뉴 이름과 가장 자랑하고 싶은 점을 알려주세요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '새 메뉴가 나왔어요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/신메뉴는 언제부터 판매하나요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '8월 15일부터 16일까지예요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByRole('heading', { name: '소식 기간을 확인해 주세요' })).toBeInTheDocument();
+
+    // The owner reconsiders and opts out of a date after already stating one.
+    await user.click(screen.getByRole('button', { name: '기간 없이 게시할게요' }));
+    await user.click(screen.getByRole('button', { name: '기간 없이 문구 만들기' }));
+    await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
+
+    expect(await screen.findByRole('heading', { name: '가게 소식 문구를 확인해 주세요' })).toBeInTheDocument();
+    const briefText = (requestBody as { briefText: string }).briefText;
+    expect(briefText).toContain('행사 기간은 없습니다.');
+    expect(briefText).not.toContain('8월 15일부터 16일까지예요');
   });
 
   test('임시 휴무는 쉬는 날짜를 한 번만 묻고 다음 질문은 휴무 사유로 이어진다', async () => {

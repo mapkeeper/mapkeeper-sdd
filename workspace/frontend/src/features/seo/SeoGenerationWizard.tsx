@@ -132,6 +132,12 @@ export function SeoGenerationWizard({
   const [newsDateRange, setNewsDateRange] = useState<NewsDateRange | null>(null);
   const [newsDateConfirmed, setNewsDateConfirmed] = useState(false);
   const [newsHasNoDate, setNewsHasNoDate] = useState(false);
+  // The interview answer that first stated a date/no-date phrase in free text.
+  // Once the structured newsDateRange/newsHasNoDate decision exists, that
+  // answer is dropped from the brief sent to the generator so a later
+  // "기간 없이 게시" choice cannot leave the original date phrase standing
+  // alongside it.
+  const [scheduleAnswerIndex, setScheduleAnswerIndex] = useState<number | null>(null);
   const [tags] = useState(() => summaryState.keywords);
   const [handoff, setHandoff] = useState<SeoSyncHandoff | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -181,6 +187,7 @@ export function SeoGenerationWizard({
       setNewsDateRange(null);
       setNewsDateConfirmed(false);
       setNewsHasNoDate(false);
+      setScheduleAnswerIndex(null);
     }
     const isTemporaryClosure = purpose === 'NEWS' && /임시휴무|휴무일/.test(`${answers[0] ?? ''}${answer}`.replaceAll(' ', ''));
     const isLastBaseQuestion = questionIndex === baseQuestions.length - 1 && extraQuestion === null;
@@ -190,6 +197,7 @@ export function SeoGenerationWizard({
       if (parsedSchedule.range || parsedSchedule.hasNoDate) {
         setNewsDateRange(parsedSchedule.range);
         setNewsHasNoDate(parsedSchedule.hasNoDate);
+        setScheduleAnswerIndex(questionIndex);
       }
     }
     setCurrentAnswer('');
@@ -246,7 +254,14 @@ export function SeoGenerationWizard({
       flow.setValidationError('세 가지 질문에 모두 답해 주세요.');
       return;
     }
-    const answerText = answers.map(asSentence).join(' ');
+    // Drop the raw date/no-date answer once a structured decision exists for
+    // it: newsScheduleText below is the authoritative statement, and keeping
+    // the original phrase too can contradict it (e.g. a later "기간 없이
+    // 게시" choice sitting next to the original "8월 15일부터...").
+    const answerText = answers
+      .filter((_, index) => index !== scheduleAnswerIndex)
+      .map(asSentence)
+      .join(' ');
     const newsScheduleText = purpose !== 'NEWS'
       ? ''
       : newsHasNoDate
