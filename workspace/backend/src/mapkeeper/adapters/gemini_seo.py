@@ -11,6 +11,7 @@ Three separations keep this testable and safe:
   and nothing here reads raw reviews or customer data.
 """
 
+import asyncio
 import json
 from dataclasses import dataclass
 from http import HTTPStatus
@@ -39,6 +40,22 @@ GEMINI_ENDPOINT: Final = "https://generativelanguage.googleapis.com/v1beta/model
 GENERATION_FAILED_MESSAGE: Final = "문구를 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
 GENERATION_TIMEOUT_MESSAGE: Final = "처리 시간이 지연되고 있어요. 다시 시도해 주세요."
 MAX_SOURCE_REVIEWS: Final = 10
+
+# A single flaky call should not become a user-visible failure: Gemini's free
+# tier throttles bursts (429) and occasionally answers 5xx, both of which
+# usually succeed a moment later. Only these statuses are worth a retry — a
+# 400/401/403 will not change by trying again.
+DEFAULT_MAX_ATTEMPTS: Final = 3
+DEFAULT_RETRY_BACKOFF_SECONDS: Final = 0.5
+RETRYABLE_STATUS_CODES: Final = frozenset(
+    {
+        HTTPStatus.TOO_MANY_REQUESTS,
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        HTTPStatus.BAD_GATEWAY,
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        HTTPStatus.GATEWAY_TIMEOUT,
+    }
+)
 
 PLATFORM_GUIDANCE: Final[dict[Platform, str]] = {
     Platform.GOOGLE: "확인 가능한 매장 정보를 사실 중심으로 간결하게 작성한다.",
@@ -199,35 +216,63 @@ class HttpGeminiModelClient:
     # Lets the transport be replaced so the request and every failure path are
     # checked without a network or a real key.
     transport: httpx.AsyncBaseTransport | None = None
+    max_attempts: int = DEFAULT_MAX_ATTEMPTS
+    retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS
 
     async def generate(self, prompt: str) -> str:
-        """Send the prompt and return the model's text, normalizing every failure."""
+        """Send the prompt and return the model's text, normalizing every failure.
+
+        A timeout or a throttling/5xx status is retried in place, up to
+        ``max_attempts`` times, before the caller ever sees a failure — one
+        flaky call should not force the user to click generate again by hand.
+        """
         url = f"{GEMINI_ENDPOINT}/{self.model}:generateContent"
         body = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json"},
         }
-        try:
-            async with httpx.AsyncClient(
-                timeout=self.timeout_seconds, transport=self.transport
-            ) as client:
-                response = await client.post(
-                    url, headers={"x-goog-api-key": self.api_key}, json=body
+        for attempt in range(1, self.max_attempts + 1):
+            is_last_attempt = attempt == self.max_attempts
+            try:
+                async with httpx.AsyncClient(
+                    timeout=self.timeout_seconds, transport=self.transport
+                ) as client:
+                    response = await client.post(
+                        url, headers={"x-goog-api-key": self.api_key}, json=body
+                    )
+            except httpx.TimeoutException as exc:
+                logger.warning(
+                    "gemini request timed out after %ss (attempt %s/%s)",
+                    self.timeout_seconds,
+                    attempt,
+                    self.max_attempts,
                 )
-        except httpx.TimeoutException as exc:
-            # A slow model is worth retrying; an unexplained 500 is not actionable.
-            logger.warning("gemini request timed out after %ss", self.timeout_seconds)
-            raise GeminiTimeoutError from exc
-        except httpx.HTTPError as exc:
-            logger.warning("gemini request failed: %s", type(exc).__name__)
-            raise GeminiGenerationError(GENERATION_FAILED_MESSAGE) from exc
+                if is_last_attempt:
+                    raise GeminiTimeoutError from exc
+                await asyncio.sleep(self.retry_backoff_seconds * attempt)
+                continue
+            except httpx.HTTPError as exc:
+                # Not a status the model answered with, so retrying is not
+                # expected to help.
+                logger.warning("gemini request failed: %s", type(exc).__name__)
+                raise GeminiGenerationError(GENERATION_FAILED_MESSAGE) from exc
 
-        if response.status_code != HTTPStatus.OK:
+            if response.status_code == HTTPStatus.OK:
+                return _extract_text(response.text)
+
             # The body can echo the request, so only the status is recorded.
-            logger.warning("gemini answered HTTP %s", response.status_code)
-            raise GeminiGenerationError(GENERATION_FAILED_MESSAGE)
+            logger.warning(
+                "gemini answered HTTP %s (attempt %s/%s)",
+                response.status_code,
+                attempt,
+                self.max_attempts,
+            )
+            if response.status_code not in RETRYABLE_STATUS_CODES or is_last_attempt:
+                raise GeminiGenerationError(GENERATION_FAILED_MESSAGE)
+            await asyncio.sleep(self.retry_backoff_seconds * attempt)
 
-        return _extract_text(response.text)
+        # Unreachable: the loop above always returns or raises.
+        raise GeminiGenerationError(GENERATION_FAILED_MESSAGE)
 
 
 def _walk(value: JsonValue, *keys: str | int) -> JsonValue:

@@ -12,6 +12,7 @@ from mapkeeper.adapters.gemini_seo import (
     GENERATION_FAILED_MESSAGE,
     GeminiGenerationError,
     GeminiSEOGenerator,
+    GeminiTimeoutError,
     HttpGeminiModelClient,
     build_prompt,
     parse_results,
@@ -328,13 +329,20 @@ def envelope(text: str) -> dict[str, object]:
     return {"candidates": [{"content": {"parts": [{"text": text}]}}]}
 
 
-def client_with(handler: Callable[[httpx.Request], httpx.Response]) -> HttpGeminiModelClient:
-    """Return a client whose transport is driven by the given handler."""
+def client_with(
+    handler: Callable[[httpx.Request], httpx.Response], *, max_attempts: int = 3
+) -> HttpGeminiModelClient:
+    """Return a client whose transport is driven by the given handler.
+
+    ``retry_backoff_seconds`` is zeroed so retry tests do not sleep for real.
+    """
     return HttpGeminiModelClient(
         api_key="test-key-not-real",
         model="gemini-2.5-flash",
         timeout_seconds=5.0,
         transport=httpx.MockTransport(handler),
+        max_attempts=max_attempts,
+        retry_backoff_seconds=0.0,
     )
 
 
@@ -387,6 +395,61 @@ async def test_any_error_status_becomes_a_safe_failure(status_code: int) -> None
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("status_code", [429, 500, 502, 503, 504])
+async def test_a_retryable_status_succeeds_once_the_model_recovers(status_code: int) -> None:
+    # Given: the API throttling or erroring once, then answering normally.
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        _ = request
+        calls.append(1)
+        if len(calls) == 1:
+            return httpx.Response(status_code, json={"error": {"message": "quota exceeded"}})
+        return httpx.Response(200, json=envelope(model_output()))
+
+    # When: a prompt is sent.
+    raw = await client_with(handler).generate("프롬프트")
+
+    # Then: the transient failure is retried in place, invisibly to the caller.
+    assert "google" in raw
+    assert len(calls) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status_code", [429, 500, 503])
+async def test_a_retryable_status_still_fails_once_attempts_are_spent(status_code: int) -> None:
+    # Given: the API refusing every attempt.
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        _ = request
+        calls.append(1)
+        return httpx.Response(status_code, json={"error": {"message": "quota exceeded"}})
+
+    # When / Then: the caller sees the safe message only after every retry is used.
+    with pytest.raises(GeminiGenerationError, match=GENERATION_FAILED_MESSAGE):
+        _ = await client_with(handler, max_attempts=3).generate("프롬프트")
+    assert len(calls) == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status_code", [400, 401, 403])
+async def test_a_non_retryable_status_is_not_retried(status_code: int) -> None:
+    # Given: a request the model refuses for a reason another attempt cannot fix.
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        _ = request
+        calls.append(1)
+        return httpx.Response(status_code, json={"error": {"message": "invalid request"}})
+
+    # When / Then: exactly one call is made.
+    with pytest.raises(GeminiGenerationError, match=GENERATION_FAILED_MESSAGE):
+        _ = await client_with(handler).generate("프롬프트")
+    assert len(calls) == 1
+
+
+@pytest.mark.asyncio
 async def test_a_transport_failure_becomes_a_safe_failure() -> None:
     # Given: the request never completing.
     def handler(request: httpx.Request) -> httpx.Response:
@@ -397,6 +460,44 @@ async def test_a_transport_failure_becomes_a_safe_failure() -> None:
     # When / Then: a network problem is reported like any other failure.
     with pytest.raises(GeminiGenerationError):
         _ = await client_with(handler).generate("프롬프트")
+
+
+@pytest.mark.asyncio
+async def test_a_timeout_succeeds_once_the_model_answers_in_time() -> None:
+    # Given: one slow turn followed by a normal answer.
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        _ = request
+        calls.append(1)
+        if len(calls) == 1:
+            message = "deadline exceeded"
+            raise httpx.ReadTimeout(message)
+        return httpx.Response(200, json=envelope(model_output()))
+
+    # When: a prompt is sent.
+    raw = await client_with(handler).generate("프롬프트")
+
+    # Then: the slow turn is retried in place.
+    assert "google" in raw
+    assert len(calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_a_timeout_on_every_attempt_is_reported_once_attempts_are_spent() -> None:
+    # Given: the model never answering in time.
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        _ = request
+        calls.append(1)
+        message = "deadline exceeded"
+        raise httpx.ReadTimeout(message)
+
+    # When / Then: the caller sees the fixed timeout message only once retries are spent.
+    with pytest.raises(GeminiTimeoutError):
+        _ = await client_with(handler, max_attempts=3).generate("프롬프트")
+    assert len(calls) == 3
 
 
 @pytest.mark.asyncio
