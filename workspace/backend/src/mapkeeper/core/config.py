@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     # so the UC2 flow runs offline.
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.6-flash"
-    gemini_timeout_seconds: float = 20.0
+    gemini_timeout_seconds: float = 40.0
 
     @field_validator("database_url")
     @classmethod

@@ -45,7 +45,7 @@ MAX_SOURCE_REVIEWS: Final = 10
 # tier throttles bursts (429) and occasionally answers 5xx, both of which
 # usually succeed a moment later. Only these statuses are worth a retry — a
 # 400/401/403 will not change by trying again.
-DEFAULT_MAX_ATTEMPTS: Final = 3
+DEFAULT_MAX_ATTEMPTS: Final = 2
 DEFAULT_RETRY_BACKOFF_SECONDS: Final = 0.5
 RETRYABLE_STATUS_CODES: Final = frozenset(
     {
