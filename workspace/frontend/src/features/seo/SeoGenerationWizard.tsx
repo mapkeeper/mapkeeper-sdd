@@ -61,11 +61,11 @@ function getNewsDetailQuestion(answer: string): string {
 function getNewsScheduleQuestion(answer: string): string {
   const normalized = answer.replaceAll(' ', '');
   if (/임시휴무|휴무일/.test(normalized)) return '휴무 사유나 손님께 함께 전하고 싶은 안내가 있나요? 예: “내부 공사로 쉬어요.” 없으면 “없어요”라고 말씀해 주세요.';
-  if (/운영시간|영업시간/.test(normalized)) return '변경된 영업시간은 언제부터 적용되나요? 기간이 없다면 “없어요”라고 말씀해 주세요.';
-  if (/할인|쿠폰|혜택/.test(normalized)) return '할인 행사는 언제부터 언제까지인가요? 기간이나 이용 조건이 없다면 “없어요”라고 말씀해 주세요.';
-  if (/이벤트|행사/.test(normalized)) return '이벤트는 언제까지 진행하나요? 기간이 없다면 “없어요”라고 말씀해 주세요.';
-  if (/신메뉴|새메뉴|신제품/.test(normalized)) return '신메뉴는 언제부터 언제까지 판매하나요? 판매 기간이 없다면 “없어요”라고 말씀해 주세요.';
-  return '이 소식은 언제까지 진행되나요? 날짜나 기간, 이용 조건이 없다면 “없어요”라고 말씀해 주세요.';
+  if (/운영시간|영업시간/.test(normalized)) return '변경된 영업시간은 언제부터 적용되나요? 따로 정하신 기간이 없다면 “없어요”라고 말씀해 주세요.';
+  if (/할인|쿠폰|혜택/.test(normalized)) return '할인 행사는 언제부터 언제까지인가요? 따로 정하신 기간이나 조건이 없다면 “없어요”라고 말씀해 주세요.';
+  if (/이벤트|행사/.test(normalized)) return '이벤트는 언제까지 진행하나요? 따로 정하신 기간이 없다면 “없어요”라고 말씀해 주세요.';
+  if (/신메뉴|새메뉴|신제품/.test(normalized)) return '신메뉴는 언제부터 언제까지 판매하나요? 따로 정하신 판매 기간이 없다면 “없어요”라고 말씀해 주세요.';
+  return '이 소식은 언제까지 진행되나요? 따로 정하신 날짜나 기간, 조건이 없다면 “없어요”라고 말씀해 주세요.';
 }
 
 function getNewsDateClarificationQuestion(): string {
