@@ -64,7 +64,11 @@
 .chat-exchange { display:contents; }
 .chat-message { display:flex; width:100%; align-items:flex-start; gap:8px; }
 .chat-message--owner { justify-content:flex-end; padding-left:46px; }
-.chat-owner-answer { display:grid; justify-items:end; gap:5px; }
+/* Needs a definite width: .chat-bubble's max-width is a percentage of this
+   element, and without one, an auto-sized grid container has to size itself
+   from that same bubble's content first - a circular reference that collapses
+   short, space-free answers down to a one-character-wide column. */
+.chat-owner-answer { display:grid; width:100%; justify-items:end; gap:5px; }
 .chat-answer-edit { min-height:28px; padding:3px 8px; border:0; border-radius:var(--radius-sm); background:transparent; color:#64748b; font:inherit; font-size:10px; font-weight:650; }
 .chat-answer-edit:active:not(:disabled) { background:#eff6ff; color:#2563eb; }
 .chat-avatar { display:grid; width:36px; height:36px; flex:none; place-items:center; border:1px solid #dbeafe; border-radius:var(--radius-sm); background:#eff6ff; font-size:20px; }
