@@ -23,12 +23,36 @@ const storeChangeQuickPrompts = [
   { label: '임시 휴무', answer: '내일 문 닫아' },
 ] as const;
 
+const stepBackTargets: Partial<Record<WizardStep, WizardStep>> = {
+  MANUAL: 'INPUT',
+  REVIEW: 'INPUT',
+  EDIT: 'REVIEW',
+  CONFIRM: 'REVIEW',
+};
+
+interface WizardHeaderProps {
+  step: WizardStep;
+  onBack(): void;
+  onClose(): void;
+}
+
+function WizardHeader({ step, onBack, onClose }: WizardHeaderProps) {
+  const backTarget = stepBackTargets[step];
+  return (
+    <div className="store-change-wizard__nav">
+      {backTarget ? <button type="button" aria-label="이전 단계로" onClick={onBack}>←</button> : <span />}
+      {backTarget ? <span /> : <button type="button" aria-label="홈으로 나가기" onClick={onClose}>✕</button>}
+    </div>
+  );
+}
+
 export interface StoreChangeWizardProps {
   storeProfileId: string;
   onSyncHandoff?: (handoff: StoreChangeSyncHandoff) => void;
+  onExit?: () => void;
 }
 
-export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChangeWizardProps) {
+export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () => undefined }: StoreChangeWizardProps) {
   const speech = useSpeechRecognition();
   const [step, setStep] = useState<WizardStep>('INPUT');
   const [manualText, setManualText] = useState('');
@@ -91,6 +115,16 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
     }
   };
 
+  const goBack = () => {
+    const target = stepBackTargets[step];
+    if (!target) return;
+    if (target === 'INPUT') {
+      flow.clear();
+      setDraftNote(null);
+    }
+    setStep(target);
+  };
+
   if (isDraftPreparing) {
     return (
       <main className="store-change-wizard">
@@ -107,6 +141,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff }: StoreChange
 
   return (
     <main className="store-change-wizard">
+      <WizardHeader step={step} onBack={goBack} onClose={onExit} />
       <p className="store-change-wizard__progress">매장정보 변경 · 현재 단계</p>
       {flow.errorMessage ? <div className="store-change-wizard__alert" role="alert">{flow.errorMessage}</div> : null}
 

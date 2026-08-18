@@ -23,6 +23,46 @@ describe('StoreChangeWizard', () => {
     expect(screen.getByLabelText('변경할 매장 정보 직접 입력')).toHaveValue('대표 메뉴를 김치찌개로 바꿔줘');
   });
 
+  test('시작 화면은 홈으로 나가기만 보이고, 중간 단계는 이전 단계로 한 단계씩만 돌아간다', async () => {
+    const user = userEvent.setup();
+    const onExit = vi.fn();
+    render(<StoreChangeWizard storeProfileId="store-123" onExit={onExit} />);
+
+    // INPUT: edge step, only the exit control.
+    expect(screen.getByRole('button', { name: '홈으로 나가기' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '이전 단계로' })).not.toBeInTheDocument();
+
+    // MANUAL: back goes to INPUT, not home.
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    expect(screen.queryByRole('button', { name: '홈으로 나가기' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '이전 단계로' }));
+    expect(screen.getByRole('button', { name: '홈으로 나가기' })).toBeInTheDocument();
+    expect(onExit).not.toHaveBeenCalled();
+
+    // REVIEW → EDIT: back from the edit screen returns to REVIEW, not home
+    // (this used to jump straight to the home screen and discard the edit).
+    await createDraft(user);
+    expect(screen.getByRole('button', { name: '이전 단계로' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '✎ 직접 수정' }));
+    expect(await screen.findByRole('heading', { name: '변경 값을 수정해 주세요' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '홈으로 나가기' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '이전 단계로' }));
+    expect(await screen.findByRole('heading', { name: '변경안을 확인해 주세요' })).toBeInTheDocument();
+    expect(onExit).not.toHaveBeenCalled();
+
+    // CONFIRM: back also returns to REVIEW.
+    await user.click(screen.getByRole('button', { name: '승인 단계로 이동' }));
+    expect(await screen.findByRole('heading', { name: '이 내용으로 반영할까요?' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '이전 단계로' }));
+    expect(await screen.findByRole('heading', { name: '변경안을 확인해 주세요' })).toBeInTheDocument();
+
+    // Only the exit control actually calls onExit.
+    await user.click(screen.getByRole('button', { name: '이전 단계로' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '홈으로 나가기' })).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: '홈으로 나가기' }));
+    expect(onExit).toHaveBeenCalledOnce();
+  });
+
   test('인식 텍스트로 변경안을 만들고 검토 화면으로 이동한다', async () => {
     const user = userEvent.setup();
     render(<StoreChangeWizard storeProfileId="store-123" />);

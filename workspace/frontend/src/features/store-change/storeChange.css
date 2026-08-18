@@ -1,7 +1,7 @@
 .store-change-wizard {
   box-sizing: border-box;
-  min-height: calc(100dvh - 72px);
-  padding: 18px 22px calc(20px + env(safe-area-inset-bottom));
+  min-height: 100dvh;
+  padding: 0 22px calc(20px + env(safe-area-inset-bottom));
   background: #f8fafc;
   color: #0f172a;
   font-family: Pretendard, sans-serif;
@@ -9,8 +9,14 @@
   line-height: 1.55;
 }
 
+.store-change-wizard__nav { display:flex; align-items:center; justify-content:space-between; min-height:52px; padding-top:calc(12px + env(safe-area-inset-top)); }
+.store-change-wizard .store-change-wizard__nav button { display:grid; width:40px; height:40px; min-height:40px; place-items:center; padding:0; border:0; border-radius:50%; background:transparent; color:#0f172a; font-size:20px; line-height:1; }
+.store-change-wizard .store-change-wizard__nav button:active { background:#f1f5f9; }
+.store-change-wizard__nav span { display:block; width:40px; height:40px; }
+
 .store-change-wizard h1 { margin:0; color:#0f172a; font-size:23px; font-weight:750; letter-spacing:-.035em; line-height:1.38; text-align:left; word-break:keep-all; overflow-wrap:break-word; text-wrap:pretty; }
 .store-change-wizard__progress { margin:0 0 22px; color:#2563eb; font-size:11px; font-weight:750; letter-spacing:-.01em; }
+.store-change-wizard__progress:first-child { padding-top:calc(18px + env(safe-area-inset-top)); }
 .store-change-wizard__step { display:flex; min-height:calc(100dvh - 154px); flex-direction:column; gap:12px; }
 .store-change-wizard__bot { display:flex; align-items:flex-start; gap:10px; margin:2px 0 12px; }
 .store-change-wizard__bot > span { display:grid; width:36px; height:36px; flex:none; place-items:center; border-radius:var(--radius-sm); background:#eff6ff; font-size:19px; }

@@ -213,7 +213,7 @@ export function App() {
   return <div className="app-viewport"><div className="app-phone" data-testid="dashboard-container">
     {screen === 'HOME' && <Home reviewSummary={reviewSummary} onStore={() => setScreen('STORE_CHANGE')} onSeo={() => setScreen('SEO')} />}
     {screen === 'SEO' && <SeoGenerationWizard storeProfileId={storeProfileId} sourceReviews={reviewSummary.sourceReviews} reviewSummary={reviewSummary} onExit={goHome} />}
-    {screen === 'STORE_CHANGE' && <main className="standalone-flow"><button className="standalone-flow__close" type="button" aria-label="홈으로 나가기" onClick={goHome}>‹</button><StoreChangeWizard storeProfileId={storeProfileId} onSyncHandoff={({ syncJobId: nextId, changes }) => { setSyncJobId(nextId); setStoreChanges(changes); setScreen('STORE_SYNC'); }} /></main>}
+    {screen === 'STORE_CHANGE' && <StoreChangeWizard storeProfileId={storeProfileId} onExit={goHome} onSyncHandoff={({ syncJobId: nextId, changes }) => { setSyncJobId(nextId); setStoreChanges(changes); setScreen('STORE_SYNC'); }} />}
     {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} resultOverride={null} storeChanges={storeChanges} />}
   </div></div>;
 }
