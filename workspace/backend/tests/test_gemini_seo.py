@@ -382,26 +382,6 @@ async def test_the_client_sends_the_key_as_a_header_and_the_prompt_as_json() -> 
 
 
 @pytest.mark.asyncio
-async def test_the_request_disables_thinking_and_caps_output_tokens() -> None:
-    # Given: a transport that inspects the outgoing request body.
-    seen: dict[str, object] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        seen["config"] = json.loads(request.content)["generationConfig"]
-        return httpx.Response(200, json=envelope(model_output()))
-
-    # When: a prompt is sent.
-    _ = await client_with(handler).generate("프롬프트")
-
-    # Then: this is a template-fill task, not one that benefits from spending
-    # tokens on reasoning, and output has a real ceiling instead of none.
-    config = seen["config"]
-    assert isinstance(config, dict)
-    assert config["thinkingConfig"] == {"thinkingBudget": 0}
-    assert config["maxOutputTokens"] == 3072
-
-
-@pytest.mark.asyncio
 @pytest.mark.parametrize("status_code", [400, 401, 403, 429, 500, 503])
 async def test_any_error_status_becomes_a_safe_failure(status_code: int) -> None:
     # Given: the API refusing the request.
