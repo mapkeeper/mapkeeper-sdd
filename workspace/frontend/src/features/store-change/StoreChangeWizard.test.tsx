@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { server } from '@/mocks/server';
@@ -77,6 +77,68 @@ describe('StoreChangeWizard', () => {
 
     expect(await screen.findByText('임시 휴무')).toBeInTheDocument();
     expect(screen.getByText('2026-08-17 ~ 2026-08-17')).toBeInTheDocument();
+  });
+
+  test('임시 휴무 수정은 텍스트 입력 대신 시작일·종료일 캘린더로 날짜를 바꾼다', async () => {
+    const user = userEvent.setup();
+    let patchBody: unknown;
+    server.use(
+      http.post('/api/v1/store-change-proposals', () => HttpResponse.json({
+        success: true,
+        status: 'SUCCESS',
+        data: {
+          proposalId: 'prop-003',
+          recognizedTextMasked: '내일 문 닫아',
+          changes: [{
+            field: 'temporaryClosure',
+            currentValue: null,
+            proposedValue: { startDate: '2026-08-17', endDate: '2026-08-17' },
+          }],
+          status: 'DRAFT',
+        },
+        error: null,
+        timestamp: '2026-08-03T00:00:00Z',
+      })),
+      http.patch('/api/v1/store-change-proposals/:proposalId', async ({ request }) => {
+        patchBody = await request.json();
+        return HttpResponse.json({
+          success: true,
+          status: 'SUCCESS',
+          data: {
+            proposalId: 'prop-003',
+            recognizedTextMasked: '내일 문 닫아',
+            changes: [{
+              field: 'temporaryClosure',
+              currentValue: null,
+              proposedValue: { startDate: '2026-08-20', endDate: '2026-08-22' },
+            }],
+            status: 'DRAFT',
+          },
+          error: null,
+          timestamp: '2026-08-03T00:00:00Z',
+        });
+      }),
+    );
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.click(screen.getByRole('button', { name: '임시 휴무' }));
+    expect(screen.getByLabelText('변경할 매장 정보 직접 입력')).toHaveValue('내일 문 닫아');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+    expect(await screen.findByText('2026-08-17 ~ 2026-08-17')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '변경안 수정' }));
+    expect(screen.queryByLabelText('임시 휴무 변경 값')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('시작일'), { target: { value: '2026-08-20' } });
+    fireEvent.change(screen.getByLabelText('종료일'), { target: { value: '2026-08-22' } });
+    await user.click(screen.getByRole('button', { name: '수정 내용 저장' }));
+
+    expect(await screen.findByText('2026-08-20 ~ 2026-08-22')).toBeInTheDocument();
+    expect(patchBody).toMatchObject({
+      changes: [{
+        field: 'temporaryClosure',
+        proposedValue: { startDate: '2026-08-20', endDate: '2026-08-22' },
+      }],
+    });
   });
 
   test('허용 필드 값을 수정하고 변경하지 않기를 선택하면 서버의 거절 상태를 확인한다', async () => {

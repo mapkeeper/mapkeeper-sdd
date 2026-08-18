@@ -36,6 +36,37 @@
   line-height: 1.6;
 }
 
+.proposal-editor__row-heading {
+  font-weight: 700;
+}
+
+.proposal-editor__date-range {
+  display: grid;
+  grid-template-columns: 1fr 18px 1fr;
+  align-items: end;
+  gap: 7px;
+}
+
+.proposal-editor__date-range label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.proposal-editor__date-range input {
+  min-height: 46px;
+  padding: 0 9px;
+  font-size: 14px;
+}
+
+.proposal-editor__date-range > span {
+  padding-bottom: 12px;
+  color: #8b95a1;
+  font-size: 13px;
+  text-align: center;
+}
+
 .proposal-editor button {
   margin-top: auto;
   min-height: 56px;
