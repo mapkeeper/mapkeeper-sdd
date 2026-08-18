@@ -51,7 +51,7 @@ function asSentence(value: string): string {
 function getNewsDetailQuestion(answer: string): string {
   const normalized = answer.replaceAll(' ', '');
   if (/임시휴무|휴무일/.test(normalized)) return '쉬는 날짜를 알려주세요. 예: “8월 20일에 쉬어요.”';
-  if (/운영시간|영업시간/.test(normalized)) return '변경되는 영업시간과 적용 시작일을 알려주세요.';
+  if (/운영시간|영업시간/.test(normalized)) return '변경할 영업시간을 알려주세요.';
   if (/할인|쿠폰|혜택/.test(normalized)) return '어떤 메뉴를 얼마나 할인하나요? 할인 대상과 조건도 알려주세요.';
   if (/이벤트|행사/.test(normalized)) return '이벤트는 어떻게 참여하나요? 손님에게 제공하는 혜택도 알려주세요.';
   if (/신메뉴|새메뉴|신제품/.test(normalized)) return '새 메뉴 이름과 가장 자랑하고 싶은 점을 알려주세요.';
