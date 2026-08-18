@@ -243,6 +243,11 @@ def test_sentences_outside_the_allowed_fields_are_not_parsed(sentence: str) -> N
         ("영업시간을 점심 1시까지로 바꿔줘", "13:00"),
         ("영업시간을 오전 12시까지로 바꿔줘", "00:00"),
         ("영업시간을 20시까지로 바꿔줘", "20:00"),
+        # "오후 12시" as a closing time reads as midnight: owners commonly use
+        # it the same way as "밤 12시" here, not as the grammatically literal
+        # noon (see test_pm_twelve_means_noon_when_opening below).
+        ("영업시간을 오후 12시까지로 바꿔줘", "00:00"),
+        ("마감 시간을 오후 12시로 늘려줘", "00:00"),
     ],
 )
 def test_remaining_meridiem_forms_convert(sentence: str, expected_close: str) -> None:
@@ -256,6 +261,21 @@ def test_remaining_meridiem_forms_convert(sentence: str, expected_close: str) ->
     (change,) = changes
     assert isinstance(change, BusinessHoursChange)
     assert change.proposed_value.close == expected_close
+
+
+def test_pm_twelve_means_noon_when_opening() -> None:
+    # Given: "오후 12시" naming an opening time instead of a closing time.
+
+    # When: the deterministic parser reads it.
+    changes = parse_intent("문을 오후 12시에 열어줘", make_profile())
+
+    # Then: the grammatical reading (noon) holds, unlike the closing case
+    # above, since "오후 12시에 열어요" is not ambiguous the way a closing
+    # time is.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, BusinessHoursChange)
+    assert change.proposed_value.open == "12:00"
 
 
 @pytest.mark.parametrize(

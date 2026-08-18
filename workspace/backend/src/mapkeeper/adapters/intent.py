@@ -72,7 +72,9 @@ _AFTERNOON_MERIDIEMS: Final = frozenset({"오후", "저녁", "밤"})
 _MORNING_MERIDIEMS: Final = frozenset({"새벽", "아침", "오전"})
 
 
-def _to_24_hour(meridiem: str | None, hour: int, minute: int) -> str | None:
+def _to_24_hour(
+    meridiem: str | None, hour: int, minute: int, *, is_closing: bool = False
+) -> str | None:
     """Convert a Korean clock expression to ``HH:mm``, or None if it cannot be.
 
     Returns:
@@ -84,8 +86,14 @@ def _to_24_hour(meridiem: str | None, hour: int, minute: int) -> str | None:
     if meridiem in _AFTERNOON_MERIDIEMS:
         if hour > NOON:
             return None
-        # "밤 12시" is midnight; "오후 12시" is noon and stays as it is.
-        resolved = 0 if (meridiem == "밤" and hour == NOON) else hour % NOON + NOON
+        # "밤 12시" is always midnight. "오후 12시" is midnight too, but only
+        # when it names a closing time: shop owners commonly say "오후 12시"
+        # to mean the same thing as "밤 12시" there ("마감 시간을 오후 12시로
+        # 늘려줘" means extend to midnight, not close 3 hours after opening).
+        # Naming an opening time keeps the grammatical reading, since "오후
+        # 12시에 열어요" unambiguously means noon.
+        is_midnight = hour == NOON and (meridiem == "밤" or (meridiem == "오후" and is_closing))
+        resolved = 0 if is_midnight else hour % NOON + NOON
     elif meridiem in _MORNING_MERIDIEMS:
         if hour > NOON:
             return None
@@ -140,10 +148,16 @@ def _parse_business_hours(text: str, profile: StoreProfile) -> ProposalChange | 
     match = _TIME_PATTERN.search(text)
     if match is None:
         return None
+
+    # Which side of the day was spoken about. Saying nothing means closing time,
+    # which is what "몇 시까지" asks; an explicit closing word wins over an
+    # incidental "열" inside a word like "열심히".
+    opens = _OPENING_WORDS.search(text) is not None and _CLOSING_WORDS.search(text) is None
     spoken = _to_24_hour(
         match.group("meridiem"),
         int(match.group("hour")),
         int(match.group("minute") or 0),
+        is_closing=not opens,
     )
     if spoken is None:
         return None
@@ -153,10 +167,6 @@ def _parse_business_hours(text: str, profile: StoreProfile) -> ProposalChange | 
     except ValidationError:
         return None
 
-    # Which side of the day was spoken about. Saying nothing means closing time,
-    # which is what "몇 시까지" asks; an explicit closing word wins over an
-    # incidental "열" inside a word like "열심히".
-    opens = _OPENING_WORDS.search(text) is not None and _CLOSING_WORDS.search(text) is None
     proposed = (
         BusinessHoursValue(open=spoken, close=current.close)
         if opens
