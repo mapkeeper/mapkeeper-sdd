@@ -421,6 +421,103 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(screen.queryByText(/휴무일은 언제인가요/)).not.toBeInTheDocument();
   });
 
+  test('운영시간 변경 소식을 게시하면 실제 영업시간(UC1)도 바꾸도록 안내한다', async () => {
+    const user = userEvent.setup();
+    const onStoreChangeRequested = vi.fn();
+    server.use(
+      http.post('*/api/v1/seo/generations', () => HttpResponse.json({
+        success: true,
+        status: 'SUCCESS',
+        data: {
+          generationId: 'gen-news-201',
+          status: 'DRAFT',
+          revision: 1,
+          drafts: [
+            { draftId: 'draft-201', platform: 'google', draftText: '영업시간 변경 안내', keywords: ['영업시간'], contentRules: ['rule'] },
+            { draftId: 'draft-202', platform: 'naver', draftText: '영업시간 변경 안내', keywords: ['영업시간'], contentRules: ['rule'] },
+            { draftId: 'draft-203', platform: 'kakao', draftText: '영업시간 변경 안내', keywords: ['영업시간'], contentRules: ['rule'] },
+          ],
+        },
+        error: null,
+        timestamp: '2026-08-03T00:00:00Z',
+      }, { status: 201 })),
+      http.post('*/api/v1/seo/generations/gen-news-201/approve', () => HttpResponse.json({
+        success: true,
+        status: 'PROCESSING',
+        data: { generationId: 'gen-news-201', generationStatus: 'APPROVED', approvedPlatforms: ['google', 'naver', 'kakao'], syncJobId: 'job-hours', status: 'PENDING', statusUrl: '/api/v1/sync-jobs/job-hours' },
+        error: null,
+        timestamp: '2026-08-03T00:00:00Z',
+      })),
+    );
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} onStoreChangeRequested={onStoreChangeRequested} />);
+    await reachNewsInterview(user);
+
+    await user.click(screen.getByRole('button', { name: '운영시간 변경' }));
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/변경할 영업시간을 알려주세요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '밤 11시까지로 늘려요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/언제부터 적용되나요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '없어요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    await user.click(screen.getByRole('button', { name: '기간 없이 문구 만들기' }));
+    await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
+    expect(await screen.findByRole('heading', { name: '가게 소식 문구를 확인해 주세요' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '이 소식을 3사에 게시' }));
+
+    expect(await screen.findByRole('heading', { name: '3사에 반영되었습니다!' })).toBeInTheDocument();
+    const bridgeButton = screen.getByRole('button', { name: '실제 영업시간도 바꾸기' });
+    await user.click(bridgeButton);
+    expect(onStoreChangeRequested).toHaveBeenCalledOnce();
+  });
+
+  test('운영시간과 무관한 소식에는 실제 영업시간 안내가 뜨지 않는다', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('*/api/v1/seo/generations', () => HttpResponse.json({
+        success: true,
+        status: 'SUCCESS',
+        data: {
+          generationId: 'gen-news-301',
+          status: 'DRAFT',
+          revision: 1,
+          drafts: [
+            { draftId: 'draft-301', platform: 'google', draftText: '신메뉴 안내', keywords: ['신메뉴'], contentRules: ['rule'] },
+            { draftId: 'draft-302', platform: 'naver', draftText: '신메뉴 안내', keywords: ['신메뉴'], contentRules: ['rule'] },
+            { draftId: 'draft-303', platform: 'kakao', draftText: '신메뉴 안내', keywords: ['신메뉴'], contentRules: ['rule'] },
+          ],
+        },
+        error: null,
+        timestamp: '2026-08-03T00:00:00Z',
+      }, { status: 201 })),
+      http.post('*/api/v1/seo/generations/gen-news-301/approve', () => HttpResponse.json({
+        success: true,
+        status: 'PROCESSING',
+        data: { generationId: 'gen-news-301', generationStatus: 'APPROVED', approvedPlatforms: ['google', 'naver', 'kakao'], syncJobId: 'job-menu', status: 'PENDING', statusUrl: '/api/v1/sync-jobs/job-menu' },
+        error: null,
+        timestamp: '2026-08-03T00:00:00Z',
+      })),
+    );
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachNewsInterview(user);
+
+    await user.click(screen.getByRole('button', { name: '신메뉴' }));
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/새 메뉴 이름과 가장 자랑하고 싶은 점을 알려주세요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '고기만두가 나왔어요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/신메뉴는 언제부터 언제까지 판매하나요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '없어요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    await user.click(screen.getByRole('button', { name: '기간 없이 문구 만들기' }));
+    await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
+    expect(await screen.findByRole('heading', { name: '가게 소식 문구를 확인해 주세요' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '이 소식을 3사에 게시' }));
+
+    expect(await screen.findByRole('heading', { name: '3사에 반영되었습니다!' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '실제 영업시간도 바꾸기' })).not.toBeInTheDocument();
+  });
+
   test('리뷰 요약 API/Mock 상태를 Props로 받아 요약, 키워드, 건수를 동적으로 표시한다', () => {
     const { rerender } = render(
       <SeoGenerationWizard

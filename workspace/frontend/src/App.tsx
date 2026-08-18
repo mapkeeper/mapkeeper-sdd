@@ -212,7 +212,7 @@ export function App() {
   const goHome = () => setScreen('HOME');
   return <div className="app-viewport"><div className="app-phone" data-testid="dashboard-container">
     {screen === 'HOME' && <Home reviewSummary={reviewSummary} onStore={() => setScreen('STORE_CHANGE')} onSeo={() => setScreen('SEO')} />}
-    {screen === 'SEO' && <SeoGenerationWizard storeProfileId={storeProfileId} sourceReviews={reviewSummary.sourceReviews} reviewSummary={reviewSummary} onExit={goHome} />}
+    {screen === 'SEO' && <SeoGenerationWizard storeProfileId={storeProfileId} sourceReviews={reviewSummary.sourceReviews} reviewSummary={reviewSummary} onExit={goHome} onStoreChangeRequested={() => setScreen('STORE_CHANGE')} />}
     {screen === 'STORE_CHANGE' && <StoreChangeWizard storeProfileId={storeProfileId} onExit={goHome} onSyncHandoff={({ syncJobId: nextId, changes }) => { setSyncJobId(nextId); setStoreChanges(changes); setScreen('STORE_SYNC'); }} />}
     {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} resultOverride={null} storeChanges={storeChanges} />}
   </div></div>;

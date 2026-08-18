@@ -78,6 +78,7 @@ export interface SeoGenerationWizardProps {
   reviewSummary?: ReviewSummary;
   onSyncHandoff?: (handoff: SeoSyncHandoff) => void;
   onExit?: () => void;
+  onStoreChangeRequested?: () => void;
   syncResultOverride?: PlatformResult[] | null;
 }
 
@@ -108,6 +109,7 @@ export function SeoGenerationWizard({
   reviewSummary,
   onSyncHandoff,
   onExit = () => undefined,
+  onStoreChangeRequested,
   syncResultOverride = null,
 }: SeoGenerationWizardProps) {
   const receivedSummary: ReviewSummary = reviewSummary ?? {
@@ -156,6 +158,12 @@ export function SeoGenerationWizard({
     : purpose === null ? interviewQuestions.INTRODUCTION : interviewQuestions[purpose];
   const questions = extraQuestion === null ? baseQuestions : [...baseQuestions, extraQuestion];
   const interviewComplete = questions.every((_, index) => Boolean(answers[index]?.trim()));
+  // This news post is copy only - it never touches the store's actual
+  // business_hours record, so the owner can walk away thinking the real
+  // hours changed when only an announcement went out. Bridge to UC1 so
+  // they can update the actual listing data too.
+  const isBusinessHoursNews = purpose === 'NEWS'
+    && /운영시간|영업시간/.test((answers[0] ?? '').replaceAll(' ', ''));
 
   useEffect(() => () => {
     if (typingTimerRef.current !== null) window.clearTimeout(typingTimerRef.current);
@@ -504,6 +512,12 @@ export function SeoGenerationWizard({
           <div className="mobile-step-screen__content result-content">
             <h1 id="result-title" className="sr-only">3사에 반영되었습니다!</h1>
             <SyncStatusDashboard syncJobId={handoff.syncJobId} resultOverride={syncResultOverride} viewMode="seo" seoContent={body} seoTags={tags} />
+            {isBusinessHoursNews && onStoreChangeRequested ? (
+              <div className="result-content__bridge">
+                <p>이 소식은 홍보 문구일 뿐, 지도에 표시되는 실제 영업시간은 그대로예요.</p>
+                <button type="button" className="bottom-secondary" onClick={onStoreChangeRequested}>실제 영업시간도 바꾸기</button>
+              </div>
+            ) : null}
           </div>
           <button className="bottom-primary" type="button" onClick={onExit}>확인 (홈으로 이동)</button>
         </section>

@@ -148,6 +148,13 @@
 .interview-recommend-button { font-size:15px; }
 .interview-generating-hint { margin:8px 22px 0; color:#64748b; font-size:12px; text-align:center; }.seo-mobile-flow__alert { margin:12px 22px 0; padding:12px 14px; border:1px solid #fecaca; border-radius:var(--radius-md); background:#fff1f2; color:#be123c; font-size:12px; font-weight:700; }
 .result-content { display:flex; min-height:0; flex-direction:column; padding-top:28px; padding-bottom:104px; overflow-y:auto; text-align:center; }.result-content > .sync-status { width:100%; margin-block:auto; }.result-content .sync-status__hero { padding-top:0; }
+/* The bridge callout's own button needs clearance from .bottom-primary,
+   which is position:fixed and always overlays the last 76px-ish of the
+   viewport regardless of scroll. */
+.result-content:has(.result-content__bridge) { padding-bottom:160px; }
+.result-content__bridge { display:grid; flex:none; gap:10px; width:100%; margin-top:22px; padding:16px 20px; border-radius:var(--radius-lg); background:#fff8f1; }
+.result-content__bridge p { margin:0; color:#7c4a1e; font-size:13px; font-weight:550; line-height:1.5; word-break:keep-all; }
+.result-content__bridge button { width:100%; }
 .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
 @media (prefers-reduced-motion:no-preference) { .mobile-step-screen { animation:step-in .2s ease-out; }.chat-thread { scroll-behavior:smooth; } }
 @media (prefers-reduced-motion:reduce) { .chat-typing > span:not(.sr-only),.chat-wave i { animation:none; } }
