@@ -390,7 +390,7 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(await screen.findByText(/새 메뉴 이름과 가장 자랑하고 싶은 점을 알려주세요/)).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '새 메뉴가 나왔어요');
     await user.click(screen.getByRole('button', { name: '전송' }));
-    expect(await screen.findByText(/신메뉴는 언제부터 판매하나요/)).toBeInTheDocument();
+    expect(await screen.findByText(/신메뉴는 언제부터 언제까지 판매하나요/)).toBeInTheDocument();
     await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '8월 15일부터 16일까지예요');
     await user.click(screen.getByRole('button', { name: '전송' }));
     expect(await screen.findByRole('heading', { name: '소식 기간을 확인해 주세요' })).toBeInTheDocument();
