@@ -41,6 +41,14 @@ GENERATION_FAILED_MESSAGE: Final = "문구를 생성하지 못했습니다. 잠�
 GENERATION_TIMEOUT_MESSAGE: Final = "처리 시간이 지연되고 있어요. 다시 시도해 주세요."
 MAX_SOURCE_REVIEWS: Final = 10
 
+# This is a fill-a-template task (three short platform blurbs from facts we
+# already give the model), not one that benefits from extended reasoning, so
+# thinking is turned off to cut latency. maxOutputTokens is a generous but
+# real ceiling: DRAFT_TEXT_MAX_LENGTH(750) * 3 platforms is already ~2250
+# characters of Korean text before keywords, rules and JSON punctuation.
+GEMINI_THINKING_BUDGET: Final = 0
+GEMINI_MAX_OUTPUT_TOKENS: Final = 3072
+
 # A single flaky call should not become a user-visible failure: Gemini's free
 # tier throttles bursts (429) and occasionally answers 5xx, both of which
 # usually succeed a moment later. Only these statuses are worth a retry — a
@@ -229,7 +237,11 @@ class HttpGeminiModelClient:
         url = f"{GEMINI_ENDPOINT}/{self.model}:generateContent"
         body = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"responseMimeType": "application/json"},
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "maxOutputTokens": GEMINI_MAX_OUTPUT_TOKENS,
+                "thinkingConfig": {"thinkingBudget": GEMINI_THINKING_BUDGET},
+            },
         }
         for attempt in range(1, self.max_attempts + 1):
             is_last_attempt = attempt == self.max_attempts
