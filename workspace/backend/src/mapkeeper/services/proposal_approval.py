@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from mapkeeper.api.schemas.store_change import (
     BusinessHoursChange,
     ProposalChange,
+    RepresentativeMenuNameChange,
     TemporaryClosureChange,
 )
 from mapkeeper.core.errors import InvalidStateError, ResourceNotFoundError
@@ -64,9 +65,13 @@ def apply_changes(profile: StoreProfile, changes: tuple[ProposalChange, ...]) ->
         elif isinstance(change, TemporaryClosureChange):
             profile.temporary_closure_start_date = change.proposed_value.start_date
             profile.temporary_closure_end_date = change.proposed_value.end_date
-        else:
-            # The discriminated union allows nothing else, so this is the menu name.
+        elif isinstance(change, RepresentativeMenuNameChange):
             profile.representative_menu_name = change.proposed_value
+        else:
+            # The discriminated union has exactly 4 members, so eliminating the
+            # first 3 leaves ParkingInfoChange (an explicit isinstance here would
+            # be flagged as always true).
+            profile.parking_info = change.proposed_value
 
 
 async def _load_locked_proposal(session: AsyncSession, proposal_id: UUID) -> StoreChangeProposal:

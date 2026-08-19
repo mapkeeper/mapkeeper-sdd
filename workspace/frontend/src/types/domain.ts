@@ -5,6 +5,7 @@ export const PROPOSAL_FIELDS = [
   'businessHours',
   'temporaryClosure',
   'representativeMenuName',
+  'parkingInfo',
 ] as const;
 export type ProposalField = (typeof PROPOSAL_FIELDS)[number];
 

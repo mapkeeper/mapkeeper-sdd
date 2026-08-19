@@ -20,8 +20,10 @@ from pydantic import ValidationError
 
 from mapkeeper.api.schemas.store_change import (
     MENU_NAME_MAX_LENGTH,
+    PARKING_INFO_MAX_LENGTH,
     BusinessHoursChange,
     BusinessHoursValue,
+    ParkingInfoChange,
     ProposalChange,
     RepresentativeMenuNameChange,
     TemporaryClosureChange,
@@ -39,6 +41,11 @@ _MENU_VERB: Final = r"(?:바꿔\s*줘|바꿔|변경해\s*줘|변경해|변경|�
 _MENU_PATTERN: Final = re.compile(_MENU_KEYWORD + r"(?P<name>.+?)\s*(?:로|으로)\s*" + _MENU_VERB)
 _MENU_CONNECTOR_PATTERN: Final = re.compile(r"\s*(?:와|과|및|그리고)\s*")
 _COMPOUND_MENU_SUFFIXES: Final = ("세트", "정식", "모둠", "모듬", "플래터")
+# "주차 정보를 매장 앞 3대 가능으로 바꿔줘" — same free-text shape as a menu rename.
+_PARKING_KEYWORD: Final = r"주차\s*(?:정보|공간|장)?\s*(?:를|을|은|는)?\s*"
+_PARKING_PATTERN: Final = re.compile(
+    _PARKING_KEYWORD + r"(?P<info>.+?)\s*(?:로|으로)\s*" + _MENU_VERB
+)
 _MERIDIEM_GROUP: Final = r"(?P<meridiem>새벽|아침|오전|점심|오후|저녁|밤)?\s*"
 _CLOCK_GROUP: Final = r"(?P<hour>\d{1,2})\s*시(?:\s*(?P<minute>\d{1,2})\s*분)?"
 _TIME_PATTERN: Final = re.compile(_MERIDIEM_GROUP + _CLOCK_GROUP)
@@ -139,6 +146,24 @@ def is_multiple_menu_request(text: str) -> bool:
         return False
     parts = _MENU_CONNECTOR_PATTERN.split(name)
     return len(parts) > 1 and all(part and " " not in part for part in parts)
+
+
+def _parse_parking_info(text: str, profile: StoreProfile) -> ProposalChange | None:
+    """Read a parking-info update, or None when the sentence is not one."""
+    match = _PARKING_PATTERN.search(text)
+    if match is None:
+        return None
+    info = match.group("info").strip()
+    if not info or len(info) > PARKING_INFO_MAX_LENGTH:
+        return None
+    # A bare keyword is not a value the owner actually said.
+    if info in {"주차", "정보", "공간", "장"}:
+        return None
+    return ParkingInfoChange(
+        field="parkingInfo",
+        current_value=profile.parking_info,
+        proposed_value=info,
+    )
 
 
 def _parse_business_hours(text: str, profile: StoreProfile) -> ProposalChange | None:
@@ -296,6 +321,9 @@ def parse_intent(
     menu = _parse_menu(text, profile)
     if menu is not None:
         return (menu,)
+    parking = _parse_parking_info(text, profile)
+    if parking is not None:
+        return (parking,)
     closure = _parse_temporary_closure(
         text,
         profile,

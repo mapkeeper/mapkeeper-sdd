@@ -672,6 +672,43 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "ParkingInfoChange": {
+        "additionalProperties": false,
+        "description": "Typed parking-info proposal change.",
+        "properties": {
+          "currentValue": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentvalue"
+          },
+          "field": {
+            "const": "parkingInfo",
+            "title": "Field",
+            "type": "string"
+          },
+          "proposedValue": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Proposedvalue",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "currentValue",
+          "proposedValue"
+        ],
+        "title": "ParkingInfoChange",
+        "type": "object"
+      },
       "PatchStoreChangeProposalRequest": {
         "additionalProperties": false,
         "description": "Validated proposal changes replacing the current draft changes.",
@@ -681,6 +718,7 @@
               "discriminator": {
                 "mapping": {
                   "businessHours": "#/components/schemas/BusinessHoursChange",
+                  "parkingInfo": "#/components/schemas/ParkingInfoChange",
                   "representativeMenuName": "#/components/schemas/RepresentativeMenuNameChange",
                   "temporaryClosure": "#/components/schemas/TemporaryClosureChange"
                 },
@@ -695,6 +733,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/RepresentativeMenuNameChange"
+                },
+                {
+                  "$ref": "#/components/schemas/ParkingInfoChange"
                 }
               ]
             },
@@ -1064,6 +1105,7 @@
               "discriminator": {
                 "mapping": {
                   "businessHours": "#/components/schemas/BusinessHoursChange",
+                  "parkingInfo": "#/components/schemas/ParkingInfoChange",
                   "representativeMenuName": "#/components/schemas/RepresentativeMenuNameChange",
                   "temporaryClosure": "#/components/schemas/TemporaryClosureChange"
                 },
@@ -1078,6 +1120,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/RepresentativeMenuNameChange"
+                },
+                {
+                  "$ref": "#/components/schemas/ParkingInfoChange"
                 }
               ]
             },

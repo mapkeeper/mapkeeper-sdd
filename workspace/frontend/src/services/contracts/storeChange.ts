@@ -34,6 +34,11 @@ const proposalChangeSchema = z.discriminatedUnion('field', [
     currentValue: nonEmptyTextSchema.max(50),
     proposedValue: nonEmptyTextSchema.max(50),
   }),
+  z.strictObject({
+    field: z.literal('parkingInfo'),
+    currentValue: nonEmptyTextSchema.max(50).nullable(),
+    proposedValue: nonEmptyTextSchema.max(50),
+  }),
 ]);
 
 export const storeChangeProposalResponseSchema = z.strictObject({

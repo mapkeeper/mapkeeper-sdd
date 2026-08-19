@@ -19,6 +19,7 @@ from mapkeeper.models.enums import ProposalStatus
 
 RECOGNIZED_TEXT_MAX_LENGTH: Final = 500
 REPRESENTATIVE_MENU_NAME_MAX_LENGTH: Final = 50
+PARKING_INFO_MAX_LENGTH: Final = 50
 TEMPORARY_CLOSURE_RANGE_CONSTRAINT: Final = "temporary_closure_range"
 TEMPORARY_CLOSURE_RANGE_SQL: Final = """
 (temporary_closure_start_date IS NULL AND temporary_closure_end_date IS NULL)
@@ -48,6 +49,7 @@ class StoreProfile(TimestampMixin, Base):
         String(REPRESENTATIVE_MENU_NAME_MAX_LENGTH)
     )
     representative_phone: Mapped[str] = mapped_column(String())
+    parking_info: Mapped[str | None] = mapped_column(String(PARKING_INFO_MAX_LENGTH))
     platform_account_refs: Mapped[JsonObject] = mapped_column(postgresql.JSONB())
 
 

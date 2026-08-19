@@ -23,6 +23,30 @@ describe('StoreChangeWizard', () => {
     expect(screen.getByLabelText('변경할 매장 정보 직접 입력')).toHaveValue('대표 메뉴를 김치찌개로 바꿔줘');
   });
 
+  test('빠른 시작 버튼이 주차 정보 예시를 직접 입력창에 채운다', async () => {
+    const user = userEvent.setup();
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.click(screen.getByRole('button', { name: '주차 정보' }));
+
+    expect(screen.getByLabelText('변경할 매장 정보 직접 입력')).toHaveValue('주차 정보를 건물 뒤 3대 가능으로 바꿔줘');
+  });
+
+  test('주차 정보 변경 요청은 변경안 미리보기에 주차 정보로 표시한다', async () => {
+    const user = userEvent.setup();
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(
+      screen.getByLabelText('변경할 매장 정보 직접 입력'),
+      '주차 정보를 건물 뒤 3대 가능으로 바꿔줘',
+    );
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+
+    expect(await screen.findByText('주차 정보')).toBeInTheDocument();
+  });
+
   test('시작 화면은 홈으로 나가기만 보이고, 중간 단계는 이전 단계로 한 단계씩만 돌아간다', async () => {
     const user = userEvent.setup();
     const onExit = vi.fn();

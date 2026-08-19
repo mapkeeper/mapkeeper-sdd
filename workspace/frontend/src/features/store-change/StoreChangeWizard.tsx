@@ -15,12 +15,14 @@ const fieldLabels: Record<ProposalField, string> = {
   businessHours: '영업시간',
   temporaryClosure: '임시 휴무',
   representativeMenuName: '대표 메뉴',
+  parkingInfo: '주차 정보',
 };
 
 const storeChangeQuickPrompts = [
   { label: '대표 메뉴', answer: '대표 메뉴를 김치찌개로 바꿔줘' },
   { label: '영업시간', answer: '영업시간을 오후 10시까지로 바꿔줘' },
   { label: '임시 휴무', answer: '내일 문 닫아' },
+  { label: '주차 정보', answer: '주차 정보를 건물 뒤 3대 가능으로 바꿔줘' },
 ] as const;
 
 const stepBackTargets: Partial<Record<WizardStep, WizardStep>> = {

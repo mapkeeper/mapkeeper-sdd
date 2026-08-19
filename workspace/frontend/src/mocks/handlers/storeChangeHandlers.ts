@@ -5,6 +5,7 @@ import { getMockScenario, scenarioLatency } from '@/mocks/scenarios';
 import type { CreateStoreChangeRequest, PatchStoreChangeRequest, ProposalChangeRequest, StoreChangeApprovalResponse } from '@/services/api.types';
 import { PROPOSAL_FIELDS } from '@/types/domain';
 import { storeProfileFixture } from '@/mocks/fixtures/storeFixtures';
+import { DEMO_STORE } from '@/config/demoStore';
 
 const approvalReplay = new Map<string, StoreChangeApprovalResponse>();
 const responseOptions = () => ({ headers: { 'X-Request-ID': nextRequestId() } });
@@ -52,6 +53,17 @@ export function parseStoreChangeText(recognizedText: string): ProposalChangeRequ
       field: 'representativeMenuName',
       currentValue: storeProfileFixture.representativeMenuName,
       proposedValue: menu,
+    }];
+  }
+  if (/주차/.test(text)) {
+    const parking = text
+      .match(/주차\s*(?:정보|공간|장)?(?:를|을|은|는)?\s*(.+?)\s*(?:으로|로)\s*(?:바꿔|변경)/)?.[1]
+      ?.trim();
+    if (!parking) return [];
+    return [{
+      field: 'parkingInfo',
+      currentValue: DEMO_STORE.parkingInfo,
+      proposedValue: parking,
     }];
   }
   return [];

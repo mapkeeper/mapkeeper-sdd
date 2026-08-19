@@ -6,6 +6,7 @@ from pydantic import TypeAdapter, ValidationError
 from mapkeeper.api.schemas.store_change import (
     BusinessHoursChange,
     CreateStoreChangeProposalRequest,
+    ParkingInfoChange,
     PatchStoreChangeProposalRequest,
     ProposalChange,
     RepresentativeMenuNameChange,
@@ -31,6 +32,11 @@ def test_proposal_change_parses_each_allowed_field_shape() -> None:
             "currentValue": "아메리카노",
             "proposedValue": "수제 바닐라라테",
         },
+        {
+            "field": "parkingInfo",
+            "currentValue": None,
+            "proposedValue": "건물 뒤 3대 가능",
+        },
     )
     adapter = TypeAdapter[ProposalChange](ProposalChange)
 
@@ -41,6 +47,7 @@ def test_proposal_change_parses_each_allowed_field_shape() -> None:
     assert isinstance(changes[0], BusinessHoursChange)
     assert isinstance(changes[1], TemporaryClosureChange)
     assert isinstance(changes[2], RepresentativeMenuNameChange)
+    assert isinstance(changes[3], ParkingInfoChange)
     closure = changes[1]
     assert closure.proposed_value.start_date == date(2026, 8, 15)
 
@@ -122,6 +129,23 @@ def test_representative_menu_name_is_capped_at_fifty_characters() -> None:
     }
 
     # When / Then: the menu limit is enforced before anything is stored.
+    with pytest.raises(ValidationError):
+        _ = PatchStoreChangeProposalRequest.model_validate(payload)
+
+
+def test_parking_info_is_capped_at_fifty_characters() -> None:
+    # Given: a proposed parking info value one character over the contract limit.
+    payload = {
+        "changes": [
+            {
+                "field": "parkingInfo",
+                "currentValue": None,
+                "proposedValue": "가" * 51,
+            }
+        ]
+    }
+
+    # When / Then: the parking info limit is enforced before anything is stored.
     with pytest.raises(ValidationError):
         _ = PatchStoreChangeProposalRequest.model_validate(payload)
 

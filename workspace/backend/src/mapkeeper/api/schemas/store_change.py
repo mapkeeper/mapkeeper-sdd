@@ -10,6 +10,7 @@ from mapkeeper.models.enums import ProposalStatus, SyncJobStatus
 
 RECOGNIZED_TEXT_MAX_LENGTH: Final = 500
 MENU_NAME_MAX_LENGTH: Final = 50
+PARKING_INFO_MAX_LENGTH: Final = 50
 
 NonEmptyText = Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
 RecognizedText = Annotated[
@@ -19,6 +20,10 @@ RecognizedText = Annotated[
 MenuName = Annotated[
     str,
     StringConstraints(min_length=1, max_length=MENU_NAME_MAX_LENGTH, strip_whitespace=True),
+]
+ParkingInfoText = Annotated[
+    str,
+    StringConstraints(min_length=1, max_length=PARKING_INFO_MAX_LENGTH, strip_whitespace=True),
 ]
 HourMinute = Annotated[
     str,
@@ -77,8 +82,16 @@ class RepresentativeMenuNameChange(ApiSchema):
     proposed_value: MenuName
 
 
+class ParkingInfoChange(ApiSchema):
+    """Typed parking-info proposal change."""
+
+    field: Literal["parkingInfo"]
+    current_value: ParkingInfoText | None
+    proposed_value: ParkingInfoText
+
+
 ProposalChange = Annotated[
-    BusinessHoursChange | TemporaryClosureChange | RepresentativeMenuNameChange,
+    BusinessHoursChange | TemporaryClosureChange | RepresentativeMenuNameChange | ParkingInfoChange,
     Field(discriminator="field"),
 ]
 

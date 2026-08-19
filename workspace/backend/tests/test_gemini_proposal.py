@@ -15,7 +15,7 @@ from mapkeeper.adapters.gemini_proposal import (
     parse_changes,
 )
 from mapkeeper.adapters.gemini_seo import GENERATION_TIMEOUT_MESSAGE, GeminiTimeoutError
-from mapkeeper.api.schemas.store_change import BusinessHoursChange
+from mapkeeper.api.schemas.store_change import BusinessHoursChange, ParkingInfoChange
 from mapkeeper.core.config import get_settings
 from mapkeeper.models import StoreProfile
 
@@ -70,6 +70,15 @@ def test_the_prompt_states_the_current_store_values() -> None:
     assert "09:00" in prompt
     assert "22:00" in prompt
     assert "만두전골" in prompt
+
+
+def test_the_prompt_lists_parking_info_as_an_allowed_field() -> None:
+    # Given: the prompt for a store with no parking info recorded yet.
+    prompt = build_proposal_prompt("가게 문 10시에 열게", make_profile())
+
+    # When / Then: parkingInfo is offered as a 4th field, defaulting to "없음".
+    assert "parkingInfo" in prompt
+    assert "없음" in prompt
 
 
 def test_the_prompt_distinguishes_opening_from_closing() -> None:
@@ -195,6 +204,20 @@ async def test_the_stub_changes_the_side_of_the_day_that_was_spoken(
     assert isinstance(change, BusinessHoursChange)
     assert change.proposed_value.open == expected_open
     assert change.proposed_value.close == expected_close
+
+
+@pytest.mark.asyncio
+async def test_the_stub_structures_a_parking_info_change() -> None:
+    # Given: a sentence naming a new parking arrangement.
+    stub = DeterministicGeminiStub()
+
+    # When: the offline stub structures it.
+    (change,) = await stub.generate("주차 정보를 건물 뒤 3대 가능으로 바꿔줘", make_profile())
+
+    # Then: it is read as a parkingInfo change, not refused.
+    assert isinstance(change, ParkingInfoChange)
+    assert change.proposed_value == "건물 뒤 3대 가능"
+    assert change.current_value is None
 
 
 # --- routing between the parser and the model ---------------------------------

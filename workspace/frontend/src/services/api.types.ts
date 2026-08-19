@@ -41,7 +41,8 @@ export interface TemporaryClosureValue { startDate: string; endDate: string }
 export type ProposalChangeRequest =
   | { field: 'businessHours'; currentValue: BusinessHoursValue; proposedValue: BusinessHoursValue }
   | { field: 'temporaryClosure'; currentValue: TemporaryClosureValue | null; proposedValue: TemporaryClosureValue }
-  | { field: 'representativeMenuName'; currentValue: string; proposedValue: string };
+  | { field: 'representativeMenuName'; currentValue: string; proposedValue: string }
+  | { field: 'parkingInfo'; currentValue: string | null; proposedValue: string };
 export interface PatchStoreChangeRequest { changes: ProposalChangeRequest[] }
 export type PatchStoreChangeResponse = StoreChangeProposal;
 export interface StoreChangeApprovalResponse {

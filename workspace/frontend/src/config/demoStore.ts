@@ -5,6 +5,7 @@ export const DEMO_STORE = {
   businessHours: '09:00-22:00',
   representativeMenuName: '만두전골',
   representativePhone: '02-000-0000',
+  parkingInfo: '건물 앞 2대 무료주차',
 } as const;
 
 export const DEMO_SOURCE_REVIEW_ID = '55555555-5555-4555-8555-555555555556';

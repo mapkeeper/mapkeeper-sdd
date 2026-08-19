@@ -58,6 +58,13 @@ function parseBusinessHours(field: ProposalField, value: string): { open: string
   return { open: match[1], close: match[2] };
 }
 
+function parseParkingInfo(field: ProposalField, value: string): string | null {
+  if (value === '설정 없음') return null;
+  const trimmed = value.trim();
+  if (!trimmed) throw new InvalidProposalChangeError(field, value);
+  return trimmed;
+}
+
 function parseTemporaryClosure(field: ProposalField, value: string): { startDate: string; endDate: string } | null {
   if (value === '설정 없음' || value === '영업') return null;
   const dates = value.match(/\d{4}-\d{2}-\d{2}/g);
@@ -90,6 +97,15 @@ function toProposalChangeRequest(change: ProposalChange): ProposalChangeRequest 
         currentValue: change.currentValue.trim(),
         proposedValue: change.proposedValue.trim(),
       };
+    case 'parkingInfo': {
+      const proposedValue = parseParkingInfo(change.field, change.proposedValue);
+      if (proposedValue === null) throw new InvalidProposalChangeError(change.field, change.proposedValue);
+      return {
+        field: change.field,
+        currentValue: parseParkingInfo(change.field, change.currentValue),
+        proposedValue,
+      };
+    }
     default:
       return assertNever(change.field);
   }

@@ -6,6 +6,7 @@ const fieldLabels: Record<ProposalField, string> = {
   businessHours: '영업시간',
   temporaryClosure: '임시 휴무',
   representativeMenuName: '대표 메뉴',
+  parkingInfo: '주차 정보',
 };
 
 function parseClosureRange(value: string): { start: string; end: string } {

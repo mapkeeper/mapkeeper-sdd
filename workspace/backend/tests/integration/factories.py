@@ -37,6 +37,13 @@ MENU_NAME_CHANGE: Final[list[JsonValue]] = [
         "proposedValue": "수제 바닐라라테",
     }
 ]
+PARKING_INFO_CHANGE: Final[list[JsonValue]] = [
+    {
+        "field": "parkingInfo",
+        "currentValue": None,
+        "proposedValue": "건물 뒤 3대 가능",
+    }
+]
 
 
 async def make_store_profile(session: AsyncSession) -> StoreProfile:

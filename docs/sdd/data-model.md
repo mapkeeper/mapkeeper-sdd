@@ -42,6 +42,7 @@ temporaryClosureStartDate: date nullable
 temporaryClosureEndDate: date nullable
 representativeMenuName: varchar(50)
 representativePhone: text
+parkingInfo: varchar(50) nullable
 platformAccountRefs: JSONB
 createdAt: timestamptz
 updatedAt: timestamptz

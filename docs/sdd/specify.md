@@ -20,7 +20,7 @@
 
 ### 기본 흐름
 
-1. 사용자가 영업시간·임시 휴무·대표 메뉴 변경을 말하거나 텍스트로 입력한다.
+1. 사용자가 영업시간·임시 휴무·대표 메뉴·주차 정보 변경을 말하거나 텍스트로 입력한다.
 2. 브라우저가 음성을 텍스트로 변환한다.
 3. 서버가 고객 PII를 마스킹한다.
 4. 결정적 파서와 선택적 Gemini 구조화기가 허용 필드의 변경안을 생성한다.
@@ -36,6 +36,7 @@
 | `businessHours` | `{open: HH:mm, close: HH:mm}` |
 | `temporaryClosure` | `{startDate: YYYY-MM-DD, endDate: YYYY-MM-DD}` |
 | `representativeMenuName` | 1~50자 문자열 |
+| `parkingInfo` | 1~50자 문자열 |
 
 ### 인수 조건
 

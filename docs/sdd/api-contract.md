@@ -86,6 +86,7 @@
 |---|---|
 | `recognizedText` | 1~500자 |
 | `representativeMenuName` | 1~50자 |
+| `parkingInfo` | 1~50자 |
 | `briefText` | 1~500자 |
 | `seedKeywords` | 1~5개, 각 1~30자 |
 | `draftText` | 1~750자 |
@@ -156,6 +157,10 @@ POST /api/v1/store-change-proposals
 
 ```json
 {"field":"representativeMenuName","currentValue":"만두전골","proposedValue":"김치찌개"}
+```
+
+```json
+{"field":"parkingInfo","currentValue":null,"proposedValue":"건물 뒤 3대 가능"}
 ```
 
 ### 4.2 변경안 전체 교체

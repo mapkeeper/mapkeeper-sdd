@@ -57,6 +57,7 @@ describe('storeChangeApi', () => {
       { field: 'businessHours' as const, currentValue: '09:00-21:00', proposedValue: '09:00-22:00' },
       { field: 'temporaryClosure' as const, currentValue: '영업', proposedValue: '2026-08-06 휴무' },
       { field: 'representativeMenuName' as const, currentValue: '비빔밥', proposedValue: '돌솥비빔밥' },
+      { field: 'parkingInfo' as const, currentValue: '설정 없음', proposedValue: '건물 뒤 3대 가능' },
     ];
     server.use(
       http.patch('/api/v1/store-change-proposals/prop-001', async ({ request }) => {
@@ -76,6 +77,11 @@ describe('storeChangeApi', () => {
               field: 'representativeMenuName',
               currentValue: '비빔밥',
               proposedValue: '돌솥비빔밥',
+            },
+            {
+              field: 'parkingInfo',
+              currentValue: null,
+              proposedValue: '건물 뒤 3대 가능',
             },
           ],
         });
@@ -101,6 +107,11 @@ describe('storeChangeApi', () => {
                 currentValue: '비빔밥',
                 proposedValue: '돌솥비빔밥',
               },
+              {
+                field: 'parkingInfo',
+                currentValue: null,
+                proposedValue: '건물 뒤 3대 가능',
+              },
             ],
             status: 'DRAFT',
           },
@@ -117,6 +128,7 @@ describe('storeChangeApi', () => {
           changes[0],
           { field: 'temporaryClosure', currentValue: '설정 없음', proposedValue: '2026-08-06 ~ 2026-08-06' },
           changes[2],
+          { field: 'parkingInfo', currentValue: '설정 없음', proposedValue: '건물 뒤 3대 가능' },
         ],
         status: 'DRAFT',
       },

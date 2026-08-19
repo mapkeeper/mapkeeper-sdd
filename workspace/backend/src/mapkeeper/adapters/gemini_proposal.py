@@ -1,6 +1,6 @@
 """Gemini-backed UC1 structuring, behind the same Protocol as the rule-based stub.
 
-The stub matches three keywords and a clock regex, so anything phrased differently
+The stub matches four keywords and a clock regex, so anything phrased differently
 is refused. Gemini reads the sentence instead, which is the point of the feature.
 
 The safety properties do not move: only masked text reaches the prompt, and the
@@ -18,6 +18,7 @@ from mapkeeper.adapters.gemini_seo import GeminiModelClient, strip_code_fence
 from mapkeeper.adapters.intent import is_multiple_menu_request, parse_intent
 from mapkeeper.api.schemas.store_change import (
     MENU_NAME_MAX_LENGTH,
+    PARKING_INFO_MAX_LENGTH,
     ProposalChange,
 )
 from mapkeeper.core.errors import MapKeeperError
@@ -47,17 +48,19 @@ def build_proposal_prompt(masked_text: str, profile: StoreProfile) -> str:
     if profile.temporary_closure_start_date and profile.temporary_closure_end_date:
         closure = f"{profile.temporary_closure_start_date} ~ {profile.temporary_closure_end_date}"
     hours = profile.business_hours
+    parking = profile.parking_info or "없음"
     return f"""사장님이 말한 문장을 매장 정보 변경안으로 바꾼다.
 
 현재 매장 상태:
 - 영업시간: 여는 시각 {hours.get("open")}, 닫는 시각 {hours.get("close")}
 - 임시 휴무: {closure}
 - 대표 메뉴: {profile.representative_menu_name}
+- 주차 정보: {parking}
 
 사장님 문장:
 {masked_text}
 
-바꿀 수 있는 항목은 아래 셋뿐이다. 그 외 요청이면 빈 배열 []만 출력한다.
+바꿀 수 있는 항목은 아래 넷뿐이다. 그 외 요청이면 빈 배열 []만 출력한다.
 
 1. businessHours — 여는 시각과 닫는 시각
    "문 연다/오픈"은 open, "문 닫는다/마감"은 close를 뜻한다.
@@ -66,6 +69,7 @@ def build_proposal_prompt(masked_text: str, profile: StoreProfile) -> str:
 2. temporaryClosure — 쉬는 기간의 시작일과 종료일
    "내일", "다음 주 월요일" 같은 표현은 확정 날짜를 알 수 없으므로 빈 배열을 출력한다.
 3. representativeMenuName — 대표 메뉴 이름 ({MENU_NAME_MAX_LENGTH}자 이하)
+4. parkingInfo — 주차 정보 ({PARKING_INFO_MAX_LENGTH}자 이하)
 
 규칙:
 - 시각은 "HH:mm" 24시간 형식이다.

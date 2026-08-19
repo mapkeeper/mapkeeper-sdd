@@ -30,6 +30,7 @@ from mapkeeper.services.proposal_approval import approve_proposal
 from .factories import (
     BUSINESS_HOURS_CHANGE,
     MENU_NAME_CHANGE,
+    PARKING_INFO_CHANGE,
     TEMPORARY_CLOSURE_CHANGE,
     make_proposal,
     make_store_profile,
@@ -156,6 +157,18 @@ async def test_a_menu_rename_reaches_the_store_profile(db_session: AsyncSession)
 
     # Then: the approved target state is stored.
     assert profile.representative_menu_name == "수제 바닐라라테"
+
+
+async def test_a_parking_info_update_reaches_the_store_profile(db_session: AsyncSession) -> None:
+    # Given: a proposal setting parking info on a profile that has none yet.
+    profile = await make_store_profile(db_session)
+    proposal = await make_proposal(db_session, profile.id, PARKING_INFO_CHANGE)
+
+    # When: it is approved.
+    _ = await approve_proposal(db_session, proposal.id, uuid4(), KEY)
+
+    # Then: the approved target state is stored.
+    assert profile.parking_info == "건물 뒤 3대 가능"
 
 
 async def test_an_unknown_proposal_is_reported_as_missing(db_session: AsyncSession) -> None:

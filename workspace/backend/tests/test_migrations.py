@@ -21,7 +21,7 @@ from mapkeeper.models import (
 )
 
 INITIAL_REVISION: Final = "0001"
-HEAD_REVISION: Final = "0003"
+HEAD_REVISION: Final = "0004"
 ENUM_TYPES: Final = {
     "platform": Platform,
     "proposal_status": ProposalStatus,

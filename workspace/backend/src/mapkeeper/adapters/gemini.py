@@ -12,6 +12,7 @@ from mapkeeper.adapters.gemini_seo import HttpGeminiModelClient
 from mapkeeper.api.schemas.store_change import (
     BusinessHoursChange,
     BusinessHoursValue,
+    ParkingInfoChange,
     ProposalChange,
     RepresentativeMenuNameChange,
     TemporaryClosureChange,
@@ -36,6 +37,7 @@ _DATE_PATTERN: Final = re.compile(r"(\d{4}-\d{2}-\d{2})")
 _OPENING_WORDS: Final = re.compile(r"(?:문\s*을?\s*)?(?:열|오픈|시작)")
 _MENU_PREFIX: Final = re.compile(r"^.*?대표\s*메뉴(?:를|은|는)?\s*")
 _MENU_SUFFIX: Final = re.compile(r"\s*(?:로|으로)?\s*(?:바꿔줘|변경해줘|변경해|바꿔|변경)\s*$")
+_PARKING_PREFIX: Final = re.compile(r"^.*?주차\s*(?:정보|공간|장)?(?:를|을|은|는)?\s*")
 
 
 class GeminiProposalGenerator(Protocol):
@@ -66,61 +68,81 @@ class DeterministicGeminiStub:
         self.last_input = masked_text
         lowered = masked_text.lower()
         if "영업시간" in lowered or "영업 시간" in lowered:
-            match = _TIME_PATTERN.search(masked_text)
-            if match is None:
-                raise invalid_change_error()
-            spoken = _to_hour_minute(match)
-            current = BusinessHoursValue.model_validate(profile.business_hours)
-            # Which side of the day was spoken about. Saying nothing means closing
-            # time, which is what "몇 시까지" asks about.
-            if _OPENING_WORDS.search(masked_text):
-                proposed = BusinessHoursValue(open=spoken, close=current.close)
-            else:
-                proposed = BusinessHoursValue(open=current.open, close=spoken)
-            return (
-                BusinessHoursChange(
-                    field="businessHours",
-                    current_value=current,
-                    proposed_value=proposed,
-                ),
-            )
+            return (self._business_hours_change(masked_text, profile),)
         if "휴무" in lowered or "휴일" in lowered:
-            dates = [match.group(1) for match in _DATE_PATTERN.finditer(masked_text)]
-            if len(dates) != DATE_COUNT:
-                raise invalid_change_error()
-            try:
-                start, end = (date.fromisoformat(value) for value in dates)
-            except ValueError as exc:
-                raise invalid_change_error() from exc
-            current = None
-            if (
-                profile.temporary_closure_start_date is not None
-                and profile.temporary_closure_end_date is not None
-            ):
-                current = TemporaryClosureValue(
-                    start_date=profile.temporary_closure_start_date,
-                    end_date=profile.temporary_closure_end_date,
-                )
-            return (
-                TemporaryClosureChange(
-                    field="temporaryClosure",
-                    current_value=current,
-                    proposed_value=TemporaryClosureValue(start_date=start, end_date=end),
-                ),
-            )
+            return (self._temporary_closure_change(masked_text, profile),)
         if "대표 메뉴" in masked_text or "대표메뉴" in masked_text:
-            proposed = _MENU_SUFFIX.sub("", _MENU_PREFIX.sub("", masked_text)).strip()
-            if not proposed or proposed in {"메뉴", "대표"}:
-                raise invalid_change_error()
-            current = profile.representative_menu_name
-            return (
-                RepresentativeMenuNameChange(
-                    field="representativeMenuName",
-                    current_value=current,
-                    proposed_value=proposed,
-                ),
-            )
+            return (self._menu_name_change(masked_text, profile),)
+        if "주차" in lowered:
+            return (self._parking_info_change(masked_text, profile),)
         raise invalid_change_error()
+
+    def _business_hours_change(
+        self, masked_text: str, profile: StoreProfile
+    ) -> BusinessHoursChange:
+        match = _TIME_PATTERN.search(masked_text)
+        if match is None:
+            raise invalid_change_error()
+        spoken = _to_hour_minute(match)
+        current = BusinessHoursValue.model_validate(profile.business_hours)
+        # Which side of the day was spoken about. Saying nothing means closing
+        # time, which is what "몇 시까지" asks about.
+        if _OPENING_WORDS.search(masked_text):
+            proposed = BusinessHoursValue(open=spoken, close=current.close)
+        else:
+            proposed = BusinessHoursValue(open=current.open, close=spoken)
+        return BusinessHoursChange(
+            field="businessHours",
+            current_value=current,
+            proposed_value=proposed,
+        )
+
+    def _temporary_closure_change(
+        self, masked_text: str, profile: StoreProfile
+    ) -> TemporaryClosureChange:
+        dates = [match.group(1) for match in _DATE_PATTERN.finditer(masked_text)]
+        if len(dates) != DATE_COUNT:
+            raise invalid_change_error()
+        try:
+            start, end = (date.fromisoformat(value) for value in dates)
+        except ValueError as exc:
+            raise invalid_change_error() from exc
+        current = None
+        if (
+            profile.temporary_closure_start_date is not None
+            and profile.temporary_closure_end_date is not None
+        ):
+            current = TemporaryClosureValue(
+                start_date=profile.temporary_closure_start_date,
+                end_date=profile.temporary_closure_end_date,
+            )
+        return TemporaryClosureChange(
+            field="temporaryClosure",
+            current_value=current,
+            proposed_value=TemporaryClosureValue(start_date=start, end_date=end),
+        )
+
+    def _menu_name_change(
+        self, masked_text: str, profile: StoreProfile
+    ) -> RepresentativeMenuNameChange:
+        proposed = _MENU_SUFFIX.sub("", _MENU_PREFIX.sub("", masked_text)).strip()
+        if not proposed or proposed in {"메뉴", "대표"}:
+            raise invalid_change_error()
+        return RepresentativeMenuNameChange(
+            field="representativeMenuName",
+            current_value=profile.representative_menu_name,
+            proposed_value=proposed,
+        )
+
+    def _parking_info_change(self, masked_text: str, profile: StoreProfile) -> ParkingInfoChange:
+        proposed = _MENU_SUFFIX.sub("", _PARKING_PREFIX.sub("", masked_text)).strip()
+        if not proposed or proposed in {"주차", "정보", "공간", "장"}:
+            raise invalid_change_error()
+        return ParkingInfoChange(
+            field="parkingInfo",
+            current_value=profile.parking_info,
+            proposed_value=proposed,
+        )
 
 
 def _to_hour_minute(match: re.Match[str]) -> str:
@@ -142,7 +164,7 @@ def _to_hour_minute(match: re.Match[str]) -> str:
 def get_gemini_generator() -> GeminiProposalGenerator:
     """Return the Gemini structurer when a key is configured, otherwise the stub.
 
-    The stub only matches three keywords and a clock regex, so anything phrased
+    The stub only matches four keywords and a clock regex, so anything phrased
     differently is refused. It stays as the offline fallback.
     """
     settings = get_settings()

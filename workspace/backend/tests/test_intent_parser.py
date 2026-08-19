@@ -9,6 +9,7 @@ import pytest
 from mapkeeper.adapters.intent import parse_intent
 from mapkeeper.api.schemas.store_change import (
     BusinessHoursChange,
+    ParkingInfoChange,
     RepresentativeMenuNameChange,
     TemporaryClosureChange,
 )
@@ -84,6 +85,53 @@ def test_multiple_menu_names_are_not_parsed_as_one_menu(sentence: str) -> None:
     # Given: a request that names more than one independent menu.
     # When / Then: the parser refuses to combine them into one representative name.
     assert parse_intent(sentence, make_profile()) is None
+
+
+# --- parking info ---------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("sentence", "expected"),
+    [
+        ("주차 정보를 건물 뒤 3대 가능으로 바꿔줘", "건물 뒤 3대 가능"),
+        ("주차를 매장 앞 2대로 변경해줘", "매장 앞 2대"),
+        ("주차공간을 발렛 전용으로 해줘", "발렛 전용"),
+    ],
+)
+def test_natural_parking_phrasings_become_a_parking_change(sentence: str, expected: str) -> None:
+    # Given: a sentence naming a new parking arrangement, with no parking on file yet.
+    profile = make_profile()
+
+    # When: the deterministic parser reads it.
+    changes = parse_intent(sentence, profile)
+
+    # Then: the value is taken verbatim and the current value is None.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, ParkingInfoChange)
+    assert change.proposed_value == expected
+    assert change.current_value is None
+
+
+def test_a_parking_info_change_reads_the_profiles_current_value() -> None:
+    # Given: a store that already has parking info on file.
+    profile = make_profile()
+    profile.parking_info = "건물 앞 2대 무료주차"
+
+    # When: the deterministic parser reads a new request.
+    changes = parse_intent("주차 정보를 건물 뒤 3대 가능으로 바꿔줘", profile)
+
+    # Then: the current value comes from the stored profile, not None.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, ParkingInfoChange)
+    assert change.current_value == "건물 앞 2대 무료주차"
+
+
+def test_an_empty_parking_info_is_not_parsed_deterministically() -> None:
+    # Given: a sentence with the keyword but no actual value.
+    # When / Then: nothing is invented.
+    assert parse_intent("주차 정보를 로 바꿔줘", make_profile()) is None
 
 
 # --- business hours ------------------------------------------------------------
