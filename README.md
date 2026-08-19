@@ -1,17 +1,58 @@
-# MapKeeper 작업 저장소
+# MapKeeper (맵지기AI)
 
-기획 문서와 개발 중인 애플리케이션을 함께 관리한다. 최종 제출 시에는 `workspace/`의 필요한 산출물만 제출용 저장소로 이전한다.
+소상공인이 매장 정보를 여러 지도 플랫폼(Google·네이버·카카오)에 일일이 반영하고, 쌓인 리뷰를 읽어 홍보문구까지 쓰는 데 드는 시간을 줄이기 위한 서비스다. 음성 또는 텍스트로 한 번만 요청하면 승인 절차를 거쳐 플랫폼별 반영을 준비하고, 리뷰를 분석해 AI 홍보문구 초안을 생성한다.
 
-## 현재 구성
+기획 문서와 개발 중인 애플리케이션을 함께 관리하는 저장소다. 최종 제출 시에는 `workspace/`의 필요한 산출물만 제출용 저장소로 이전한다.
+
+## 핵심 기능
+
+### UC1 — 매장 정보 변경
+영업시간·임시 휴무·대표 메뉴명 3개 필드만 음성 또는 텍스트로 변경 요청할 수 있다. 요청은 곧바로 반영되지 않고 변경안(Proposal)으로 만들어지며, 사장님이 승인해야 `SyncJob`이 생성되어 Google·네이버·카카오 3개 플랫폼에 반영을 시도한다. 실패·재시도 가능한 플랫폼은 최대 3회까지 자동 재시도한다.
+
+### UC2 — AI 홍보문구 생성
+매장 리뷰를 Gemini에 전달해 3개 플랫폼용 홍보문구를 한 번의 호출로 함께 생성한다. 문구는 750자, 키워드는 1~10개(개당 30자)로 제한되며 저장 전에 스키마로 재검증해 규칙을 어기면 거절한다. `GEMINI_API_KEY`가 없으면 결정적 stub이 대신 동작해 외부 서비스 없이도 시연할 수 있다. 리뷰 인사이트 화면에서 곧바로 "이 분석으로 AI 홍보문구 만들기" 버튼으로 넘어갈 수 있다.
+
+### 안전장치
+- **승인 기반 실행** — UC1·UC2 모두 AI/사용자 요청이 즉시 반영되지 않고, 사장님의 명시적 승인 후에만 플랫폼 반영·발행이 이뤄진다.
+- **PII 마스킹** — 리뷰 텍스트를 Gemini에 보내기 전에 전화번호·주소·고객명을 정규식으로 결정적으로 마스킹한다(`[MASKED_PHONE]` 등).
+- **음성 원본 미전송·미저장** — 브라우저 내장 Web Speech API로 변환된 텍스트만 사용하고, 오디오 원본은 서버로 전송하거나 저장하지 않는다.
+- **출력 재검증** — Gemini 응답은 저장 전 Pydantic 스키마로 재검증하고, 실패 메시지는 벤더·엔드포인트·키를 노출하지 않는다.
+
+> ⚠️ Google·네이버·카카오 실 연동은 아직 없다. 현재 `AcceptingAdapter`가 외부 호출 없이 성공·실패·재시도 흐름만 재현하는 **시뮬레이션**이며, 실제 플랫폼에 반영되는 것으로 해석하지 않는다.
+
+## 기술 스택
+
+| 영역 | 구성 |
+|---|---|
+| Backend | FastAPI, SQLAlchemy(async), PostgreSQL, Alembic |
+| Frontend | React, TypeScript, Vite |
+| AI | Gemini API (REST, 재시도·타임아웃 포함 커스텀 클라이언트) |
+| 계약 | OpenAPI로 프론트·백엔드 간 단일 계약 관리 |
+| CI/CD | GitHub Actions, GHCR, Tailscale SSH 배포 |
+
+## 저장소 구조
 
 ```text
-docs/sdd/         최신 설계 문서(SDD) — 최종 제출 산출물이 아님
+docs/sdd/                          설계 기준 문서(SDD) 10종 — 최종 제출 산출물은 아님
 
 workspace/
-├── backend/        FastAPI와 Dockerfile
-├── frontend/       React/Vite와 Dockerfile
-├── compose.yaml    로컬·개발 서버 실행 설정
-└── .env.example    공개 가능한 환경변수 예시
+├── backend/
+│   ├── src/mapkeeper/
+│   │   ├── api/          라우트(routes/)와 요청·응답 schema(schemas/)
+│   │   ├── adapters/      Gemini·플랫폼 어댑터 (Protocol 경계)
+│   │   ├── core/          설정, 로깅, 에러 코드
+│   │   ├── db/             모델, 세션, seed
+│   │   ├── models/        SQLAlchemy ORM 모델
+│   │   └── services/       PII 마스킹 등 도메인 서비스
+│   └── openapi.json        프론트엔드에 전달하는 단일 API 계약
+├── frontend/
+│   └── src/
+│       ├── components/    화면 구성 요소
+│       ├── features/       UC1/UC2 등 기능 단위 모듈
+│       ├── hooks/           useSpeechRecognition 등
+│       └── services/        API 클라이언트, 진단
+├── compose.yaml            로컬·개발 서버 실행 설정
+└── .env.example             공개 가능한 환경변수 예시
 
 .github/workflows/
 ├── ci.yml          코드 검사·테스트·컨테이너 빌드
