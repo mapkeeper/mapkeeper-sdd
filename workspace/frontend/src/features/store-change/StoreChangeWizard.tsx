@@ -159,6 +159,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
               setManualText(text);
               setStep('MANUAL');
             }}
+            onCancel={speech.reset}
           />
           <button className="store-change-wizard__secondary" type="button" onClick={() => setStep('MANUAL')}>
             직접 입력하기

@@ -17,6 +17,8 @@
 .voice-panel__fallback textarea { box-sizing:border-box; width:100%; min-height:104px; padding:14px; border:1px solid #e2e8f0; border-radius:var(--radius-md); background:#f8fafc; color:#0f172a; box-shadow:none; font:inherit; font-size:14px; line-height:1.6; }
 .voice-panel__fallback button { min-height:52px; border:0; border-radius:var(--radius-md); background:#2563eb; color:#fff; font-size:14px; font-weight:750; }
 .voice-panel__transcript { min-height:56px; margin:0; padding:18px; border:1px solid rgba(226,232,240,.8); border-radius:var(--radius-lg); background:#fff; color:#1e293b; box-shadow:0 3px 14px -5px rgba(15,23,42,.1); font-size:16px; font-weight:600; line-height:1.55; }
+.voice-panel__transcript--interim { opacity:.68; }
+.voice-panel__cancel { min-height:44px; padding:0 18px; border:0; border-radius:var(--radius-md); background:transparent; color:#64748b; font-size:14px; font-weight:600; }
 .voice-panel:has(.voice-panel__primary)::after { margin:6px auto 0; color:#64748b; font-size:12.5px; font-weight:500; line-height:1.55; text-align:center; content:"💡 말씀하신 내용은 맵지기가 보기 쉽게 정리해 드려요"; }
 @keyframes voice-pulse { 50% { transform:scale(1.04); } }
 @keyframes voice-ring { from { transform:scale(.88); opacity:.9; } to { transform:scale(1.35); opacity:0; } }

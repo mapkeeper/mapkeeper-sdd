@@ -87,6 +87,24 @@ describe('useSpeechRecognition', () => {
     expect(FakeSpeechRecognition.instances).toHaveLength(0);
   });
 
+  test('말하는 도중에도 중간 인식 결과를 실시간으로 반영한다', () => {
+    const { result } = renderHook(() => useSpeechRecognition());
+    act(() => result.current.start());
+    const recognition = FakeSpeechRecognition.instances[0];
+
+    act(() => recognition?.recognize('영업', false));
+    expect(result.current).toMatchObject({ state: 'LISTENING', recognizedText: '영업' });
+
+    act(() => recognition?.recognize('영업시간을 밤 10시까지로', false));
+    expect(result.current).toMatchObject({ state: 'LISTENING', recognizedText: '영업시간을 밤 10시까지로' });
+
+    act(() => recognition?.recognize('영업시간을 밤 10시까지로 바꿔줘', true));
+    expect(result.current).toMatchObject({
+      state: 'RECOGNIZED',
+      recognizedText: '영업시간을 밤 10시까지로 바꿔줘',
+    });
+  });
+
   test('음성 입력 중 중지하면 최신 중간 인식 문장을 보존한다', () => {
     const { result } = renderHook(() => useSpeechRecognition());
     act(() => result.current.start());

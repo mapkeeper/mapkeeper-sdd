@@ -65,7 +65,10 @@ export function useSpeechRecognition(): SpeechRecognitionState {
         return;
       }
       const result = event.results[event.resultIndex] ?? event.results[0];
-      if (!result?.isFinal) return;
+      if (!result?.isFinal) {
+        setRecognizedText(transcript);
+        return;
+      }
       receivedResultRef.current = true;
       setRecognizedText(transcript);
       setState('RECOGNIZED');

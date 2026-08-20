@@ -18,6 +18,7 @@ export interface VoicePanelProps {
   onStart(): void;
   onRecognized?(recognizedText: string): void;
   onManualSubmit(recognizedText: string): void;
+  onCancel?(): void;
 }
 
 function errorMessage(error: string | null | undefined): string {
@@ -28,7 +29,7 @@ function errorMessage(error: string | null | undefined): string {
   return '음성을 알아듣지 못했습니다. 아래에서 직접 입력해 주세요.';
 }
 
-export function VoicePanel({ state, recognizedText, error, onStart, onManualSubmit }: VoicePanelProps) {
+export function VoicePanel({ state, recognizedText, error, onStart, onManualSubmit, onCancel }: VoicePanelProps) {
   const [manualText, setManualText] = useState('');
 
   const submitManual = (event: FormEvent<HTMLFormElement>) => {
@@ -50,7 +51,21 @@ export function VoicePanel({ state, recognizedText, error, onStart, onManualSubm
         </button>
       ) : null}
 
-      {state === 'LISTENING' ? <div className="voice-panel__listening"><span className="voice-panel__pulse" aria-hidden="true"><Microphone weight="regular" /></span><p className="voice-panel__hint">말을 마치면 자동으로 정리해 드려요.</p></div> : null}
+      {state === 'LISTENING' ? (
+        <div className="voice-panel__listening">
+          <span className="voice-panel__pulse" aria-hidden="true"><Microphone weight="regular" /></span>
+          {recognizedText ? (
+            <p className="voice-panel__transcript voice-panel__transcript--interim">“{recognizedText}”</p>
+          ) : (
+            <p className="voice-panel__hint">말을 마치면 자동으로 정리해 드려요.</p>
+          )}
+          {onCancel ? (
+            <button className="voice-panel__cancel" type="button" onClick={onCancel}>
+              취소
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {state === 'RECOGNIZED' ? <p className="voice-panel__transcript">“{recognizedText}”</p> : null}
 
       {state === 'FAILED' ? (

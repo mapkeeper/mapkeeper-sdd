@@ -21,6 +21,40 @@ describe('VoicePanel', () => {
     expect(screen.getByRole('status')).toHaveTextContent(announcement);
   });
 
+  test('듣는 중에도 인식된 텍스트를 실시간으로 보여준다', () => {
+    render(
+      <VoicePanel state="LISTENING" recognizedText="영업시간을" onStart={vi.fn()} onManualSubmit={vi.fn()} />,
+    );
+    expect(screen.getByText('“영업시간을”')).toBeInTheDocument();
+  });
+
+  test('듣는 중 아직 인식된 텍스트가 없으면 안내 문구를 보여준다', () => {
+    render(<VoicePanel state="LISTENING" recognizedText="" onStart={vi.fn()} onManualSubmit={vi.fn()} />);
+    expect(screen.getByText('말을 마치면 자동으로 정리해 드려요.')).toBeInTheDocument();
+  });
+
+  test('듣는 중 취소 버튼을 누르면 onCancel을 호출한다', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(
+      <VoicePanel
+        state="LISTENING"
+        recognizedText="영업시간을"
+        onStart={vi.fn()}
+        onManualSubmit={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  test('onCancel이 없으면 취소 버튼을 보여주지 않는다', () => {
+    render(<VoicePanel state="LISTENING" recognizedText="" onStart={vi.fn()} onManualSubmit={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: '취소' })).not.toBeInTheDocument();
+  });
+
   test('음성 시작 버튼은 48px 이상의 터치 영역을 가진다', () => {
     render(<VoicePanel state="IDLE" recognizedText="" onStart={vi.fn()} onManualSubmit={vi.fn()} />);
     expect(screen.getByRole('button', { name: '음성 인식 시작' })).toHaveStyle({ minHeight: '56px' });
