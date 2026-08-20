@@ -103,8 +103,8 @@ def build_prompt(
 ) -> str:
     """Build one prompt that asks for all three platform results at once.
 
-    One call rather than three keeps the request count inside the free tier and
-    lets the model differentiate the platforms against each other.
+    One call rather than three keeps cost and latency down and lets the model
+    differentiate the platforms against each other.
     """
     rules = "\n".join(
         f"- {platform.value}: {guidance}" for platform, guidance in PLATFORM_GUIDANCE.items()

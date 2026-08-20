@@ -85,7 +85,7 @@ def test_the_prompt_asks_for_all_three_platforms_at_once() -> None:
     # When: the prompt is built.
     prompt = build_prompt(make_input(), make_profile(), ())
 
-    # Then: a single request covers every platform, which the free tier needs.
+    # Then: a single request covers every platform, keeping cost and latency down.
     for platform in Platform:
         assert platform.value in prompt
 
