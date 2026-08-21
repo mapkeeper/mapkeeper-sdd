@@ -34,6 +34,7 @@ body, button, input, textarea, select { font-family: Pretendard, sans-serif; }
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
+.app-viewport--large-text { zoom: 1.2; }
 .app-viewport h1,
 .app-viewport h2 {
   color: var(--text-primary);

@@ -342,6 +342,8 @@ function SettingsScreen({
   onToggleAutoApprove,
   voiceGuidance,
   onToggleVoiceGuidance,
+  largeText,
+  onToggleLargeText,
 }: {
   onHome(): void;
   onStoreChange(): void;
@@ -353,6 +355,8 @@ function SettingsScreen({
   onToggleAutoApprove(): void;
   voiceGuidance: boolean;
   onToggleVoiceGuidance(): void;
+  largeText: boolean;
+  onToggleLargeText(): void;
 }) {
   const [isHelpOpen, setHelpOpen] = useState(false);
   const [isContactOpen, setContactOpen] = useState(false);
@@ -398,6 +402,17 @@ function SettingsScreen({
             <span className="block text-[12px] text-slate-500">매장 정보 변경 화면에서 AI가 다음 단계와 변경 내용을 소리 내어 읽어줘요</span>
           </span>
           <ToggleSwitch checked={voiceGuidance} onChange={onToggleVoiceGuidance} label="말로 안내 듣기" />
+        </div>
+      </section>
+
+      <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
+        <h2 className="text-[13px] font-bold text-slate-400">접근성</h2>
+        <div className="mt-3 flex items-center gap-3">
+          <span className="min-w-0 flex-1">
+            <strong className="block text-[14px] font-bold text-ink">글자 크게 보기</strong>
+            <span className="block text-[12px] text-slate-500">화면 전체 글자와 버튼을 더 크게 보여줘요</span>
+          </span>
+          <ToggleSwitch checked={largeText} onChange={onToggleLargeText} label="글자 크게 보기" />
         </div>
       </section>
 
@@ -519,6 +534,7 @@ export function App() {
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>(seedHistoryEntries);
   const [autoApproveStoreChange, setAutoApproveStoreChange] = useState(false);
   const [voiceGuidance, setVoiceGuidance] = useState(false);
+  const [largeText, setLargeText] = useState(false);
   useEffect(() => {
     let active = true;
     void getReviewSummary(storeProfileId).then((result) => {
@@ -533,7 +549,7 @@ export function App() {
   const togglePlatformConnection = (id: PlatformConnection['id']) => setPlatformConnections((prev) => prev.map((platform) => platform.id === id ? { ...platform, status: platform.status === 'connected' ? 'attention' : 'connected' } : platform));
   const toggleNotificationPref = (key: NotificationCategory) => setNotificationPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
   const addHistoryEntry = (entry: Omit<HistoryEntry, 'id' | 'time'>) => setHistoryEntries((prev) => [{ ...entry, id: `h${Date.now()}`, time: '방금 전' }, ...prev]);
-  return <div className="app-viewport"><div className="app-phone" data-testid="dashboard-container">
+  return <div className={largeText ? 'app-viewport app-viewport--large-text' : 'app-viewport'}><div className="app-phone" data-testid="dashboard-container">
     {screen === 'HOME' && <Home
       reviewSummary={reviewSummary}
       platformConnections={platformConnections}
@@ -581,6 +597,8 @@ export function App() {
       onToggleAutoApprove={() => setAutoApproveStoreChange((prev) => !prev)}
       voiceGuidance={voiceGuidance}
       onToggleVoiceGuidance={() => setVoiceGuidance((prev) => !prev)}
+      largeText={largeText}
+      onToggleLargeText={() => setLargeText((prev) => !prev)}
     />}
   </div></div>;
 }
