@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Lightbulb, Megaphone, Microphone, Robot, Sparkle, Storefront, UsersThree } from '@phosphor-icons/react';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
 import { SeoDraftCard } from '@/components/SeoDraftCard/SeoDraftCard';
+import { SeoSourceSelector } from '@/features/seo/SeoSourceSelector';
 import { useSeoGenerationFlow } from '@/features/seo/useSeoGenerationFlow';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import type { SeoSyncHandoff } from '@/features/seo/useSeoGenerationFlow';
@@ -142,6 +143,7 @@ export function SeoGenerationWizard({
   // alongside it.
   const [scheduleAnswerIndex, setScheduleAnswerIndex] = useState<number | null>(null);
   const [tags] = useState(() => summaryState.keywords);
+  const [selectedReviewIds, setSelectedReviewIds] = useState(() => sourceReviews.map((review) => review.id));
   const [handoff, setHandoff] = useState<SeoSyncHandoff | null>(null);
   const [uploading, setUploading] = useState(false);
   const speech = useSpeechRecognition();
@@ -282,7 +284,7 @@ export function SeoGenerationWizard({
       purpose: purpose === 'NEWS' ? 'NEWS' : 'INTRODUCTION',
       briefText: `${answerText}${newsScheduleText}`,
       seedKeywords: tags,
-      sourceReviewIds: sourceReviews.map(({ id }) => id),
+      sourceReviewIds: selectedReviewIds,
     });
     if (!generated) return;
     const context = answers.map(asSentence).join(' ');
@@ -330,6 +332,13 @@ export function SeoGenerationWizard({
               </div>
             </article>
             <div className="review-count-card"><span aria-hidden="true"><UsersThree weight="regular" /></span><div><small>분석한 리뷰 수</small><strong aria-hidden="true">총 {summaryState.reviewCount}건 <em>(최근 3개월)</em></strong><span className="sr-only">총 {summaryState.reviewCount}건 분석</span></div></div>
+            {sourceReviews.length > 0 ? (
+              <SeoSourceSelector
+                sourceReviews={sourceReviews}
+                selectedReviewIds={selectedReviewIds}
+                onSelectionChange={setSelectedReviewIds}
+              />
+            ) : null}
           </div>
           <button className="bottom-primary" type="button" onClick={() => setStep('PURPOSE')}>다음 (문구 만들기)</button>
         </section>
