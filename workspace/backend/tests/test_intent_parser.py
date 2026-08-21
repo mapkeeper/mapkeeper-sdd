@@ -356,3 +356,37 @@ def test_a_closure_with_an_impossible_date_is_declined() -> None:
 
     # When / Then: the parser declines rather than emitting a broken range.
     assert parse_intent(sentence, make_profile()) is None
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "영업시간을 오전 10시부터 오후 9시까지로 바꿔줘",
+        "아침 10시에 열고 저녁 9시에 닫아",
+        "10시부터 21시까지 영업해",
+    ],
+)
+def test_hours_stated_as_a_span_are_left_to_the_model(sentence: str) -> None:
+    # Given: a sentence naming both ends of the day.
+
+    # When / Then: the parser declines instead of reading the opening time as the
+    # closing one, which would have inverted the day.
+    assert parse_intent(sentence, make_profile()) is None
+
+
+def test_a_single_stated_hour_is_still_parsed() -> None:
+    # Given: only one end of the day is named, which this parser can read.
+    change = parse_intent("오전 11시 오픈으로 변경해줘", make_profile())
+
+    # Then: it is read locally, without a model round trip.
+    assert change is not None
+    assert isinstance(change[0], BusinessHoursChange)
+    assert change[0].proposed_value.open == "11:00"
+
+
+def test_a_closure_span_missing_its_second_month_is_left_to_the_model() -> None:
+    # Given: a range whose second date omits the month, which the date pattern
+    # cannot see - reading it would close the store for one day, not two.
+
+    # When / Then: the parser declines.
+    assert parse_intent("8월 25일부터 26일까지 쉬어요", make_profile()) is None

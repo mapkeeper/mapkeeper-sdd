@@ -49,6 +49,10 @@ _PARKING_PATTERN: Final = re.compile(
 _MERIDIEM_GROUP: Final = r"(?P<meridiem>새벽|아침|오전|점심|오후|저녁|밤)?\s*"
 _CLOCK_GROUP: Final = r"(?P<hour>\d{1,2})\s*시(?:\s*(?P<minute>\d{1,2})\s*분)?"
 _TIME_PATTERN: Final = re.compile(_MERIDIEM_GROUP + _CLOCK_GROUP)
+# "10시부터 9시까지" states both ends of a span. The readers below take a single
+# value each, so a sentence shaped like this has to reach the model instead.
+_SPAN_PATTERN: Final = re.compile(r"부터.*까지", re.DOTALL)
+TIME_PAIR: Final = 2
 _ISO_DATE_PATTERN: Final = re.compile(r"\d{4}-\d{2}-\d{2}")
 _KOREAN_DATE_PATTERN: Final = re.compile(
     r"(?:(?P<year>\d{4})\s*년\s*)?(?P<month>\d{1,2})\s*월\s*(?P<day>\d{1,2})\s*일"
@@ -170,6 +174,10 @@ def _parse_business_hours(text: str, profile: StoreProfile) -> ProposalChange | 
     """Read an opening or closing time, or None when the sentence is not one."""
     if _HOURS_CONTEXT.search(text) is None:
         return None
+    # Both ends of the day were spoken, but only one is read below. Guessing here
+    # would take the opening time for the closing one and invert the day.
+    if len(_TIME_PATTERN.findall(text)) >= TIME_PAIR:
+        return None
     match = _TIME_PATTERN.search(text)
     if match is None:
         return None
@@ -262,10 +270,25 @@ def _parse_korean_dates(text: str, today: date) -> tuple[date, date] | None:
     return dates[0], dates[1]
 
 
+def _states_unreadable_span(text: str) -> bool:
+    """Report a stated date range whose two ends cannot both be read here.
+
+    "8월 25일부터 26일까지" names two days, but the Korean date pattern needs a
+    month beside each one and so sees only the first. Reading that would close the
+    store for a single day when the owner asked for two.
+    """
+    if _SPAN_PATTERN.search(text) is None:
+        return False
+    return (
+        len(_ISO_DATE_PATTERN.findall(text)) != DATE_PAIR
+        and len(_KOREAN_DATE_PATTERN.findall(text)) != DATE_PAIR
+    )
+
+
 def _parse_temporary_closure(
     text: str, profile: StoreProfile, today: date
 ) -> ProposalChange | None:
-    if _CLOSURE_WORDS.search(text) is None:
+    if _CLOSURE_WORDS.search(text) is None or _states_unreadable_span(text):
         return None
     found = [match.group() for match in _ISO_DATE_PATTERN.finditer(text)]
     if len(found) == DATE_PAIR:
