@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 
 interface WizardPrimaryAction {
   label: string;
@@ -32,15 +33,7 @@ export function Wizard({
     previousStepRef.current = currentStep;
   }, [currentStep]);
 
-  useEffect(() => {
-    if (!dirty) return;
-    const protectNavigation = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', protectNavigation);
-    return () => window.removeEventListener('beforeunload', protectNavigation);
-  }, [dirty]);
+  useUnsavedChangesWarning(dirty);
 
   return (
     <section style={{ display: 'grid', gap: 20, color: '#191f28', fontFamily: 'Pretendard, sans-serif', fontSize: 18, fontWeight: 500 }}>

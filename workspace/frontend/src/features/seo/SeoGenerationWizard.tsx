@@ -6,6 +6,7 @@ import { SeoDraftCard } from '@/components/SeoDraftCard/SeoDraftCard';
 import { SeoSourceSelector } from '@/features/seo/SeoSourceSelector';
 import { useSeoGenerationFlow } from '@/features/seo/useSeoGenerationFlow';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 import type { SeoSyncHandoff } from '@/features/seo/useSeoGenerationFlow';
 import { NewsDateRangePicker } from '@/features/seo/NewsDateRangePicker';
 import type { NewsDateRange } from '@/features/seo/newsDate';
@@ -166,6 +167,10 @@ export function SeoGenerationWizard({
   // they can update the actual listing data too.
   const isBusinessHoursNews = purpose === 'NEWS'
     && /운영시간|영업시간/.test((answers[0] ?? '').replaceAll(' ', ''));
+  const hasInterviewProgress = step === 'INTERVIEW'
+    && (currentAnswer.trim() !== '' || answers.some((answer) => answer.trim() !== ''));
+  const hasUnsavedRecommendation = step === 'RECOMMEND';
+  useUnsavedChangesWarning(hasInterviewProgress || hasUnsavedRecommendation);
 
   useEffect(() => () => {
     if (typingTimerRef.current !== null) window.clearTimeout(typingTimerRef.current);

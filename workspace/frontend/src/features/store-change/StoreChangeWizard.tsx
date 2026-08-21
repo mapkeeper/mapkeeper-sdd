@@ -5,6 +5,7 @@ import { ProposalEditor } from '@/components/ProposalEditor/ProposalEditor';
 import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
+import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 import type { ProposalChange, ProposalField } from '@/types/domain';
 import { useStoreChangeFlow } from '@/features/store-change/useStoreChangeFlow';
 import type { StoreChangeSyncHandoff } from '@/features/store-change/useStoreChangeFlow';
@@ -93,6 +94,9 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
     onSyncHandoff?.(nextHandoff);
   });
   const autoApproveActive = autoApprove && !autoApproveCancelled;
+  const hasUnsavedManualInput = step === 'MANUAL' && manualText.trim() !== '';
+  const hasUnapprovedProposal = (step === 'REVIEW' || step === 'EDIT' || step === 'CONFIRM') && flow.proposal?.status === 'DRAFT';
+  useUnsavedChangesWarning(hasUnsavedManualInput || hasUnapprovedProposal);
 
   useEffect(() => {
     if (!autoApproveActive) return;
