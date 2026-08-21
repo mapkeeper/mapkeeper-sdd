@@ -17,10 +17,17 @@ export function SeoSourceSelector({
     else onSelectionChange(selectedReviewIds.filter((id) => id !== reviewId));
   };
 
+  const noneSelected = selectedReviewIds.length === 0;
+
   return (
     <fieldset className="seo-source-selector">
       <legend>문구 작성에 참고할 리뷰를 선택해 주세요</legend>
       <p>고객 개인정보가 가려진 리뷰만 사용합니다.</p>
+      {noneSelected ? (
+        <p className="seo-source-selector__empty" role="status">
+          선택한 리뷰가 없어요. 이대로 진행하면 손님 리뷰를 참고하지 않고, 사장님 답변만으로 문구를 만들어요.
+        </p>
+      ) : null}
       {sourceReviews.map((review, index) => (
         <label className="seo-source-selector__review" key={review.id}>
           <input

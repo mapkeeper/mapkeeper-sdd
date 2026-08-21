@@ -260,7 +260,9 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
         <section className="store-change-wizard__step">
           <h1 className="sr-only">변경안을 확인해 주세요</h1>
           <span className="sr-only">{flow.proposal.status}</span>
-          <div className="store-change-wizard__bot"><span aria-hidden="true"><Robot weight="regular" /></span><p>아래 내용이 맞는지<br />확인해 주세요</p></div>
+          <div className="store-change-wizard__bot"><span aria-hidden="true"><Robot weight="regular" /></span><p>{flow.proposal.changes.length > 0
+            ? <>아래 내용이 맞는지<br />확인해 주세요</>
+            : <>말씀하신 내용에서<br />바꿀 항목을 찾지 못했어요</>}</p></div>
           <dl className="store-change-wizard__changes">
             {flow.proposal.changes.map((change) => (
               <div key={change.field}>
@@ -284,7 +286,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
               <button type="button" className="store-change-wizard__secondary" onClick={beginEdit}>변경안 수정</button>
               <button type="button" className="store-change-wizard__danger" onClick={() => void rejectProposal()} disabled={flow.isRejecting}>{flow.isRejecting ? '처리 중…' : '이번에는 변경하지 않기'}</button>
             </div>
-          ) : <div className="store-change-wizard__actions">
+          ) : <div className="store-change-wizard__empty">
             <p className="store-change-wizard__alert" role="alert">변경할 매장 정보를 인식하지 못했어요. 다시 입력해 주세요.</p>
             <button type="button" className="store-change-wizard__secondary" onClick={() => { flow.clear(); setDraftNote(null); setStep('INPUT'); }}>다시 입력하기</button>
           </div>}

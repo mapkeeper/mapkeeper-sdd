@@ -15,6 +15,7 @@ import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
 import type { PlatformResult } from '@/components/SyncStatus/SyncStatus';
 import { getReviewSummary } from '@/services/reviewApi';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
+import { useDialogDismiss } from '@/hooks/useDialogDismiss';
 import type { GetReviewSummaryResponse } from '@/services/api.types';
 import type { ProposalChange, ProposalField } from '@/types/domain';
 import type {
@@ -108,11 +109,16 @@ function Home({
   const reviewDidDragRef = useRef(false);
   const [isNotificationOpen, setNotificationOpen] = useState(false);
   const hasUnreadNotifications = notifications.some((notification) => notification.unread);
+  const reviewDialogRef = useRef<HTMLElement | null>(null);
+  const notificationDialogRef = useRef<HTMLElement | null>(null);
 
   const closeReviewSummary = () => {
     setReviewSummaryOpen(false);
     setReviewSummaryExpanded(false);
   };
+
+  useDialogDismiss(reviewDialogRef, isReviewSummaryOpen, closeReviewSummary);
+  useDialogDismiss(notificationDialogRef, isNotificationOpen, () => setNotificationOpen(false));
 
   return <main className="home">
     <header className="home__header">
@@ -130,7 +136,7 @@ function Home({
             <Icon name="bell" />
             {hasUnreadNotifications ? <span className="home__notification-badge" aria-hidden="true" /> : null}
           </button>
-          <span className="home__profile" role="img" aria-label={`${DEMO_STORE.name} 프로필`}><Icon name="store" /></span>
+          <button type="button" className="home__profile" aria-label={`${DEMO_STORE.name} 설정 열기`} onClick={onSettings}><Icon name="store" /></button>
         </div>
       </div>
       <div className="home__welcome"><p>안녕하세요, 사장님</p><strong>오늘도 가게 관리를<br />쉽고 빠르게 시작해 볼까요?</strong></div>
@@ -195,7 +201,7 @@ function Home({
     {isReviewSummaryOpen ? <div className="review-modal" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) closeReviewSummary();
     }}>
-      <section className={isReviewSummaryExpanded ? 'review-modal__sheet is-expanded' : 'review-modal__sheet'} role="dialog" aria-modal="true" aria-labelledby="review-summary-title">
+      <section ref={reviewDialogRef} className={isReviewSummaryExpanded ? 'review-modal__sheet is-expanded' : 'review-modal__sheet'} role="dialog" aria-modal="true" aria-labelledby="review-summary-title">
         <button className="review-modal__drag-zone" type="button" aria-label={isReviewSummaryExpanded ? '리뷰 분석 창 축소' : '리뷰 분석 창 전체 화면으로 확장'} aria-expanded={isReviewSummaryExpanded} onClick={() => {
           if (reviewDidDragRef.current) { reviewDidDragRef.current = false; return; }
           setReviewSummaryExpanded((current) => !current);
@@ -235,7 +241,7 @@ function Home({
     {isNotificationOpen ? <div className="notification-backdrop" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) setNotificationOpen(false);
     }}>
-      <section className="notification-panel" role="dialog" aria-modal="true" aria-label="알림 목록">
+      <section ref={notificationDialogRef} className="notification-panel" role="dialog" aria-modal="true" aria-label="알림 목록">
         <header className="notification-panel__header">
           <strong>알림</strong>
           <button type="button" onClick={() => setNotificationOpen(false)} aria-label="알림 닫기">×</button>
@@ -360,6 +366,11 @@ function SettingsScreen({
 }) {
   const [isHelpOpen, setHelpOpen] = useState(false);
   const [isContactOpen, setContactOpen] = useState(false);
+  const helpDialogRef = useRef<HTMLElement | null>(null);
+  const contactDialogRef = useRef<HTMLElement | null>(null);
+
+  useDialogDismiss(helpDialogRef, isHelpOpen, () => setHelpOpen(false));
+  useDialogDismiss(contactDialogRef, isContactOpen, () => setContactOpen(false));
 
   return <main className="flex h-dvh flex-col overflow-hidden bg-gray-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] font-pretendard">
     <div className="flex items-center justify-between">
@@ -477,7 +488,7 @@ function SettingsScreen({
     {isHelpOpen ? <div className="review-modal" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) setHelpOpen(false);
     }}>
-      <section className="review-modal__sheet review-modal__sheet--simple" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
+      <section ref={helpDialogRef} className="review-modal__sheet review-modal__sheet--simple" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
         <header className="review-modal__header">
           <div><small>이용 가이드</small><h2 id="help-modal-title">MapKeeper,<br />이렇게 사용해 보세요</h2></div>
           <button type="button" onClick={() => setHelpOpen(false)} aria-label="도움말 닫기">×</button>
@@ -499,7 +510,7 @@ function SettingsScreen({
     {isContactOpen ? <div className="review-modal" role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget) setContactOpen(false);
     }}>
-      <section className="review-modal__sheet review-modal__sheet--simple" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
+      <section ref={contactDialogRef} className="review-modal__sheet review-modal__sheet--simple" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
         <header className="review-modal__header">
           <div><small>고객 지원</small><h2 id="contact-modal-title">무엇을 도와드릴까요?</h2></div>
           <button type="button" onClick={() => setContactOpen(false)} aria-label="문의하기 닫기">×</button>
