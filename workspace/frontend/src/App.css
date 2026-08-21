@@ -35,6 +35,12 @@ body, button, input, textarea, select { font-family: Pretendard, sans-serif; }
   -webkit-font-smoothing: antialiased;
 }
 .app-viewport--large-text { zoom: 1.2; }
+/* The blanket heading rule below outranks Tailwind's utilities, so every screen
+   styled in CSS overrides it with a scoped rule of its own. The settings and
+   history screens are styled in Tailwind and have no such rule, so they declare
+   their heading scale here instead of losing it to the blanket. */
+.app-viewport .app-screen__title { font-size:20px; font-weight:700; letter-spacing:-.02em; }
+.app-viewport .app-screen__section-label { color:#94a3b8; font-size:13px; font-weight:700; letter-spacing:normal; }
 .app-viewport h1,
 .app-viewport h2 {
   color: var(--text-primary);

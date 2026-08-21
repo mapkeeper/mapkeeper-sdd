@@ -303,7 +303,7 @@ const historyTypeIcon = { STORE_CHANGE: Storefront, SEO: Sparkle } as const;
 function HistoryScreen({ entries, onHome }: { entries: HistoryEntry[]; onHome(): void }) {
   return <main className="flex h-dvh flex-col overflow-hidden bg-gray-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] font-pretendard">
     <div className="flex items-center justify-between">
-      <h1 className="text-xl font-bold text-ink">기록</h1>
+      <h1 className="app-screen__title">기록</h1>
       <button type="button" aria-label="홈으로 나가기" onClick={onHome} className="grid h-12 w-12 place-items-center rounded-full bg-white text-3xl shadow-card">×</button>
     </div>
     <p className="mt-1 text-sm text-slate-500">매장 정보 변경과 홍보문구 반영 이력을 확인하세요</p>
@@ -363,13 +363,13 @@ function SettingsScreen({
 
   return <main className="flex h-dvh flex-col overflow-hidden bg-gray-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] font-pretendard">
     <div className="flex items-center justify-between">
-      <h1 className="text-xl font-bold text-ink">설정</h1>
+      <h1 className="app-screen__title">설정</h1>
       <button type="button" aria-label="홈으로 나가기" onClick={onHome} className="grid h-12 w-12 place-items-center rounded-full bg-white text-3xl shadow-card">×</button>
     </div>
 
     <div className="mt-4 min-h-0 flex-1 overflow-y-auto pb-4">
       <section className="rounded-2xl bg-white p-4 shadow-card">
-        <h2 className="text-[13px] font-bold text-slate-400">매장 정보</h2>
+        <h2 className="app-screen__section-label">매장 정보</h2>
         <p className="mt-2 text-[17px] font-bold text-ink">{DEMO_STORE.name}</p>
         <dl className="mt-3 grid gap-1.5 text-[13px] text-slate-500">
           <div className="flex gap-2"><dt className="w-16 flex-none text-slate-400">주소</dt><dd>{DEMO_STORE.publicAddress}</dd></div>
@@ -381,7 +381,7 @@ function SettingsScreen({
       </section>
 
       <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
-        <h2 className="text-[13px] font-bold text-slate-400">AI 자동화</h2>
+        <h2 className="app-screen__section-label">AI 자동화</h2>
         <div className="mt-3 flex items-center gap-3">
           <span className="min-w-0 flex-1">
             <strong className="block text-[14px] font-bold text-ink">AI 제안 자동 승인</strong>
@@ -395,7 +395,7 @@ function SettingsScreen({
       </section>
 
       <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
-        <h2 className="text-[13px] font-bold text-slate-400">음성 안내</h2>
+        <h2 className="app-screen__section-label">음성 안내</h2>
         <div className="mt-3 flex items-center gap-3">
           <span className="min-w-0 flex-1">
             <strong className="block text-[14px] font-bold text-ink">말로 안내 듣기</strong>
@@ -406,7 +406,7 @@ function SettingsScreen({
       </section>
 
       <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
-        <h2 className="text-[13px] font-bold text-slate-400">접근성</h2>
+        <h2 className="app-screen__section-label">접근성</h2>
         <div className="mt-3 flex items-center gap-3">
           <span className="min-w-0 flex-1">
             <strong className="block text-[14px] font-bold text-ink">글자 크게 보기</strong>
@@ -417,7 +417,7 @@ function SettingsScreen({
       </section>
 
       <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
-        <h2 className="text-[13px] font-bold text-slate-400">3사 연동 관리</h2>
+        <h2 className="app-screen__section-label">3사 연동 관리</h2>
         <ul className="mt-3 grid gap-2">
           {platformConnections.map((platform) => {
             const connected = platform.status === 'connected';
@@ -441,7 +441,7 @@ function SettingsScreen({
       </section>
 
       <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
-        <h2 className="text-[13px] font-bold text-slate-400">알림 설정</h2>
+        <h2 className="app-screen__section-label">알림 설정</h2>
         <ul className="mt-3 grid gap-3">
           {notificationPrefItems.map((item) => <li key={item.key} className="flex items-center gap-3">
             <span className="min-w-0 flex-1">
@@ -454,7 +454,7 @@ function SettingsScreen({
       </section>
 
       <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
-        <h2 className="text-[13px] font-bold text-slate-400">고객 지원</h2>
+        <h2 className="app-screen__section-label">고객 지원</h2>
         <ul className="mt-3 grid gap-2">
           <li>
             <button type="button" onClick={() => setHelpOpen(true)} style={{ minHeight: 48 }} className="flex w-full items-center justify-between rounded-xl border border-slate-100 px-3.5 text-left text-[14px] font-bold text-ink">
