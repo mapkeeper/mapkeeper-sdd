@@ -149,8 +149,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .notification-panel__header button { width:28px; height:28px; min-height:28px; border:0; border-radius:50%; background:#f8fafc; color:#64748b; font-size:17px; line-height:1; }
 .notification-panel__empty { margin:0; padding:26px 18px; color:#94a3b8; font-size:13px; text-align:center; }
 .notification-panel__list { display:grid; margin:0; padding:6px; list-style:none; }
-.notification-panel__list li { display:flex; align-items:flex-start; gap:8px; padding:10px 8px; border-radius:12px; }
+.notification-panel__list li { border-radius:12px; }
 .notification-panel__list li.is-unread { background:#f8fafc; }
+.notification-panel__list button { display:flex; width:100%; min-height:44px; align-items:flex-start; gap:8px; padding:10px 8px; border:0; border-radius:12px; background:transparent; font:inherit; text-align:left; }
+.notification-panel__list button:active { background:#f1f5f9; }
+.notification-panel__chevron { margin-left:auto; align-self:center; color:#cbd5e1; font-size:17px; line-height:1; }
 .notification-panel__dot { flex:none; width:7px; height:7px; margin-top:6px; border-radius:50%; background:transparent; }
 .notification-panel__list li.is-unread .notification-panel__dot { background:#2563eb; }
 .notification-panel__body { display:grid; gap:2px; min-width:0; }

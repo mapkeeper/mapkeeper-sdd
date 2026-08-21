@@ -57,9 +57,9 @@ const initialPlatformConnections: PlatformConnection[] = [
 ];
 
 const baseNotifications: AppNotification[] = [
-  { id: 'n1', category: 'review', title: '리뷰 3건이 새로 등록됐어요', time: '10분 전', unread: true },
-  { id: 'n2', category: 'sync', title: '영업시간 변경이 3개 플랫폼에 모두 반영됐어요', time: '2시간 전', unread: true },
-  { id: 'n3', category: 'promo', title: '이번 주 홍보문구 초안이 도착했어요', time: '어제', unread: false },
+  { id: 'n1', category: 'review', title: '리뷰 3건이 새로 등록됐어요', time: '10분 전', unread: true, target: 'REVIEW' },
+  { id: 'n2', category: 'sync', title: '영업시간 변경이 3개 플랫폼에 모두 반영됐어요', time: '2시간 전', unread: true, target: 'HISTORY' },
+  { id: 'n3', category: 'promo', title: '이번 주 홍보문구 초안이 도착했어요', time: '어제', unread: false, target: 'SEO' },
 ];
 
 const seedHistoryEntries: HistoryEntry[] = [
@@ -91,6 +91,7 @@ function Home({
   onSeo,
   onHistory,
   onSettings,
+  onNotificationRead,
   reviewSummary,
   platformConnections,
   notifications,
@@ -99,6 +100,7 @@ function Home({
   onSeo(): void;
   onHistory(): void;
   onSettings(): void;
+  onNotificationRead(id: string): void;
   reviewSummary: GetReviewSummaryResponse;
   platformConnections: PlatformConnection[];
   notifications: AppNotification[];
@@ -119,6 +121,14 @@ function Home({
 
   useDialogDismiss(reviewDialogRef, isReviewSummaryOpen, closeReviewSummary);
   useDialogDismiss(notificationDialogRef, isNotificationOpen, () => setNotificationOpen(false));
+
+  const openNotification = (notification: AppNotification) => {
+    onNotificationRead(notification.id);
+    setNotificationOpen(false);
+    if (notification.target === 'REVIEW') setReviewSummaryOpen(true);
+    else if (notification.target === 'SEO') onSeo();
+    else onHistory();
+  };
 
   return <main className="home">
     <header className="home__header">
@@ -248,11 +258,14 @@ function Home({
         </header>
         {notifications.length === 0 ? <p className="notification-panel__empty">새 알림이 없어요</p> : <ul className="notification-panel__list">
           {notifications.map((notification) => <li key={notification.id} className={notification.unread ? 'is-unread' : ''}>
-            <span className="notification-panel__dot" aria-hidden="true" />
-            <span className="notification-panel__body">
-              <strong>{notification.title}</strong>
-              <small>{notification.time}</small>
-            </span>
+            <button type="button" onClick={() => openNotification(notification)}>
+              <span className="notification-panel__dot" aria-hidden="true" />
+              <span className="notification-panel__body">
+                <strong>{notification.unread ? <><span className="sr-only">읽지 않음. </span>{notification.title}</> : notification.title}</strong>
+                <small>{notification.time}</small>
+              </span>
+              <span className="notification-panel__chevron" aria-hidden="true">›</span>
+            </button>
           </li>)}
         </ul>}
       </section>
@@ -548,6 +561,7 @@ export function App() {
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>(seedHistoryEntries);
   const [autoApproveStoreChange, setAutoApproveStoreChange] = useState(false);
   const [voiceGuidance, setVoiceGuidance] = useState(false);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const [largeText, setLargeText] = useState(false);
   useEffect(() => {
     let active = true;
@@ -559,7 +573,12 @@ export function App() {
     return () => { active = false; };
   }, [storeProfileId]);
   const goHome = () => setScreen('HOME');
-  const visibleNotifications = baseNotifications.filter((notification) => notificationPrefs[notification.category]);
+  const visibleNotifications = baseNotifications
+    .filter((notification) => notificationPrefs[notification.category])
+    .map((notification) => readNotificationIds.includes(notification.id)
+      ? { ...notification, unread: false }
+      : notification);
+  const markNotificationRead = (id: string) => setReadNotificationIds((prev) => prev.includes(id) ? prev : [...prev, id]);
   const togglePlatformConnection = (id: PlatformConnection['id']) => setPlatformConnections((prev) => prev.map((platform) => platform.id === id ? { ...platform, status: platform.status === 'connected' ? 'attention' : 'connected' } : platform));
   const toggleNotificationPref = (key: NotificationCategory) => setNotificationPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
   const addHistoryEntry = (entry: Omit<HistoryEntry, 'id' | 'time'>) => setHistoryEntries((prev) => [{ ...entry, id: `h${Date.now()}`, time: '방금 전' }, ...prev]);
@@ -572,6 +591,7 @@ export function App() {
       onSeo={() => setScreen('SEO')}
       onHistory={() => setScreen('HISTORY')}
       onSettings={() => setScreen('SETTINGS')}
+      onNotificationRead={markNotificationRead}
     />}
     {screen === 'SEO' && <SeoGenerationWizard
       storeProfileId={storeProfileId}
