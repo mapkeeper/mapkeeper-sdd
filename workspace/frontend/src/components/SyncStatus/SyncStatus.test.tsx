@@ -51,18 +51,20 @@ describe('SyncStatusDashboard', () => {
     // Given: the backend keeps one job in PROCESSING beyond the polling window.
     const user = userEvent.setup();
     let requestCount = 0;
+    let hasJobFinished = false;
     server.use(http.get('*/api/v1/sync-jobs/job-delayed', () => {
       requestCount += 1;
+      const platformStatus = hasJobFinished ? 'SUCCESS' : 'PENDING';
       return HttpResponse.json({
         success: true,
         status: 'SUCCESS',
         data: {
           syncJobId: 'job-delayed',
-          status: 'PROCESSING',
+          status: hasJobFinished ? 'SUCCESS' : 'PROCESSING',
           platformTasks: [
-            { platform: 'google', status: 'PROCESSING', attemptCount: 1, error: null },
-            { platform: 'naver', status: 'PENDING', attemptCount: 0, error: null },
-            { platform: 'kakao', status: 'PENDING', attemptCount: 0, error: null },
+            { platform: 'google', status: hasJobFinished ? 'SUCCESS' : 'PROCESSING', attemptCount: 1, error: null },
+            { platform: 'naver', status: platformStatus, attemptCount: hasJobFinished ? 1 : 0, error: null },
+            { platform: 'kakao', status: platformStatus, attemptCount: hasJobFinished ? 1 : 0, error: null },
           ],
         },
         error: null,
@@ -79,11 +81,16 @@ describe('SyncStatusDashboard', () => {
     const checkAgain = await screen.findByRole('button', { name: '다시 확인' });
     const requestsBeforeRestart = requestCount;
 
-    // When: the owner explicitly restarts status checking.
+    // When: the job has finished in the meantime and the owner checks again.
+    // Restarting grants the same short polling budget, so a job left PROCESSING
+    // would re-raise the delayed notice within milliseconds and the assertion
+    // below would be a race against that timer rather than a check of intent.
+    hasJobFinished = true;
     await user.click(checkAgain);
 
-    // Then: a fresh request is made and the delayed notice leaves the screen.
+    // Then: a fresh request is made and the delayed notice leaves for good.
     await waitFor(() => expect(requestCount).toBeGreaterThan(requestsBeforeRestart));
+    expect(await screen.findByRole('heading', { name: '모든 플랫폼 반영 완료' })).toBeInTheDocument();
     expect(screen.queryByText('처리가 평소보다 오래 걸리고 있어요.')).not.toBeInTheDocument();
   });
 
