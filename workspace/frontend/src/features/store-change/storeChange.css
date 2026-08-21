@@ -69,8 +69,12 @@
 .store-change-wizard__loading h1, .store-change-wizard__loading p { margin:0; }
 .store-change-wizard__loading p { color:#64748b; font-size:14px; }
 .store-change-wizard__spinner { width:52px; height:52px; border:5px solid #dbeafe; border-top-color:#2563eb; border-radius:50%; animation:store-change-spin .8s linear infinite; }
+.store-change-wizard__spinner--sm { width:16px; height:16px; border-width:3px; }
 .store-change-wizard__note { border-left:3px solid #2563eb !important; }
 .store-change-wizard__approve { min-height:56px !important; font-size:15px !important; }
+.store-change-wizard__auto-approve { display:flex; flex-direction:column; align-items:center; gap:14px; margin-top:auto; padding-top:18px; }
+.store-change-wizard__auto-approve p { display:flex; align-items:center; gap:9px; margin:0; padding:13px 15px; border:1px solid #bfdbfe; border-radius:var(--radius-md); background:#eff6ff; color:#1d4ed8; font-size:13px; font-weight:700; text-align:left; }
+.store-change-wizard .store-change-wizard__auto-approve .store-change-wizard__secondary { width:100%; }
 
 @keyframes store-change-spin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce) { .store-change-wizard__spinner { animation:none; } }

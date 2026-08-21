@@ -52,9 +52,10 @@ export interface StoreChangeWizardProps {
   storeProfileId: string;
   onSyncHandoff?: (handoff: StoreChangeSyncHandoff) => void;
   onExit?: () => void;
+  autoApprove?: boolean;
 }
 
-export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () => undefined }: StoreChangeWizardProps) {
+export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () => undefined, autoApprove = false }: StoreChangeWizardProps) {
   const speech = useSpeechRecognition();
   const [step, setStep] = useState<WizardStep>('INPUT');
   const [manualText, setManualText] = useState('');
@@ -62,12 +63,24 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
   const [isDraftPreparing, setDraftPreparing] = useState(false);
   const [editedChanges, setEditedChanges] = useState<ProposalChange[]>([]);
   const [handoff, setHandoff] = useState<StoreChangeSyncHandoff | null>(null);
+  const [autoApproveCancelled, setAutoApproveCancelled] = useState(false);
   const submittedTranscriptRef = useRef('');
+  const autoApprovedProposalIdRef = useRef<string | null>(null);
   const flow = useStoreChangeFlow(storeProfileId, (nextHandoff) => {
     setHandoff(nextHandoff);
     setStep('SYNC');
     onSyncHandoff?.(nextHandoff);
   });
+  const autoApproveActive = autoApprove && !autoApproveCancelled;
+
+  useEffect(() => {
+    if (!autoApproveActive) return;
+    if (step !== 'REVIEW' || !flow.proposal || flow.proposal.changes.length === 0) return;
+    if (flow.isApproving) return;
+    if (autoApprovedProposalIdRef.current === flow.proposal.proposalId) return;
+    autoApprovedProposalIdRef.current = flow.proposal.proposalId;
+    void flow.approveFromButton();
+  }, [autoApproveActive, step, flow.proposal, flow.isApproving, flow.approveFromButton]);
 
   const prepareDraft = useCallback(async (text: string) => {
     const normalizedText = text.trim();
@@ -214,11 +227,16 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
               </div>
             ) : null}
           </dl>
-          {flow.proposal.changes.length > 0 ? <div className="store-change-wizard__actions">
-            <button type="button" aria-label="승인 단계로 이동" onClick={() => setStep('CONFIRM')}>맞아요 <small>(3사에 반영)</small></button>
-            <button type="button" className="store-change-wizard__secondary" onClick={beginEdit}>변경안 수정</button>
-            <button type="button" className="store-change-wizard__danger" onClick={() => void rejectProposal()} disabled={flow.isRejecting}>{flow.isRejecting ? '처리 중…' : '이번에는 변경하지 않기'}</button>
-          </div> : <div className="store-change-wizard__actions">
+          {flow.proposal.changes.length > 0 ? (
+            autoApproveActive ? <div className="store-change-wizard__auto-approve">
+              <p role="status"><span className="store-change-wizard__spinner store-change-wizard__spinner--sm" aria-hidden="true" />자동 승인 설정으로 3사에 바로 반영하고 있어요…</p>
+              <button type="button" className="store-change-wizard__secondary" onClick={() => setAutoApproveCancelled(true)}>잠깐, 제가 직접 확인할게요</button>
+            </div> : <div className="store-change-wizard__actions">
+              <button type="button" aria-label="승인 단계로 이동" onClick={() => setStep('CONFIRM')}>맞아요 <small>(3사에 반영)</small></button>
+              <button type="button" className="store-change-wizard__secondary" onClick={beginEdit}>변경안 수정</button>
+              <button type="button" className="store-change-wizard__danger" onClick={() => void rejectProposal()} disabled={flow.isRejecting}>{flow.isRejecting ? '처리 중…' : '이번에는 변경하지 않기'}</button>
+            </div>
+          ) : <div className="store-change-wizard__actions">
             <p className="store-change-wizard__alert" role="alert">변경할 매장 정보를 인식하지 못했어요. 다시 입력해 주세요.</p>
             <button type="button" className="store-change-wizard__secondary" onClick={() => { flow.clear(); setDraftNote(null); setStep('INPUT'); }}>다시 입력하기</button>
           </div>}

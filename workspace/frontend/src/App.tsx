@@ -330,6 +330,8 @@ function SettingsScreen({
   onTogglePlatform,
   notificationPrefs,
   onToggleNotificationPref,
+  autoApproveStoreChange,
+  onToggleAutoApprove,
 }: {
   onHome(): void;
   onStoreChange(): void;
@@ -337,6 +339,8 @@ function SettingsScreen({
   onTogglePlatform(id: PlatformConnection['id']): void;
   notificationPrefs: NotificationPrefs;
   onToggleNotificationPref(key: NotificationCategory): void;
+  autoApproveStoreChange: boolean;
+  onToggleAutoApprove(): void;
 }) {
   return <main className="flex h-dvh flex-col overflow-hidden bg-gray-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] font-pretendard">
     <div className="flex items-center justify-between">
@@ -355,6 +359,20 @@ function SettingsScreen({
           <div className="flex gap-2"><dt className="w-16 flex-none text-slate-400">주차 정보</dt><dd>{DEMO_STORE.parkingInfo}</dd></div>
         </dl>
         <button type="button" onClick={onStoreChange} style={{ minHeight: 44 }} className="mt-4 w-full rounded-xl bg-blue-50 text-[14px] font-bold text-blue-600">음성으로 매장 정보 수정하기</button>
+      </section>
+
+      <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
+        <h2 className="text-[13px] font-bold text-slate-400">AI 자동화</h2>
+        <div className="mt-3 flex items-center gap-3">
+          <span className="min-w-0 flex-1">
+            <strong className="block text-[14px] font-bold text-ink">AI 제안 자동 승인</strong>
+            <span className="block text-[12px] text-slate-500">음성으로 요청한 매장 정보 변경을 확인 없이 바로 3사에 반영해요</span>
+          </span>
+          <ToggleSwitch checked={autoApproveStoreChange} onChange={onToggleAutoApprove} label="AI 제안 자동 승인" />
+        </div>
+        {autoApproveStoreChange ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-[12px] leading-relaxed text-amber-700">
+          변경 요청을 인식하는 즉시 승인 절차 없이 반영돼요. 매장 정보 변경 화면에서 언제든 "잠깐, 제가 직접 확인할게요"로 이번 건만 직접 확인할 수 있어요.
+        </p> : null}
       </section>
 
       <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
@@ -408,6 +426,7 @@ export function App() {
   const [platformConnections, setPlatformConnections] = useState<PlatformConnection[]>(initialPlatformConnections);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefs>({ review: true, sync: true, promo: true });
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>(seedHistoryEntries);
+  const [autoApproveStoreChange, setAutoApproveStoreChange] = useState(false);
   useEffect(() => {
     let active = true;
     void getReviewSummary(storeProfileId).then((result) => {
@@ -443,6 +462,7 @@ export function App() {
     {screen === 'STORE_CHANGE' && <StoreChangeWizard
       storeProfileId={storeProfileId}
       onExit={goHome}
+      autoApprove={autoApproveStoreChange}
       onSyncHandoff={({ syncJobId: nextId, changes }) => {
         setSyncJobId(nextId);
         setStoreChanges(changes ?? []);
@@ -464,6 +484,8 @@ export function App() {
       onTogglePlatform={togglePlatformConnection}
       notificationPrefs={notificationPrefs}
       onToggleNotificationPref={toggleNotificationPref}
+      autoApproveStoreChange={autoApproveStoreChange}
+      onToggleAutoApprove={() => setAutoApproveStoreChange((prev) => !prev)}
     />}
   </div></div>;
 }
