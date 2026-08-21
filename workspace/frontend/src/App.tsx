@@ -14,6 +14,7 @@ import { StoreChangeWizard } from '@/features/store-change/StoreChangeWizard';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
 import type { PlatformResult } from '@/components/SyncStatus/SyncStatus';
 import { getReviewSummary } from '@/services/reviewApi';
+import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import type { GetReviewSummaryResponse } from '@/services/api.types';
 import type { ProposalChange, ProposalField } from '@/types/domain';
 import type {
@@ -263,7 +264,14 @@ function Home({
   </main>;
 }
 
-function SyncResult({ onHome, syncJobId, resultOverride, storeChanges }: { onHome(): void; syncJobId: string; resultOverride: PlatformResult[] | null; storeChanges: ProposalChange[] }) {
+function SyncResult({ onHome, syncJobId, resultOverride, storeChanges, voiceGuidance = false }: { onHome(): void; syncJobId: string; resultOverride: PlatformResult[] | null; storeChanges: ProposalChange[]; voiceGuidance?: boolean }) {
+  const tts = useTextToSpeech(voiceGuidance);
+  const hasAnnouncedRef = useRef(false);
+  useEffect(() => {
+    if (!voiceGuidance || hasAnnouncedRef.current) return;
+    hasAnnouncedRef.current = true;
+    tts.speak('구글, 네이버, 카카오에 매장 정보 반영을 시작했어요.');
+  }, [voiceGuidance, tts]);
   return <main className="flex h-dvh flex-col overflow-hidden bg-gray-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] font-pretendard">
     <button type="button" aria-label="홈으로 나가기" onClick={onHome} className="ml-auto grid h-12 w-12 place-items-center rounded-full bg-white text-3xl shadow-card">×</button>
     <div className="min-h-0 flex-1 overflow-y-auto pb-4">
@@ -332,6 +340,8 @@ function SettingsScreen({
   onToggleNotificationPref,
   autoApproveStoreChange,
   onToggleAutoApprove,
+  voiceGuidance,
+  onToggleVoiceGuidance,
 }: {
   onHome(): void;
   onStoreChange(): void;
@@ -341,6 +351,8 @@ function SettingsScreen({
   onToggleNotificationPref(key: NotificationCategory): void;
   autoApproveStoreChange: boolean;
   onToggleAutoApprove(): void;
+  voiceGuidance: boolean;
+  onToggleVoiceGuidance(): void;
 }) {
   const [isHelpOpen, setHelpOpen] = useState(false);
   const [isContactOpen, setContactOpen] = useState(false);
@@ -376,6 +388,17 @@ function SettingsScreen({
         {autoApproveStoreChange ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-[12px] leading-relaxed text-amber-700">
           변경 요청을 인식하는 즉시 승인 절차 없이 반영돼요. 매장 정보 변경 화면에서 언제든 "잠깐, 제가 직접 확인할게요"로 이번 건만 직접 확인할 수 있어요.
         </p> : null}
+      </section>
+
+      <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
+        <h2 className="text-[13px] font-bold text-slate-400">음성 안내</h2>
+        <div className="mt-3 flex items-center gap-3">
+          <span className="min-w-0 flex-1">
+            <strong className="block text-[14px] font-bold text-ink">말로 안내 듣기</strong>
+            <span className="block text-[12px] text-slate-500">매장 정보 변경 화면에서 AI가 다음 단계와 변경 내용을 소리 내어 읽어줘요</span>
+          </span>
+          <ToggleSwitch checked={voiceGuidance} onChange={onToggleVoiceGuidance} label="말로 안내 듣기" />
+        </div>
       </section>
 
       <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
@@ -495,6 +518,7 @@ export function App() {
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefs>({ review: true, sync: true, promo: true });
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>(seedHistoryEntries);
   const [autoApproveStoreChange, setAutoApproveStoreChange] = useState(false);
+  const [voiceGuidance, setVoiceGuidance] = useState(false);
   useEffect(() => {
     let active = true;
     void getReviewSummary(storeProfileId).then((result) => {
@@ -531,6 +555,7 @@ export function App() {
       storeProfileId={storeProfileId}
       onExit={goHome}
       autoApprove={autoApproveStoreChange}
+      voiceGuidance={voiceGuidance}
       onSyncHandoff={({ syncJobId: nextId, changes }) => {
         setSyncJobId(nextId);
         setStoreChanges(changes ?? []);
@@ -543,7 +568,7 @@ export function App() {
         setScreen('STORE_SYNC');
       }}
     />}
-    {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} resultOverride={null} storeChanges={storeChanges} />}
+    {screen === 'STORE_SYNC' && <SyncResult onHome={goHome} syncJobId={syncJobId} resultOverride={null} storeChanges={storeChanges} voiceGuidance={voiceGuidance} />}
     {screen === 'HISTORY' && <HistoryScreen entries={historyEntries} onHome={goHome} />}
     {screen === 'SETTINGS' && <SettingsScreen
       onHome={goHome}
@@ -554,6 +579,8 @@ export function App() {
       onToggleNotificationPref={toggleNotificationPref}
       autoApproveStoreChange={autoApproveStoreChange}
       onToggleAutoApprove={() => setAutoApproveStoreChange((prev) => !prev)}
+      voiceGuidance={voiceGuidance}
+      onToggleVoiceGuidance={() => setVoiceGuidance((prev) => !prev)}
     />}
   </div></div>;
 }

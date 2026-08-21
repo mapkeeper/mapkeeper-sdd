@@ -4,6 +4,7 @@ import { Robot } from '@phosphor-icons/react';
 import { ProposalEditor } from '@/components/ProposalEditor/ProposalEditor';
 import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import type { ProposalChange, ProposalField } from '@/types/domain';
 import { useStoreChangeFlow } from '@/features/store-change/useStoreChangeFlow';
 import type { StoreChangeSyncHandoff } from '@/features/store-change/useStoreChangeFlow';
@@ -17,6 +18,23 @@ const fieldLabels: Record<ProposalField, string> = {
   representativeMenuName: '대표 메뉴',
   parkingInfo: '주차 정보',
 };
+
+function finalConsonantIndex(text: string): number {
+  const lastChar = text.trim().at(-1);
+  const code = lastChar?.charCodeAt(0) ?? 0;
+  if (code < 0xac00 || code > 0xd7a3) return -1;
+  return (code - 0xac00) % 28;
+}
+
+function withSubjectParticle(text: string): string {
+  const finalIndex = finalConsonantIndex(text);
+  return `${text}${finalIndex > 0 ? '이' : '가'}`;
+}
+
+function withDirectionParticle(text: string): string {
+  const finalIndex = finalConsonantIndex(text);
+  return `${text}${finalIndex > 0 && finalIndex !== 8 ? '으로' : '로'}`;
+}
 
 const storeChangeQuickPrompts = [
   { label: '대표 메뉴', answer: '대표 메뉴를 김치찌개로 바꿔줘' },
@@ -53,10 +71,12 @@ export interface StoreChangeWizardProps {
   onSyncHandoff?: (handoff: StoreChangeSyncHandoff) => void;
   onExit?: () => void;
   autoApprove?: boolean;
+  voiceGuidance?: boolean;
 }
 
-export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () => undefined, autoApprove = false }: StoreChangeWizardProps) {
+export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () => undefined, autoApprove = false, voiceGuidance = false }: StoreChangeWizardProps) {
   const speech = useSpeechRecognition();
+  const tts = useTextToSpeech(voiceGuidance);
   const [step, setStep] = useState<WizardStep>('INPUT');
   const [manualText, setManualText] = useState('');
   const [draftNote, setDraftNote] = useState<string | null>(null);
@@ -66,6 +86,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
   const [autoApproveCancelled, setAutoApproveCancelled] = useState(false);
   const submittedTranscriptRef = useRef('');
   const autoApprovedProposalIdRef = useRef<string | null>(null);
+  const spokenStepRef = useRef<WizardStep | null>(null);
   const flow = useStoreChangeFlow(storeProfileId, (nextHandoff) => {
     setHandoff(nextHandoff);
     setStep('SYNC');
@@ -81,6 +102,18 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
     autoApprovedProposalIdRef.current = flow.proposal.proposalId;
     void flow.approveFromButton();
   }, [autoApproveActive, step, flow.proposal, flow.isApproving, flow.approveFromButton]);
+
+  useEffect(() => {
+    if (!voiceGuidance || spokenStepRef.current === step) return;
+    spokenStepRef.current = step;
+    if (step === 'INPUT') {
+      tts.speak('사장님, 영업시간이나 메뉴를 바꿀까요? 마이크를 눌러 말씀해 주세요.');
+    } else if (step === 'REVIEW' && flow.proposal && flow.proposal.changes.length > 0) {
+      const summary = flow.proposal.changes.map((change) => `${withSubjectParticle(fieldLabels[change.field])} ${withDirectionParticle(change.proposedValue)} 변경돼요`).join('. ');
+      tts.speak(`다음과 같이 변경돼요. ${summary}`);
+    }
+    // 승인 즉시 App이 STORE_SYNC 화면으로 전환하며 이 위저드를 언마운트하므로 'SYNC' 단계는 렌더링되지 않는다 — 반영 시작 안내는 SyncResult에서 담당한다.
+  }, [voiceGuidance, step, flow.proposal, tts]);
 
   const prepareDraft = useCallback(async (text: string) => {
     const normalizedText = text.trim();
