@@ -1,6 +1,7 @@
 """Every failure leaves the API in the envelope the contract publishes."""
 
 import logging
+from pathlib import Path
 from typing import Final
 
 import pytest
@@ -165,6 +166,37 @@ def test_an_unexpected_failure_log_never_contains_the_exception_message(
     assert "RuntimeError" in caplog.text
     assert "홍길동" not in caplog.text
     assert "010-1234-5678" not in caplog.text
+
+
+def test_an_unexpected_failure_log_reports_where_the_failure_happened(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    # Given: an unexpected exception raised at a known line of a known function.
+    broken = FastAPI()
+    install_error_handlers(broken)
+
+    async def boom() -> None:
+        message = "고객 홍길동 전화 010-1234-5678"
+        raise RuntimeError(message)
+
+    _ = broken.get("/boom")(boom)
+
+    # When: the boundary records the failure for operators.
+    with (
+        caplog.at_level(logging.ERROR, logger="mapkeeper.api.error_handlers"),
+        TestClient(broken, raise_server_exceptions=False) as broken_client,
+    ):
+        response = broken_client.get("/boom")
+
+    # Then: the raising frame is named, so an operator can open the code that broke
+    # without the exception message being written alongside it.
+    assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert "in boom" in caplog.text
+    assert f"{Path(__file__).name}:" in caplog.text
+    assert "홍길동" not in caplog.text
+    # And: the ASGI frames wrapping every request stay out, so the line that broke is
+    # not buried under a stack that is identical for every failure.
+    assert "asyncexitstack" not in caplog.text
 
 
 def test_a_retryable_flag_can_be_reported_on_an_error() -> None:

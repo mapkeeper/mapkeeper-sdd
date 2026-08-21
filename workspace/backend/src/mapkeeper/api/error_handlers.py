@@ -21,6 +21,7 @@ from mapkeeper.core.logging import (
     get_logger,
     get_request_id,
     reset_request_id,
+    safe_traceback,
     set_request_id,
 )
 from mapkeeper.models.enums import ApiErrorCode, ApiResponseStatus
@@ -157,10 +158,11 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> Response:
 
 def _report_unexpected(request: Request, exc: Exception) -> Response:
     logger.error(
-        "%s %s failed unexpectedly exceptionType=%s",
+        "%s %s failed unexpectedly exceptionType=%s at=%s",
         request.method,
         request.url.path,
         type(exc).__name__,
+        safe_traceback(exc),
     )
     error = ApiError(
         code=ApiErrorCode.INTERNAL_SERVER_ERROR,

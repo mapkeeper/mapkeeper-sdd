@@ -8,8 +8,10 @@ be written are reduced to a short fingerprint instead.
 import logging
 import re
 import sys
+import traceback
 from contextvars import ContextVar, Token
 from hashlib import sha256
+from pathlib import PurePath
 from typing import Final
 from uuid import UUID, uuid4
 
@@ -19,6 +21,12 @@ REQUEST_ID_PATTERN: Final = re.compile(r"^[A-Za-z0-9._:-]+$")
 FINGERPRINT_LENGTH: Final = 12
 UNSET_REQUEST_ID: Final = "-"
 LOG_FORMAT: Final = "%(asctime)s %(levelname)s [%(request_id)s] %(name)s %(message)s"
+PACKAGE_ROOT: Final = "mapkeeper"
+TRACEBACK_FRAME_LIMIT: Final = 12
+TRACEBACK_FRAME_SEPARATOR: Final = " > "
+EMPTY_TRACEBACK: Final = "<unavailable>"
+FOREIGN_FRAME_LIMIT: Final = 3
+FOREIGN_PATH_PARTS: Final = 2
 
 _request_id: ContextVar[str] = ContextVar("mapkeeper_request_id", default=UNSET_REQUEST_ID)
 
@@ -61,6 +69,39 @@ def fingerprint(value: str) -> str:
     Used for the Idempotency-Key, whose full value the contract forbids logging.
     """
     return sha256(value.encode("utf-8")).hexdigest()[:FINGERPRINT_LENGTH]
+
+
+def _is_ours(frame: traceback.FrameSummary) -> bool:
+    """Report whether a frame belongs to this application rather than a dependency."""
+    return PACKAGE_ROOT in PurePath(frame.filename).parts
+
+
+def _frame_location(frame: traceback.FrameSummary) -> str:
+    """Render one frame as a short, greppable code location carrying no runtime value."""
+    parts = PurePath(frame.filename).parts
+    start = parts.index(PACKAGE_ROOT) if _is_ours(frame) else -FOREIGN_PATH_PARTS
+    return f"{PurePath(*parts[start:])}:{frame.lineno} in {frame.name}"
+
+
+def safe_traceback(exc: BaseException) -> str:
+    """Return where a failure happened without returning anything it was carrying.
+
+    Only code locations survive - file, line and function. The exception message, the
+    source text of each frame and every local are dropped, so an operator can follow
+    the call path of a 500 without a customer value riding along into the log.
+
+    Frames inside this application are kept in preference to the framework frames that
+    surround every request, which would otherwise bury the one line that broke.
+    """
+    frames = traceback.extract_tb(exc.__traceback__)
+    if not frames:
+        return EMPTY_TRACEBACK
+    # Innermost frames are the informative ones, so an exception raised entirely
+    # inside a dependency still reports the call that failed.
+    selected = [frame for frame in frames if _is_ours(frame)] or frames[-FOREIGN_FRAME_LIMIT:]
+    return TRACEBACK_FRAME_SEPARATOR.join(
+        _frame_location(frame) for frame in selected[-TRACEBACK_FRAME_LIMIT:]
+    )
 
 
 def stamp_request_id(record: logging.LogRecord) -> bool:
