@@ -120,6 +120,17 @@ body, button, input, textarea, select { font-family: Pretendard, sans-serif; }
 .review-platforms article > span { display:flex; align-items:center; gap:7px; }.review-platforms img { width:26px; height:26px; }.review-platforms strong { color:#334155; font-size:13px; }.review-platforms p { margin:0; color:#526178; font-size:12.5px; line-height:1.5; word-break:keep-all; text-wrap:pretty; }
 .review-modal__detail { margin-top:18px; padding:16px; border-radius:var(--radius-md); background:#f8fafc; }.review-modal__detail p { margin:0; color:#526178; font-size:13px; line-height:1.65; }
 .review-modal__cta { position:sticky; bottom:0; width:100%; margin-top:22px; border:0; border-radius:var(--radius-md); background:#2563eb; color:#fff; font-size:15px; font-weight:700; box-shadow:0 -10px 20px 10px #fff; }
+.review-modal__sheet--simple { padding-top:24px; }
+.settings-help__list, .settings-contact__list { display:grid; gap:16px; margin-top:22px; }
+.settings-help__list article { display:flex; gap:12px; }
+.settings-help__list article > span:first-child { display:grid; width:36px; height:36px; flex:none; place-items:center; border-radius:var(--radius-sm); background:#eff6ff; font-size:18px; }
+.settings-help__list article strong { display:block; color:#0f172a; font-size:14px; font-weight:750; }
+.settings-help__list article p { margin:4px 0 0; color:#526178; font-size:13px; line-height:1.55; word-break:keep-all; text-wrap:pretty; }
+.settings-contact__item { display:flex; align-items:center; gap:12px; padding:13px 14px; border:1px solid #f1f5f9; border-radius:var(--radius-md); color:inherit; text-decoration:none; }
+a.settings-contact__item:active { background:#f8fafc; }
+.settings-contact__item > span:first-child { flex:none; font-size:19px; }
+.settings-contact__item strong { display:block; color:#0f172a; font-size:14px; font-weight:750; }
+.settings-contact__item small { display:block; margin-top:2px; color:#64748b; font-size:12.5px; }
 .home-confirm { width: 100%; min-height: 56px; margin-top: auto; border: 0; border-radius:var(--radius-md); background: #2563eb; color: #fff; font: inherit; font-size: 18px; font-weight: 700; letter-spacing: .01em; text-align: center; }
 button { min-height: 56px; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .15s ease, opacity .15s ease; }
 button:active:not(:disabled) { transform: scale(.95); }

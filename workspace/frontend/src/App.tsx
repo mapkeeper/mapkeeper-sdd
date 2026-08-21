@@ -342,6 +342,9 @@ function SettingsScreen({
   autoApproveStoreChange: boolean;
   onToggleAutoApprove(): void;
 }) {
+  const [isHelpOpen, setHelpOpen] = useState(false);
+  const [isContactOpen, setContactOpen] = useState(false);
+
   return <main className="flex h-dvh flex-col overflow-hidden bg-gray-50 px-5 pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))] font-pretendard">
     <div className="flex items-center justify-between">
       <h1 className="text-xl font-bold text-ink">설정</h1>
@@ -412,8 +415,73 @@ function SettingsScreen({
         </ul>
       </section>
 
+      <section className="mt-4 rounded-2xl bg-white p-4 shadow-card">
+        <h2 className="text-[13px] font-bold text-slate-400">고객 지원</h2>
+        <ul className="mt-3 grid gap-2">
+          <li>
+            <button type="button" onClick={() => setHelpOpen(true)} style={{ minHeight: 48 }} className="flex w-full items-center justify-between rounded-xl border border-slate-100 px-3.5 text-left text-[14px] font-bold text-ink">
+              도움말 다시보기
+              <span aria-hidden="true" className="text-slate-300">›</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" onClick={() => setContactOpen(true)} style={{ minHeight: 48 }} className="flex w-full items-center justify-between rounded-xl border border-slate-100 px-3.5 text-left text-[14px] font-bold text-ink">
+              문의하기
+              <span aria-hidden="true" className="text-slate-300">›</span>
+            </button>
+          </li>
+        </ul>
+      </section>
+
       <p className="mt-6 text-center text-[12px] text-slate-400">MapKeeper AI · 버전 1.0.0 (데모)</p>
     </div>
+
+    {isHelpOpen ? <div className="review-modal" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) setHelpOpen(false);
+    }}>
+      <section className="review-modal__sheet review-modal__sheet--simple" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
+        <header className="review-modal__header">
+          <div><small>이용 가이드</small><h2 id="help-modal-title">MapKeeper,<br />이렇게 사용해 보세요</h2></div>
+          <button type="button" onClick={() => setHelpOpen(false)} aria-label="도움말 닫기">×</button>
+        </header>
+        <div className="settings-help__list">
+          {[
+            { emoji: '🎙️', title: '음성으로 매장 정보 변경', body: '영업시간, 휴무일, 대표 메뉴, 주차 정보를 말로 알려주면 AI가 변경안을 만들고, 승인하면 구글·네이버·카카오에 한 번에 반영해요.' },
+            { emoji: '📊', title: '리뷰 인사이트', body: '손님들이 남긴 리뷰를 AI가 요약해서 핵심 키워드와 플랫폼별 반응을 한눈에 보여줘요.' },
+            { emoji: '✨', title: 'AI 홍보 & 소문내기', body: '리뷰 분석을 바탕으로 AI가 홍보문구를 만들어 3사에 바로 등록해 줘요.' },
+            { emoji: '⚙️', title: '설정', body: '3사 연동 상태, 알림 종류, AI 자동 승인 여부를 여기서 관리할 수 있어요.' },
+          ].map((item) => <article key={item.title}>
+            <span aria-hidden="true">{item.emoji}</span>
+            <div><strong>{item.title}</strong><p>{item.body}</p></div>
+          </article>)}
+        </div>
+      </section>
+    </div> : null}
+
+    {isContactOpen ? <div className="review-modal" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) setContactOpen(false);
+    }}>
+      <section className="review-modal__sheet review-modal__sheet--simple" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
+        <header className="review-modal__header">
+          <div><small>고객 지원</small><h2 id="contact-modal-title">무엇을 도와드릴까요?</h2></div>
+          <button type="button" onClick={() => setContactOpen(false)} aria-label="문의하기 닫기">×</button>
+        </header>
+        <div className="settings-contact__list">
+          <a className="settings-contact__item" href="mailto:support@mapkeeper.example?subject=MapKeeper%20문의">
+            <span aria-hidden="true">✉️</span>
+            <span><strong>이메일로 문의하기</strong><small>support@mapkeeper.example</small></span>
+          </a>
+          <div className="settings-contact__item">
+            <span aria-hidden="true">💬</span>
+            <span><strong>카카오톡 채널 상담</strong><small>평일 09:00–18:00 (주말·공휴일 휴무)</small></span>
+          </div>
+          <div className="settings-contact__item">
+            <span aria-hidden="true">📞</span>
+            <span><strong>전화 문의</strong><small>1588-0000</small></span>
+          </div>
+        </div>
+      </section>
+    </div> : null}
   </main>;
 }
 
