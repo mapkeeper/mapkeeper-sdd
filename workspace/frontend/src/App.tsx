@@ -297,9 +297,12 @@ function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange
     style={{ minHeight: 28 }}
     className={`relative h-7 w-12 flex-none rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-slate-200'}`}
   >
+    {/* left-0 anchors the thumb to the track. Without it the thumb keeps its
+        static position, which a button centres, and the travel below then
+        starts from the middle and carries the thumb outside the track. */}
     <span
       aria-hidden="true"
-      className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-[22px]' : 'translate-x-0.5'}`}
+      className={`absolute left-0 top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-[22px]' : 'translate-x-0.5'}`}
     />
   </button>;
 }
