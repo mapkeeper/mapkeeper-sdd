@@ -99,14 +99,18 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
   const hasUnapprovedProposal = (step === 'REVIEW' || step === 'EDIT' || step === 'CONFIRM') && flow.proposal?.status === 'DRAFT';
   useUnsavedChangesWarning(hasUnsavedManualInput || hasUnapprovedProposal);
 
+  // Read off the flow before the effect so its dependencies are plain values the
+  // exhaustive-deps rule can verify, rather than members of an object it cannot.
+  const { proposal: pendingProposal, isApproving, approveFromButton } = flow;
+
   useEffect(() => {
     if (!autoApproveActive) return;
-    if (step !== 'REVIEW' || !flow.proposal || flow.proposal.changes.length === 0) return;
-    if (flow.isApproving) return;
-    if (autoApprovedProposalIdRef.current === flow.proposal.proposalId) return;
-    autoApprovedProposalIdRef.current = flow.proposal.proposalId;
-    void flow.approveFromButton();
-  }, [autoApproveActive, step, flow.proposal, flow.isApproving, flow.approveFromButton]);
+    if (step !== 'REVIEW' || !pendingProposal || pendingProposal.changes.length === 0) return;
+    if (isApproving) return;
+    if (autoApprovedProposalIdRef.current === pendingProposal.proposalId) return;
+    autoApprovedProposalIdRef.current = pendingProposal.proposalId;
+    void approveFromButton();
+  }, [autoApproveActive, step, pendingProposal, isApproving, approveFromButton]);
 
   useEffect(() => {
     if (!voiceGuidance || spokenStepRef.current === step) return;
