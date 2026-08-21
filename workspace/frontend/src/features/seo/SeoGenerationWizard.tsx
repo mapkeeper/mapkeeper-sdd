@@ -7,6 +7,7 @@ import { SeoSourceSelector } from '@/features/seo/SeoSourceSelector';
 import { useSeoGenerationFlow } from '@/features/seo/useSeoGenerationFlow';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
+import { safeDiagnostic } from '@/services/safeDiagnostics';
 import type { SeoSyncHandoff } from '@/features/seo/useSeoGenerationFlow';
 import { NewsDateRangePicker } from '@/features/seo/NewsDateRangePicker';
 import type { NewsDateRange } from '@/features/seo/newsDate';
@@ -152,6 +153,7 @@ export function SeoGenerationWizard({
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<number | null>(null);
   const flow = useSeoGenerationFlow(storeProfileId, (nextHandoff) => {
+    safeDiagnostic('seo:draft-approved', { syncJobId: nextHandoff.syncJobId });
     setHandoff(nextHandoff);
     setStep('RESULT');
     onSyncHandoff?.(nextHandoff);
@@ -292,6 +294,7 @@ export function SeoGenerationWizard({
       sourceReviewIds: selectedReviewIds,
     });
     if (!generated) return;
+    safeDiagnostic('seo:draft-generated', { generationId: flow.generationId, purpose, reviewCount: selectedReviewIds.length });
     const context = answers.map(asSentence).join(' ');
     const generatedBody = generated[0]?.draftText;
     setBody(generatedBody ?? `${context} 정성을 담아 손님을 맞이하는 매장입니다.`);
@@ -306,8 +309,12 @@ export function SeoGenerationWizard({
   };
 
   const rejectGeneratedContent = async () => {
+    const generationId = flow.generationId;
     const rejected = await flow.rejectFromButton();
-    if (rejected) setStep('REJECTED');
+    if (rejected) {
+      safeDiagnostic('seo:draft-rejected', { generationId });
+      setStep('REJECTED');
+    }
   };
 
   const editGeneratedContent = () => {

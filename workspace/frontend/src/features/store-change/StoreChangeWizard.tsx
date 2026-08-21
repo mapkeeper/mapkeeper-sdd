@@ -9,9 +9,10 @@ import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 import type { ProposalChange, ProposalField } from '@/types/domain';
 import { useStoreChangeFlow } from '@/features/store-change/useStoreChangeFlow';
 import type { StoreChangeSyncHandoff } from '@/features/store-change/useStoreChangeFlow';
+import { safeDiagnostic } from '@/services/safeDiagnostics';
 import './storeChange.css';
 
-type WizardStep = 'INPUT' | 'MANUAL' | 'REVIEW' | 'EDIT' | 'CONFIRM' | 'REJECTED' | 'SYNC';
+type WizardStep = 'INPUT' | 'MANUAL' | 'REVIEW' | 'EDIT' | 'CONFIRM' | 'REJECTED';
 
 const fieldLabels: Record<ProposalField, string> = {
   businessHours: '영업시간',
@@ -83,14 +84,14 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
   const [draftNote, setDraftNote] = useState<string | null>(null);
   const [isDraftPreparing, setDraftPreparing] = useState(false);
   const [editedChanges, setEditedChanges] = useState<ProposalChange[]>([]);
-  const [handoff, setHandoff] = useState<StoreChangeSyncHandoff | null>(null);
   const [autoApproveCancelled, setAutoApproveCancelled] = useState(false);
   const submittedTranscriptRef = useRef('');
   const autoApprovedProposalIdRef = useRef<string | null>(null);
   const spokenStepRef = useRef<WizardStep | null>(null);
   const flow = useStoreChangeFlow(storeProfileId, (nextHandoff) => {
-    setHandoff(nextHandoff);
-    setStep('SYNC');
+    safeDiagnostic('store-change:proposal-approved', { syncJobId: nextHandoff.syncJobId });
+    // App swaps this wizard out for SyncResult in the same state batch this
+    // callback triggers, so any local step here would never get to render.
     onSyncHandoff?.(nextHandoff);
   });
   const autoApproveActive = autoApprove && !autoApproveCancelled;
@@ -130,6 +131,10 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
         new Promise<void>((resolve) => window.setTimeout(resolve, 500)),
       ]);
       if (!proposal) return;
+      safeDiagnostic('store-change:proposal-created', {
+        proposalId: proposal.proposalId,
+        changedFields: proposal.changes.map((change) => change.field),
+      });
       setDraftNote(proposal.changes.length === 0 ? normalizedText : null);
       setStep('REVIEW');
     } finally {
@@ -160,8 +165,10 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
   };
 
   const rejectProposal = async () => {
+    const proposalId = flow.proposal?.proposalId;
     const rejected = await flow.rejectFromButton();
     if (rejected) {
+      safeDiagnostic('store-change:proposal-rejected', { proposalId });
       setDraftNote(null);
       setStep('REJECTED');
     }
@@ -313,14 +320,6 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
           <h1>변경안을 적용하지 않았습니다</h1>
           <p>서버에도 반영하지 않는 것으로 기록했습니다.</p>
           <button type="button" onClick={() => { flow.clear(); setStep('INPUT'); }}>처음으로 돌아가기</button>
-        </section>
-      ) : null}
-
-      {step === 'SYNC' && handoff ? (
-        <section className="store-change-wizard__step">
-          <h1>승인이 완료되었습니다</h1>
-          <p>매장정보 반영을 시작했습니다.</p>
-          <p role="status">작업 번호: {handoff.syncJobId}</p>
         </section>
       ) : null}
     </main>
