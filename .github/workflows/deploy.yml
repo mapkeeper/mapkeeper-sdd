@@ -141,6 +141,31 @@ jobs:
           fi
           mv compose.yaml.next compose.yaml
 
+          log_archive_dir="$HOME/mapkeeper/logs"
+          log_archive_keep=20
+          log_archive_lines=20000
+
+          # Replacing a container destroys the log Docker kept beside it, so the
+          # running version's log is copied out before anything replaces it.
+          # Without this the only record of yesterday's errors is gone the moment
+          # the next deployment lands - and a rollback would erase the very log
+          # that explains why the deployment had to be rolled back.
+          archive_logs() {
+            label=$1
+            mkdir -p "$log_archive_dir" || return 0
+            stamp=$(date -u '+%Y%m%dT%H%M%SZ')
+            for service in backend frontend; do
+              docker compose logs --no-color --timestamps \
+                --tail "$log_archive_lines" "$service" \
+                > "$log_archive_dir/$stamp-$label-$service.log" 2>/dev/null || true
+            done
+            # Keep the newest archives only, so this cannot fill the disk either.
+            ls -1t "$log_archive_dir"/*.log 2>/dev/null \
+              | tail -n "+$((log_archive_keep + 1))" \
+              | xargs -r rm -f
+            return 0
+          }
+
           verify_health() {
             curl --fail --retry 10 --retry-delay 2 --retry-connrefused \
               http://127.0.0.1:8000/health || return 1
@@ -170,6 +195,7 @@ jobs:
               docker compose pull backend frontend || return 1
             apply_migrations || return 1
             seed_demo_data || return 1
+            archive_logs outgoing
             BACKEND_IMAGE="$backend_image_ref" FRONTEND_IMAGE="$frontend_image_ref" \
               docker compose up -d --no-build --remove-orphans \
                 --wait --wait-timeout 90 || return 1
@@ -203,7 +229,14 @@ jobs:
             echo "Deployment succeeded."
           else
             deploy_status=$?
-            echo "Deployment failed; attempting rollback." >&2
+            # Archive first, then print: rollback replaces these containers and
+            # takes their logs with them, and the run output is the only copy an
+            # operator can read without opening an SSH session to the host.
+            archive_logs failed
+            echo "Deployment failed; log tail from the version that failed:" >&2
+            docker compose logs --no-color --timestamps --tail 100 \
+              backend frontend >&2 2>/dev/null || true
+            echo "Attempting rollback." >&2
             if rollback; then
               rm -f compose.pre-deploy.yaml
               echo "Rollback succeeded." >&2

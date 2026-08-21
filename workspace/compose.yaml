@@ -1,5 +1,15 @@
 name: mapkeeper
 
+# Docker keeps a container's log beside the container, so an unbounded log grows
+# until it fills the host disk. Rotation caps a single service at 30 MB. The log
+# still dies with the container it belongs to, which is why a deployment archives
+# it to the host before replacing anything.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   frontend:
     image: ${FRONTEND_IMAGE:-mapkeeper-frontend:local}
@@ -12,6 +22,7 @@ services:
         VITE_SHOW_DEVELOPER_TOOLS: ${VITE_SHOW_DEVELOPER_TOOLS:-false}
     init: true
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       backend:
         condition: service_healthy
@@ -32,6 +43,7 @@ services:
       context: ./backend
     init: true
     restart: unless-stopped
+    logging: *default-logging
     environment:
       DATABASE_URL: ${DATABASE_URL:-}
       MVP_ACTOR_ID: ${MVP_ACTOR_ID:-}

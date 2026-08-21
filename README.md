@@ -116,10 +116,24 @@ Ubuntu VM에는 Docker Engine, Docker Compose 플러그인, `curl`이 설치되�
 1. 프론트엔드·백엔드 이미지를 커밋 SHA로 태그해 GHCR에 발행한다.
 2. Tailscale OIDC로 Ubuntu VM에 접속한다.
 3. Compose 설정을 전송하고 migration·데모 seed를 적용한다.
-4. 새 이미지를 실행하고 두 컨테이너의 health를 확인한다.
-5. 실패하면 직전 이미지로 롤백한다.
+4. 교체로 사라지기 전에 현재 버전의 로그를 호스트로 복사한다.
+5. 새 이미지를 실행하고 두 컨테이너의 health를 확인한다.
+6. 실패하면 실패한 버전의 로그를 남긴 뒤 직전 이미지로 롤백한다.
 
 PostgreSQL LXC와 Gemini 키는 서버 환경변수로 관리하며 저장소에 커밋하지 않는다.
+
+## 로그 확인
+
+애플리케이션 로그는 컨테이너의 stdout·stderr로 나가며, 배포마다 컨테이너가 교체되므로 **직전 버전의 로그는 컨테이너와 함께 사라진다.** 배포 워크플로가 교체 직전에 `~/mapkeeper/logs/`로 복사해 두므로, 지나간 버전의 오류는 그쪽에서 확인한다.
+
+```bash
+docker compose logs -f backend                  # 현재 버전 실시간
+docker compose logs backend | grep ERROR        # 오류만
+docker compose logs backend | grep "$REQUEST_ID"  # 요청 단위 추적
+ls -1t ~/mapkeeper/logs/                        # 지나간 버전 (최근 20개 보관)
+```
+
+모든 로그 줄에는 요청 추적 ID가 붙는다. 실패 응답은 같은 값을 `X-Request-ID` 헤더로 돌려주므로, 사용자가 겪은 오류를 헤더 값 하나로 서버 로그에서 되짚을 수 있다. 예상치 못한 500 오류는 예외 종류와 함께 **터진 위치(파일·줄·함수)** 를 남기지만, 고객 값이 로그로 새지 않도록 예외 메시지 자체는 기록하지 않는다.
 
 ## 외부 플랫폼 연동 범위
 
