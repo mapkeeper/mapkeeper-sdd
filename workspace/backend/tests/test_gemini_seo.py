@@ -382,6 +382,27 @@ async def test_the_client_sends_the_key_as_a_header_and_the_prompt_as_json() -> 
 
 
 @pytest.mark.asyncio
+async def test_the_client_constrains_thinking_so_the_owner_waits_less() -> None:
+    # Given: a transport that captures the generation config.
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["config"] = json.loads(request.content.decode())["generationConfig"]
+        return httpx.Response(200, json=envelope(model_output()))
+
+    # When: a prompt is sent.
+    _ = await client_with(handler).generate("깊은 국물 맛")
+
+    # Then: the request asks for JSON and caps the reasoning. Writing three short
+    # blurbs from a filled-in brief spent more tokens thinking than writing at the
+    # default level, which doubled the wait for no gain in the copy.
+    config = seen["config"]
+    assert isinstance(config, dict)
+    assert config["responseMimeType"] == "application/json"
+    assert config["thinkingConfig"] == {"thinkingLevel": "LOW"}
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("status_code", [400, 401, 403, 429, 500, 503])
 async def test_any_error_status_becomes_a_safe_failure(status_code: int) -> None:
     # Given: the API refusing the request.

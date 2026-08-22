@@ -40,6 +40,9 @@ GEMINI_ENDPOINT: Final = "https://generativelanguage.googleapis.com/v1beta/model
 GENERATION_FAILED_MESSAGE: Final = "문구를 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
 GENERATION_TIMEOUT_MESSAGE: Final = "처리 시간이 지연되고 있어요. 다시 시도해 주세요."
 MAX_SOURCE_REVIEWS: Final = 10
+# Gemini 3 replaces the older thinkingBudget with a named level; LOW is the
+# lowest this model accepts alongside a JSON response schema.
+THINKING_LEVEL: Final = "LOW"
 
 # A single flaky call should not become a user-visible failure: Gemini's free
 # tier throttles bursts (429) and occasionally answers 5xx, both of which
@@ -229,7 +232,14 @@ class HttpGeminiModelClient:
         url = f"{GEMINI_ENDPOINT}/{self.model}:generateContent"
         body = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"responseMimeType": "application/json"},
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                # Writing three short store blurbs from a filled-in brief is not a
+                # reasoning task, and the default level spends more tokens thinking
+                # than writing - measured 1,005 thinking against 701 written, for
+                # 13s. Constraining it halves the wait the owner sits through.
+                "thinkingConfig": {"thinkingLevel": THINKING_LEVEL},
+            },
         }
         for attempt in range(1, self.max_attempts + 1):
             is_last_attempt = attempt == self.max_attempts
