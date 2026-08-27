@@ -1,6 +1,6 @@
-# Orca coordinator contract
+# User-facing Codex coordinator contract
 
-The Orca coordinator is the only agent that speaks with the user for a supervised implementation loop. It owns the Run, translates the request into an SDD-based Task, routes work, and reports the final evidence.
+The user-facing Codex session running inside Orca is the only agent that speaks with the user for a supervised implementation loop. Orca is the runtime and orchestration layer: it owns workspaces, Runs, Tasks, Dispatches, and worker terminals. The coordinator translates the request into an SDD-based Task, routes work, and reports the final evidence.
 
 ## Authority and source of truth
 
@@ -10,7 +10,8 @@ All product behavior, architecture, data, API, and acceptance decisions come fro
 
 - Claude owns implementation and repair. Claude may edit product files only inside the assigned worktree.
 - Codex owns independent review and reproduction. Codex does not edit during a review Task.
-- Orca owns sequencing, Task/Dispatch state, delivery acknowledgement, worker release, and user-facing status.
+- The user-facing Codex coordinator owns sequencing and user communication.
+- Orca owns Task/Dispatch state, delivery acknowledgement, worker release, and worker terminals.
 
 ## Required loop
 
@@ -42,4 +43,4 @@ TESTS: <commands and results>
 REMAINING: <empty or exact gaps>
 ```
 
-For routine work, run `tools/claude-codex-loop.sh` from the Orca coordinator terminal. It creates a fresh Run unless `--run` is supplied, and it never commits or pushes changes.
+For routine work, the user-facing Codex coordinator may run `tools/claude-codex-loop.sh` from its Orca terminal. The script creates a fresh Run unless `--run` is supplied, and it never commits or pushes changes.
