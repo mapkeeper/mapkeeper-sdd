@@ -114,7 +114,25 @@
 
 ---
 
-## 검증
+## 검증 결과 (2026-08-27)
+
+| 검사 | 결과 |
+|---|---|
+| 프론트엔드 테스트 | ✅ 18 files / 135 tests 통과 (신규 11건 포함) |
+| 프론트엔드 lint · typecheck | ✅ 통과 (경고 0) |
+| 백엔드 단위 테스트 | ✅ 510 통과 (신규 11건 포함) |
+| 백엔드 ruff · basedpyright | ✅ 통과 (오류 0) |
+| 백엔드 통합 테스트 | ⚠️ **미실행** — PostgreSQL(docker) 필요, 로컬에 Docker 없음. `PATCH /drafts` 관련 신규 테스트 3건 포함해 CI에서 확인 필요 |
+
+### 이 변경으로 추가된 계약 변경
+
+| 항목 | 내용 | 영향 |
+|---|---|---|
+| `StoreChangeProposalResponse.unmappedRequests` | 응답에 추가 (기본 `[]`) | 추가 필드이므로 하위 호환 |
+| `seedKeywords` `minItems` | `1` → `0` | 기존 요청은 그대로 동작 |
+| `PATCH /api/v1/seo/generations/{id}/drafts` | 신규 Endpoint | 신규 |
+
+## 검증 명령
 
 ```bash
 # 프론트엔드
