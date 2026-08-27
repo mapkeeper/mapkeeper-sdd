@@ -23,6 +23,9 @@ SDD; record that decision before applying it.
 The user-facing Codex coordinator contract is in `ORCA_COORDINATOR.md`. Orca is
 the runtime that routes Tasks and Dispatches; the main Codex session owns user
 communication, while a separate Codex worker owns the independent review result.
+When the user requests the Claude implementation plus Codex verification loop,
+the coordinator must invoke `tools/claude-codex-loop.sh` instead of editing
+product files directly.
 
 ## Role
 

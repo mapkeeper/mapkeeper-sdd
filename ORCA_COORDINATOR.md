@@ -25,6 +25,14 @@ All product behavior, architecture, data, API, and acceptance decisions come fro
 
 The coordinator must not declare completion from a green unit-test run alone. The original user scenario must be exercised through the matching app, API, or CLI surface.
 
+## Default dispatch rule
+
+When the user asks for implementation plus Claude implementation and Codex
+verification, do not implement product code in the coordinator session. Invoke
+`tools/claude-codex-loop.sh` with the exact repository worktree and the user's
+objective. The coordinator may clarify a missing decision, but otherwise lets
+the loop run and reports its final evidence.
+
 ## Safety limits
 
 - Use one writer at a time. Never run Claude and another modifying worker concurrently in the same worktree.
