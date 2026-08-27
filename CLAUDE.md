@@ -22,6 +22,10 @@ with the SDD, stop and record the required decision or update before coding.
 System, developer, and explicit user instructions remain higher priority than
 repository documentation.
 
+The user-facing Orca sequencing contract is in `ORCA_COORDINATOR.md`. Orca
+routes implementation and repair Tasks to Claude and sends Codex findings back
+for repair when the review gate fails.
+
 ## Before editing
 
 - Read the user's request, this file, the applicable `docs/sdd/` files, and the repository's current diff.

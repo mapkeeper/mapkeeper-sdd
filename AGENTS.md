@@ -20,6 +20,9 @@ the SDD, report the conflict explicitly and do not silently redefine the
 requirement. A user or higher-priority instruction may intentionally change the
 SDD; record that decision before applying it.
 
+The user-facing Orca sequencing contract is in `ORCA_COORDINATOR.md`. Orca owns
+Task and Dispatch routing; Codex owns the independent review result.
+
 ## Role
 
 - Review Claude Code changes against the original request and acceptance criteria.

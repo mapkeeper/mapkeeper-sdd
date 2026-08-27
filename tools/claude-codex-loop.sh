@@ -65,14 +65,16 @@ create_run() {
 }
 
 create_task() {
-  local title="$1" spec="$2" slug="$3" output_file="$TEMP_DIR/task-${slug}.json"
+  local title="$1" spec="$2" slug="$3"
+  local output_file="$TEMP_DIR/task-${slug}.json"
   run_orca_json "$output_file" orchestration task-create \
     --run "$RUN_ID" --task-title "$title" --spec "$spec"
   last_json "$output_file" | jq -r '.result.task.id // .result.taskId // .result.id'
 }
 
 start_worker() {
-  local task_id="$1" agent="$2" slug="$3" output_file="$TEMP_DIR/start-${slug}.json"
+  local task_id="$1" agent="$2" slug="$3"
+  local output_file="$TEMP_DIR/start-${slug}.json"
   run_orca_json "$output_file" orchestration worker-start \
     --run "$RUN_ID" --task "$task_id" --worktree "$WORKTREE" --agent "$agent"
   last_json "$output_file" | jq -r '.result.dispatchId // .result.dispatch_id'
@@ -85,7 +87,8 @@ release_worker() {
 }
 
 wait_for_worker() {
-  local dispatch_id="$1" slug="$2" output_file="$TEMP_DIR/wait-${slug}.json"
+  local dispatch_id="$1" slug="$2"
+  local output_file="$TEMP_DIR/wait-${slug}.json"
   orca orchestration check --run "$RUN_ID" --wait \
     --types worker_done,escalation,question --timeout-ms "$TIMEOUT_MS" \
     --json >"$output_file" 2>&1
