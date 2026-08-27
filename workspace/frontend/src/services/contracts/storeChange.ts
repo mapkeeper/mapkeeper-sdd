@@ -46,6 +46,9 @@ export const storeChangeProposalResponseSchema = z.strictObject({
   recognizedTextMasked: nonEmptyTextSchema.max(500),
   changes: z.array(proposalChangeSchema).min(1),
   status: proposalStatusSchema,
+  // Field labels the owner's sentence raised that no change carries. Absent on
+  // older responses, empty on a request that was fully honoured.
+  unmappedRequests: z.array(nonEmptyTextSchema).default([]),
 });
 
 export const storeChangeApprovalResponseSchema = z.strictObject({

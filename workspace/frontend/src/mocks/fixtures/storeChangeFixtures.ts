@@ -5,12 +5,14 @@ export const storeChangeDraftFixture: CreateStoreChangeResponse = {
   recognizedTextMasked: '영업시간 ***까지로 바꿔줘',
   changes: [{ field: 'businessHours', currentValue: '09:00-22:00', proposedValue: '09:00-10:00' }],
   status: 'DRAFT',
+  unmappedRequests: [],
 };
 
 export const editedStoreChangeDraftFixture: PatchStoreChangeResponse = {
   proposalId: 'prop-001',
   status: 'DRAFT',
   changes: [{ field: 'businessHours', currentValue: '09:00-22:00', proposedValue: '09:00-20:00' }],
+  unmappedRequests: [],
 };
 
 export const storeChangeValidationErrorFixture: ApiErrorBody = {

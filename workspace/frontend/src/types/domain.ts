@@ -74,6 +74,8 @@ export interface StoreChangeProposal {
   recognizedTextMasked?: string;
   changes: ProposalChange[];
   status: ProposalStatus;
+  /** Field labels the request named that the proposal does not cover. */
+  unmappedRequests: string[];
 }
 
 export interface SeoDraft {

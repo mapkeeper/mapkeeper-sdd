@@ -1,6 +1,7 @@
 """UC1 structuring through Gemini, checked without a network or an API key."""
 
 import json
+from datetime import date
 from typing import Final
 from uuid import uuid4
 
@@ -91,13 +92,24 @@ def test_the_prompt_distinguishes_opening_from_closing() -> None:
     assert "문 연다" in prompt
 
 
-def test_the_prompt_forbids_guessing_relative_dates() -> None:
-    # Given: the prompt.
-    prompt = build_proposal_prompt("내일 쉴게요", make_profile())
+def test_the_prompt_dates_relative_expressions_against_today() -> None:
+    # Given: the prompt built for a known reference date.
+    prompt = build_proposal_prompt("내일 쉴게요", make_profile(), today=date(2026, 8, 27))
 
-    # When / Then: "내일" has no fixed date here, so the model must refuse.
+    # When / Then: the model is handed the calendar it needs instead of being told
+    # to refuse the most ordinary way an owner states a closure.
+    assert "2026-08-27" in prompt
+    assert "목요일" in prompt
     assert "내일" in prompt
-    assert "빈 배열" in prompt
+    assert "확정 날짜로 바꾼다" in prompt
+
+
+def test_the_prompt_asks_for_every_change_a_sentence_states() -> None:
+    # Given: the prompt.
+    prompt = build_proposal_prompt("9월 1일은 휴무이고 주차는 불가능합니다", make_profile())
+
+    # When / Then: a compound sentence must not come back with only its first half.
+    assert "하나만 넣고 나머지를 버리지 않는다" in prompt
 
 
 @pytest.mark.asyncio
@@ -291,3 +303,55 @@ async def test_a_model_timeout_is_reported_as_a_retryable_failure() -> None:
     assert error.message == GENERATION_TIMEOUT_MESSAGE
     for leak in ("gemini", "timeout", "http"):
         assert leak not in error.message.lower()
+
+
+def closure_and_parking_output() -> str:
+    """Render the two changes a compound sentence states."""
+    return json.dumps(
+        [
+            {
+                "field": "temporaryClosure",
+                "currentValue": None,
+                "proposedValue": {"startDate": "2026-09-01", "endDate": "2026-09-01"},
+            },
+            {
+                "field": "parkingInfo",
+                "currentValue": None,
+                "proposedValue": "주차 불가",
+            },
+        ]
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_sentence_naming_a_second_topic_reaches_the_model() -> None:
+    # Given: one sentence asking for two changes. The parser reads one field per
+    # sentence, so its answer alone would drop the parking request in silence.
+    client = CountingClient(closure_and_parking_output())
+    generator = DeterministicFirstGenerator(GeminiProposalStructurer(client))
+
+    # When: the sentence is structured.
+    changes = await generator.generate(
+        "9월 1일은 임시 휴무이고 주차는 불가능합니다",
+        make_profile(),
+    )
+
+    # Then: the model read the whole sentence and both requests survive.
+    assert client.calls == 1
+    assert {change.field for change in changes} == {"temporaryClosure", "parkingInfo"}
+
+
+@pytest.mark.asyncio
+async def test_the_parsers_answer_survives_a_model_that_reads_less() -> None:
+    # Given: a compound sentence and a model that comes back with a refusal.
+    generator = DeterministicFirstGenerator(GeminiProposalStructurer(CountingClient("[]")))
+
+    # When: the sentence is structured.
+    changes = await generator.generate(
+        "9월 1일은 임시 휴무이고 주차는 불가능합니다",
+        make_profile(),
+    )
+
+    # Then: the half the parser could read is kept rather than failing the request.
+    (change,) = changes
+    assert change.field == "temporaryClosure"

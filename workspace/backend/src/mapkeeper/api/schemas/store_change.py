@@ -128,6 +128,10 @@ class StoreChangeProposalResponse(ApiSchema):
     recognized_text_masked: RecognizedText
     changes: Annotated[tuple[ProposalChange, ...], Field(min_length=1)]
     status: ProposalStatus
+    # Field labels the sentence brought up that no change carries. A request the
+    # owner made and the proposal drops has to be said out loud; dropping it in
+    # silence lets them approve a change believing it covered both.
+    unmapped_requests: tuple[NonEmptyText, ...] = ()
 
 
 class StoreChangeProposalApprovalResponse(ApiSchema):

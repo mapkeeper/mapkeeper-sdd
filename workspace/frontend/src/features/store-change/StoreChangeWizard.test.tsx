@@ -379,11 +379,104 @@ describe('StoreChangeWizard', () => {
     await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '전화번호 바꿔줘');
     await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
 
-    expect(screen.getByRole('status')).toHaveTextContent('AI가 변경안을 작성 중입니다...');
+    expect(screen.getByRole('status')).toHaveTextContent('AI가 변경안을 작성 중입니다');
+    expect(screen.getByRole('status')).toHaveTextContent('날짜와 변경 항목 정리 중');
     expect(screen.getByRole('status')).toHaveTextContent('최대 1분 정도 걸릴 수 있어요.');
     expect(await screen.findByRole('heading', { name: '변경안을 확인해 주세요' }, { timeout: 1_500 })).toBeInTheDocument();
     expect(screen.getByText('요청 메모')).toBeInTheDocument();
     expect(screen.getByText('전화번호 바꿔줘')).toBeInTheDocument();
     expect(screen.queryByText('허용되지 않은 필드입니다.')).not.toBeInTheDocument();
+  });
+  test('요청 중 변경안에 담기지 못한 항목은 승인 전에 이름으로 알린다', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('/api/v1/store-change-proposals', () => HttpResponse.json({
+        success: true,
+        status: 'SUCCESS',
+        data: {
+          proposalId: 'prop-001',
+          recognizedTextMasked: '9월 1일은 임시 휴무이고 주차는 불가능합니다',
+          changes: [{
+            field: 'temporaryClosure',
+            currentValue: null,
+            proposedValue: { startDate: '2026-09-01', endDate: '2026-09-01' },
+          }],
+          status: 'DRAFT',
+          unmappedRequests: ['주차 정보'],
+        },
+        error: null,
+        timestamp: '2026-08-27T00:00:00Z',
+      }, { status: 201 })),
+    );
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '9월 1일은 임시 휴무이고 주차는 불가능합니다');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+
+    expect(await screen.findByRole('heading', { name: '변경안을 확인해 주세요' })).toBeInTheDocument();
+    const notice = screen.getByText(/이번 변경안에 담지 못했어요/);
+    expect(notice).toHaveTextContent('주차 정보');
+    expect(screen.getByText('임시 휴무')).toBeInTheDocument();
+  });
+
+  test('담기지 못한 항목이 있으면 자동 승인이 사장님 확인을 기다린다', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('/api/v1/store-change-proposals', () => HttpResponse.json({
+        success: true,
+        status: 'SUCCESS',
+        data: {
+          proposalId: 'prop-001',
+          recognizedTextMasked: '9월 1일은 임시 휴무이고 주차는 불가능합니다',
+          changes: [{
+            field: 'temporaryClosure',
+            currentValue: null,
+            proposedValue: { startDate: '2026-09-01', endDate: '2026-09-01' },
+          }],
+          status: 'DRAFT',
+          unmappedRequests: ['주차 정보'],
+        },
+        error: null,
+        timestamp: '2026-08-27T00:00:00Z',
+      }, { status: 201 })),
+    );
+    const onSyncHandoff = vi.fn();
+    render(<StoreChangeWizard storeProfileId="store-123" autoApprove onSyncHandoff={onSyncHandoff} />);
+
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '9월 1일은 임시 휴무이고 주차는 불가능합니다');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+
+    expect(await screen.findByRole('button', { name: '승인 단계로 이동' })).toBeInTheDocument();
+    expect(onSyncHandoff).not.toHaveBeenCalled();
+  });
+
+  test('서버가 무엇을 말해야 하는지 알려주면 그 문구를 그대로 보여준다', async () => {
+    const user = userEvent.setup();
+    // The offline fallback swallows failures so a demo keeps moving; this checks
+    // what a real deployment shows the owner.
+    vi.stubEnv('MODE', 'production');
+    server.use(
+      http.post('/api/v1/store-change-proposals', () => HttpResponse.json({
+        success: false,
+        status: 'FAILED',
+        data: null,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: '말씀하신 내용에서 바꿀 항목을 찾지 못했어요. 예를 들어 “내일 하루 쉽니다”처럼 말씀해 주세요.',
+        },
+        timestamp: '2026-08-27T00:00:00Z',
+      }, { status: 422 })),
+    );
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '분위기 좋게 바꿔줘');
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+
+    // The generic "입력 내용을 다시 확인해 주세요." told the owner nothing about
+    // what to change, which is the whole point of the server writing a message.
+    expect(await screen.findByRole('alert')).toHaveTextContent('예를 들어 “내일 하루 쉽니다”처럼 말씀해 주세요.');
   });
 });

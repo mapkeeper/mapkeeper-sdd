@@ -74,7 +74,12 @@ _NEXT_WEEKDAY_PATTERN: Final = re.compile(r"다음\s*주\s*(?P<weekday>[월화�
 _HOURS_CONTEXT: Final = re.compile(r"영업|문\s*을?|마감|오픈|open|close|열|닫|시작|종료|폐점|개점")
 _OPENING_WORDS: Final = re.compile(r"열|오픈|시작|개점")
 _CLOSING_WORDS: Final = re.compile(r"닫|마감|종료|폐점|까지")
-_CLOSURE_WORDS: Final = re.compile(r"휴무|휴일|쉬|쉴|문\s*(?:을\s*)?닫|마감")
+# "쉽니다" is not "쉬" plus an ending — it is a different syllable, so the bare
+# "쉬" below never saw the most ordinary way an owner states a closure. Every
+# conjugated stem an owner actually speaks is listed instead of guessed at.
+_CLOSURE_WORDS: Final = re.compile(
+    r"휴무|휴업|휴일|쉬|쉽니|쉼|쉴|문\s*(?:을\s*)?닫|마감|영업\s*(?:을\s*)?안\s*(?:해|합니|하)"
+)
 _SEOUL_TIMEZONE: Final = ZoneInfo("Asia/Seoul")
 _WEEKDAY_INDEX: Final = {"월": 0, "화": 1, "수": 2, "목": 3, "금": 4, "토": 5, "일": 6}
 
@@ -319,6 +324,57 @@ def _parse_temporary_closure(
     )
 
 
+# Which of the four supported fields a sentence talks about, whether or not the
+# readers above manage to turn that mention into a value. A sentence can name two
+# fields and only be read for one; without this the second one disappeared without
+# a word, which is worse than refusing the whole sentence.
+_FIELD_TOPICS: Final[tuple[tuple[str, str, re.Pattern[str]], ...]] = (
+    (
+        "businessHours",
+        "영업시간",
+        re.compile(r"영업\s*시간|오픈\s*시간|마감\s*시간|영업\s*시작|영업\s*종료|문\s*(?:을\s*)?(?:여|열|닫)"),
+    ),
+    (
+        "temporaryClosure",
+        "임시 휴무",
+        re.compile(r"휴무|휴업|휴일|쉬|쉽니|쉼|쉴"),
+    ),
+    (
+        "representativeMenuName",
+        "대표 메뉴",
+        re.compile(r"대표\s*메뉴|주력\s*메뉴|메뉴"),
+    ),
+    (
+        "parkingInfo",
+        "주차 정보",
+        re.compile(r"주차"),
+    ),
+)
+
+
+def unmapped_request_labels(
+    masked_text: str,
+    changes: tuple[ProposalChange, ...],
+) -> tuple[str, ...]:
+    """Name the fields the sentence brought up that no change ended up carrying.
+
+    Args:
+        masked_text: The sentence the owner spoke, already stripped of customer PII.
+        changes: Every change the sentence did produce.
+
+    Returns:
+        Korean field labels, in the contract's field order, for each topic the
+        sentence names and the changes do not cover. Empty when nothing was
+        dropped.
+    """
+    covered = {change.field for change in changes}
+    return tuple(
+        label
+        for field, label, pattern in _FIELD_TOPICS
+        if field not in covered and pattern.search(masked_text) is not None
+    )
+
+
 def parse_intent(
     masked_text: str,
     profile: StoreProfile,
@@ -360,4 +416,4 @@ def parse_intent(
     return None
 
 
-__all__ = ["parse_intent"]
+__all__ = ["parse_intent", "unmapped_request_labels"]

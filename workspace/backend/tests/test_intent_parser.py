@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from mapkeeper.adapters.intent import parse_intent
+from mapkeeper.adapters.intent import parse_intent, unmapped_request_labels
 from mapkeeper.api.schemas.store_change import (
     BusinessHoursChange,
     ParkingInfoChange,
@@ -390,3 +390,64 @@ def test_a_closure_span_missing_its_second_month_is_left_to_the_model() -> None:
 
     # When / Then: the parser declines.
     assert parse_intent("8월 25일부터 26일까지 쉬어요", make_profile()) is None
+
+
+# --- conjugated closure verbs --------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "내일 하루 쉽니다",
+        "내일 하루 쉽니다.",
+        "내일은 쉼",
+        "내일 휴업합니다",
+        "내일 영업 안 해요",
+    ],
+)
+def test_conjugated_closure_verbs_are_read_as_a_closure(sentence: str) -> None:
+    # Given: the ordinary polite forms an owner actually speaks. "쉽니다" is not
+    # "쉬" plus an ending, so the earlier stem list never matched it.
+    # When: the parser reads the sentence against a known current date.
+    changes = parse_intent(sentence, make_profile(), today=date(2026, 8, 27))
+
+    # Then: it resolves to tomorrow rather than reaching the model and failing.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, TemporaryClosureChange)
+    assert change.proposed_value.start_date == date(2026, 8, 28)
+    assert change.proposed_value.end_date == date(2026, 8, 28)
+
+
+# --- requests the changes do not cover -----------------------------------------
+
+
+def test_a_second_topic_the_changes_miss_is_named() -> None:
+    # Given: one sentence asking for two things, only one of which was read.
+    sentence = "9월 1일은 임시 휴무이고 주차는 불가능합니다"
+    changes = parse_intent(sentence, make_profile(), today=date(2026, 8, 27))
+    assert changes is not None
+
+    # When: the dropped topics are collected.
+    # Then: the parking request is reported rather than silently disappearing.
+    assert unmapped_request_labels(sentence, changes) == ("주차 정보",)
+
+
+def test_a_fully_covered_sentence_reports_nothing_dropped() -> None:
+    # Given: a sentence whose only topic became a change.
+    sentence = "대표 메뉴를 김치찌개로 바꿔줘"
+    changes = parse_intent(sentence, make_profile())
+    assert changes is not None
+
+    # When / Then: no notice is raised for a request that was fully honoured.
+    assert unmapped_request_labels(sentence, changes) == ()
+
+
+def test_dropped_topics_are_reported_in_the_contracts_field_order() -> None:
+    # Given: a sentence naming three fields and a change list covering one.
+    sentence = "영업시간도 바꾸고 그날은 쉬고 주차도 안 되고 메뉴도 바꿔야 해요"
+    changes = parse_intent("대표 메뉴를 김치찌개로 바꿔줘", make_profile())
+    assert changes is not None
+
+    # When / Then: the labels read in the order the contract lists the fields.
+    assert unmapped_request_labels(sentence, changes) == ("영업시간", "임시 휴무", "주차 정보")

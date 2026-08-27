@@ -65,6 +65,8 @@
    instead of borrowing the two-column grid the three review buttons need. */
 .store-change-wizard__empty { display:grid; gap:12px; margin-top:auto; padding-top:18px; }
 .store-change-wizard__empty .store-change-wizard__alert { margin-bottom:0; }
+.store-change-wizard__unmapped { margin:0 0 14px; padding:13px 15px; border:1px solid #fde68a; border-radius:var(--radius-md); background:#fffbeb; color:#92400e; font-size:14px; line-height:1.6; font-weight:600; }
+.store-change-wizard__unmapped strong { font-weight:800; }
 .store-change-wizard__confirm-icon { display:grid; width:64px; height:64px; margin:72px auto 14px; place-items:center; border-radius:50%; background:#ecfdf5; color:#059669; font-size:34px; font-weight:750; }
 .store-change-wizard__step:has(.store-change-wizard__confirm-icon) h1, .store-change-wizard__step:has(.store-change-wizard__confirm-icon) > p { text-align:center; }
 .store-change-wizard__step:has(.store-change-wizard__confirm-icon) > p { color:#64748b; font-size:14px; }

@@ -1,0 +1,84 @@
+.generation-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+
+.generation-progress__spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid rgb(0 0 0 / 0.08);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: generation-progress-spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .generation-progress__spinner {
+    animation-duration: 3s;
+  }
+}
+
+@keyframes generation-progress-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.generation-progress__title {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.5;
+}
+
+.generation-progress__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 22rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.generation-progress__step {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+}
+
+.generation-progress__marker {
+  flex: 0 0 1.25rem;
+  text-align: center;
+}
+
+.generation-progress__step.is-done {
+  opacity: 0.6;
+}
+
+.generation-progress__step.is-pending {
+  opacity: 0.45;
+}
+
+.generation-progress__step.is-active {
+  font-weight: 700;
+}
+
+.generation-progress__hint,
+.generation-progress__notice {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.generation-progress__notice {
+  font-weight: 600;
+}

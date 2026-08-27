@@ -1143,6 +1143,15 @@
           },
           "status": {
             "$ref": "#/components/schemas/ProposalStatus"
+          },
+          "unmappedRequests": {
+            "default": [],
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Unmappedrequests",
+            "type": "array"
           }
         },
         "required": [

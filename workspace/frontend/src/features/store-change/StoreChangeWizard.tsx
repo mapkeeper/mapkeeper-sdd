@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Robot } from '@phosphor-icons/react';
+import { GenerationProgress } from '@/components/GenerationProgress/GenerationProgress';
 import { ProposalEditor } from '@/components/ProposalEditor/ProposalEditor';
 import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
@@ -43,6 +44,12 @@ const storeChangeQuickPrompts = [
   { label: '영업시간', answer: '영업시간을 오후 10시까지로 바꿔줘' },
   { label: '임시 휴무', answer: '내일 문 닫아' },
   { label: '주차 정보', answer: '주차 정보를 건물 뒤 3대 가능으로 바꿔줘' },
+] as const;
+
+const draftPreparationSteps = [
+  '요청 내용 확인',
+  '날짜와 변경 항목 정리 중',
+  '변경 전후 비교 준비',
 ] as const;
 
 const stepBackTargets: Partial<Record<WizardStep, WizardStep>> = {
@@ -94,7 +101,11 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
     // callback triggers, so any local step here would never get to render.
     onSyncHandoff?.(nextHandoff);
   });
-  const autoApproveActive = autoApprove && !autoApproveCancelled;
+  // Field labels the sentence raised that no change carries. Saying nothing here
+  // let the owner approve a half-honoured request believing it covered both, so
+  // an incomplete proposal also suspends unattended approval.
+  const unmappedRequests = flow.proposal?.unmappedRequests ?? [];
+  const autoApproveActive = autoApprove && !autoApproveCancelled && unmappedRequests.length === 0;
   const hasUnsavedManualInput = step === 'MANUAL' && manualText.trim() !== '';
   const hasUnapprovedProposal = (step === 'REVIEW' || step === 'EDIT' || step === 'CONFIRM') && flow.proposal?.status === 'DRAFT';
   useUnsavedChangesWarning(hasUnsavedManualInput || hasUnapprovedProposal);
@@ -192,12 +203,11 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
     return (
       <main className="store-change-wizard">
         <p className="store-change-wizard__progress">매장정보 변경 · 변경안 생성</p>
-        <section className="store-change-wizard__loading" role="status" aria-live="polite">
-          <span className="store-change-wizard__spinner" aria-hidden="true" />
-          <h1>AI가 변경안을 작성 중입니다...</h1>
-          <p>입력하신 내용을 보기 쉽게 정리하고 있어요.</p>
-          <p>네트워크 상황에 따라 최대 1분 정도 걸릴 수 있어요.</p>
-        </section>
+        <GenerationProgress
+          title="AI가 변경안을 작성 중입니다"
+          steps={draftPreparationSteps}
+          hint="네트워크 상황에 따라 최대 1분 정도 걸릴 수 있어요."
+        />
       </main>
     );
   }
@@ -263,6 +273,12 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
           <div className="store-change-wizard__bot"><span aria-hidden="true"><Robot weight="regular" /></span><p>{flow.proposal.changes.length > 0
             ? <>아래 내용이 맞는지<br />확인해 주세요</>
             : <>말씀하신 내용에서<br />바꿀 항목을 찾지 못했어요</>}</p></div>
+          {unmappedRequests.length > 0 ? (
+            <p className="store-change-wizard__unmapped" role="status">
+              말씀하신 <strong>{unmappedRequests.join(', ')}</strong> 요청은 이번 변경안에 담지 못했어요.
+              지금 승인하면 위 항목만 반영돼요. 나머지는 따로 한 번 더 말씀해 주세요.
+            </p>
+          ) : null}
           <dl className="store-change-wizard__changes">
             {flow.proposal.changes.map((change) => (
               <div key={change.field}>

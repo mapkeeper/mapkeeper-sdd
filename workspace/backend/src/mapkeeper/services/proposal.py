@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapkeeper.adapters.gemini import GeminiProposalGenerator, get_gemini_generator
+from mapkeeper.adapters.intent import unmapped_request_labels
 from mapkeeper.api.schemas.store_change import (
     CreateStoreChangeProposalRequest,
     PatchStoreChangeProposalRequest,
@@ -36,12 +37,19 @@ def _changes_json(changes: tuple[ProposalChange, ...]) -> list[JsonValue]:
 
 
 def _response(proposal: StoreChangeProposal) -> StoreChangeProposalResponse:
-    """Render a stored proposal through the API schemas again."""
+    """Render a stored proposal through the API schemas again.
+
+    The unmapped labels are derived rather than stored: they are a statement about
+    the stored sentence and the stored changes, so editing the changes has to move
+    them too.
+    """
+    changes = _CHANGES_ADAPTER.validate_python(proposal.changes)
     return StoreChangeProposalResponse(
         proposal_id=proposal.id,
         recognized_text_masked=proposal.recognized_text_masked,
-        changes=_CHANGES_ADAPTER.validate_python(proposal.changes),
+        changes=changes,
         status=proposal.status,
+        unmapped_requests=unmapped_request_labels(proposal.recognized_text_masked, changes),
     )
 
 

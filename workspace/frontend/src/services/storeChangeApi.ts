@@ -35,6 +35,7 @@ function normalizeProposal(data: RawStoreChangeProposal): StoreChangeProposal {
       proposedValue: displayChangeValue(change.field, change.proposedValue),
     })),
     status: data.status,
+    unmappedRequests: [...data.unmappedRequests],
   };
 }
 
