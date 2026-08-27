@@ -6,10 +6,12 @@ import type { NewsDateRange } from './newsDate';
 interface NewsDateRangePickerProps {
   initialRange?: NewsDateRange | null;
   initialNoDate?: boolean;
+  /** Read-back question when a named holiday supplied the dates. */
+  holidayPrompt?: string | null;
   onConfirm(range: NewsDateRange | null): void;
 }
 
-export function NewsDateRangePicker({ initialRange = null, initialNoDate = false, onConfirm }: NewsDateRangePickerProps) {
+export function NewsDateRangePicker({ initialRange = null, initialNoDate = false, holidayPrompt = null, onConfirm }: NewsDateRangePickerProps) {
   const [range, setRange] = useState<NewsDateRange>(initialRange ?? { start: '', end: '' });
   const [noDate, setNoDate] = useState(initialNoDate);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -45,7 +47,9 @@ export function NewsDateRangePicker({ initialRange = null, initialNoDate = false
         </span>
         <div>
           <h2 id="news-date-title">소식 기간을 확인해 주세요</h2>
-          <p>날짜를 정하면 손님에게 더 정확하게 안내할 수 있어요.</p>
+          {holidayPrompt
+            ? <p className="news-date-picker__holiday">{holidayPrompt}</p>
+            : <p>날짜를 정하면 손님에게 더 정확하게 안내할 수 있어요.</p>}
         </div>
       </div>
       <div className="news-date-picker__fields">
@@ -75,7 +79,7 @@ export function NewsDateRangePicker({ initialRange = null, initialNoDate = false
         {noDate ? '날짜를 입력할게요' : '기간 없이 게시할게요'}
       </button>
       <button className="bottom-primary news-date-picker__submit" type="submit">
-        {noDate ? '기간 없이 문구 만들기' : '이 기간으로 문구 만들기'}
+        {noDate ? '기간 없이 문구 만들기' : holidayPrompt ? '맞아요, 이 기간으로 만들기' : '이 기간으로 문구 만들기'}
       </button>
     </form>
   );

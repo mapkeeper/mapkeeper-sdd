@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
-import { SeoDraftCard } from '@/components/SeoDraftCard/SeoDraftCard';
+import { PlatformCopyEditor } from '@/components/PlatformCopyEditor/PlatformCopyEditor';
 import { SyncStatusDashboard } from '@/components/SyncStatus/SyncStatus';
 import { successSyncJobFixture } from '@/mocks/fixtures/syncJobFixtures';
 
@@ -20,14 +20,26 @@ describe('접근성 회귀', () => {
     expect((await axe(container)).violations).toEqual([]);
   });
 
-  test('UC2 플랫폼 카드는 접근 가능한 이름과 충분한 대비를 갖는다', async () => {
+  test('UC2 플랫폼별 문구 편집기는 탭과 입력에 접근 가능한 이름을 갖는다', async () => {
     const { container } = render(
-      <SeoDraftCard
-        draft={{ draftId: 'draft-001', platform: 'google', draftText: '구글 소개글', keywords: ['구글'], contentRules: ['정확한 정보'], status: 'DRAFT' }}
+      <PlatformCopyEditor
+        drafts={[
+          { platform: 'google', text: '구글 소개글', keywords: ['구글'], contentRules: ['정확한 정보'] },
+          { platform: 'naver', text: '네이버 소개글', keywords: ['네이버'], contentRules: ['검색어 포함'] },
+          { platform: 'kakao', text: '카카오 소개글', keywords: ['카카오'], contentRules: ['짧게'] },
+        ]}
+        activePlatform="google"
+        onActivePlatformChange={vi.fn()}
+        onTextChange={vi.fn()}
+        onKeywordsChange={vi.fn()}
+        onToneChange={vi.fn()}
+        onRestore={vi.fn()}
+        isModified={false}
+        isRegenerating={false}
       />,
     );
-    expect(screen.getByRole('heading', { name: 'Google' })).toBeInTheDocument();
-    expect(screen.getByText('구글 소개글')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: '구글' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('textbox', { name: /구글에 올릴 문구/ })).toHaveValue('구글 소개글');
     expect((await axe(container)).violations).toEqual([]);
   });
 

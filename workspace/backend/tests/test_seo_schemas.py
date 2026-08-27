@@ -7,6 +7,7 @@ from mapkeeper.api.schemas.seo import (
     ContentGenerationApprovalResponse,
     ContentGenerationResponse,
     CreateContentGenerationRequest,
+    EditContentDraftsRequest,
     PlatformContentResult,
 )
 
@@ -234,7 +235,7 @@ def test_seed_keywords_reject_more_than_five_distinct_values() -> None:
         _ = CreateContentGenerationRequest.model_validate(payload)
 
 
-def test_seed_keywords_reject_a_list_that_normalizes_to_nothing() -> None:
+def test_seed_keywords_that_normalize_to_nothing_become_no_keywords() -> None:
     # Given: keywords that are empty once trimmed and de-hashed.
     payload = {
         "storeProfileId": "11111111-1111-4111-8111-111111111111",
@@ -242,9 +243,24 @@ def test_seed_keywords_reject_a_list_that_normalizes_to_nothing() -> None:
         "seedKeywords": ["#", "   "],
     }
 
-    # When / Then: an empty result fails the minimum count.
-    with pytest.raises(ValidationError):
-        _ = CreateContentGenerationRequest.model_validate(payload)
+    # When: the request is validated.
+    request = CreateContentGenerationRequest.model_validate(payload)
+
+    # Then: no keyword is the accepted answer. A store with no reviews has none,
+    # and requiring one is what pushed invented keywords into the generated copy.
+    assert request.seed_keywords == ()
+
+
+def test_a_generation_can_be_requested_with_no_seed_keywords() -> None:
+    # Given: the request a store with zero reviews produces.
+    payload: dict[str, object] = {
+        "storeProfileId": "11111111-1111-4111-8111-111111111111",
+        "briefText": "만두전골을 알리고 싶어요.",
+        "seedKeywords": [],
+    }
+
+    # When / Then: it is accepted rather than forcing the caller to invent three.
+    assert CreateContentGenerationRequest.model_validate(payload).seed_keywords == ()
 
 
 @pytest.mark.parametrize("invalid_keyword", [123, None, {"value": "가족외식"}])
@@ -351,3 +367,48 @@ def test_platform_keywords_that_are_not_a_list_fall_through_to_field_validation(
     # When / Then: normalization does not silently accept a bare string.
     with pytest.raises(ValidationError):
         _ = PlatformContentResult.model_validate(payload)
+
+
+def test_owner_draft_edits_require_every_platform_exactly_once() -> None:
+    # Given: an edit that covers only two of the three platforms.
+    payload = {
+        "drafts": [
+            {"platform": "google", "draftText": "구글 문구", "keywords": ["만두전골"]},
+            {"platform": "naver", "draftText": "네이버 문구", "keywords": ["만두전골"]},
+            {"platform": "naver", "draftText": "중복", "keywords": ["만두전골"]},
+        ]
+    }
+
+    # When / Then: partial coverage cannot half-replace what approval publishes.
+    with pytest.raises(ValidationError):
+        _ = EditContentDraftsRequest.model_validate(payload)
+
+
+def test_owner_draft_edits_are_held_to_the_same_limits_as_generated_copy() -> None:
+    # Given: an edit whose copy is longer than the contract allows.
+    payload = {
+        "drafts": [
+            {"platform": platform, "draftText": "가" * 751, "keywords": ["만두전골"]}
+            for platform in ("google", "naver", "kakao")
+        ]
+    }
+
+    # When / Then: an owner's own text is checked like the model's.
+    with pytest.raises(ValidationError):
+        _ = EditContentDraftsRequest.model_validate(payload)
+
+
+def test_owner_draft_edits_drop_a_leading_hash_from_keywords() -> None:
+    # Given: hashtags typed the way they are displayed.
+    payload = {
+        "drafts": [
+            {"platform": platform, "draftText": "문구", "keywords": ["#만두전골", "만두전골"]}
+            for platform in ("google", "naver", "kakao")
+        ]
+    }
+
+    # When: the edit is validated.
+    request = EditContentDraftsRequest.model_validate(payload)
+
+    # Then: storage keeps the same bare, de-duplicated form generation produces.
+    assert all(draft.keywords == ("만두전골",) for draft in request.drafts)

@@ -554,3 +554,20 @@ async def test_a_non_json_body_becomes_a_safe_failure() -> None:
     # When / Then: the caller still sees the contract's safe message.
     with pytest.raises(GeminiGenerationError):
         _ = await client_with(handler).generate("프롬프트")
+
+
+def test_no_seed_keywords_removes_the_keyword_line_entirely() -> None:
+    # Given: the input a store with no reviews produces.
+    content_input = ContentGenerationInput(
+        brief_text=BRIEF,
+        seed_keywords=(),
+        source_review_ids=None,
+    )
+
+    # When: the prompt is built.
+    prompt = build_prompt(content_input, make_profile(), ())
+
+    # Then: the model is not shown an empty "반드시 고려할 키워드:" line to fill in,
+    # and is told outright not to invent customer reaction it was not given.
+    assert "반드시 고려할 키워드" not in prompt
+    assert "지어내지 않는다" in prompt

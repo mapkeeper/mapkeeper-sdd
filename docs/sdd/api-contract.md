@@ -88,7 +88,7 @@
 | `representativeMenuName` | 1~50자 |
 | `parkingInfo` | 1~50자 |
 | `briefText` | 1~500자 |
-| `seedKeywords` | 1~5개, 각 1~30자 |
+| `seedKeywords` | 0~5개, 각 1~30자 |
 | `draftText` | 1~750자 |
 | `drafts[].keywords` | 1~10개, 각 1~30자 |
 | `sourceReviewIds` | 선택, 최대 10개, 중복 불가 |
@@ -96,6 +96,7 @@
 | `attemptCount` | 0~3 |
 
 키워드는 앞의 `#`과 주변 공백을 제거하고 입력 순서대로 중복을 정리한다.
+리뷰가 없는 매장은 리뷰 키워드도 없으므로 `seedKeywords`는 빈 배열을 허용한다. 비어 있으면 프롬프트에서 키워드 항목 자체를 제외한다 — 최소 1개를 강제하면 없는 키워드를 지어내게 된다.
 `seedKeywords`에 문자열이 아닌 값이 하나라도 포함되면 해당 값을 삭제해 계속하지 않고 요청 전체를 `422 VALIDATION_ERROR`로 거절한다.
 
 프론트 제품 서비스는 동일 계약을 Zod strict schema로 파싱한다. 잘못된 Enum, 필수 필드 누락, 정의되지 않은 응답 필드는 UI 상태로 변환하기 전에 거절한다.
@@ -272,7 +273,25 @@ POST /api/v1/seo/generations/{generationId}/regenerate
 
 Body는 생성 요청에서 `storeProfileId`를 제외한 형태다. DRAFT만 가능하며 기존 세 결과를 새 결과로 교체하고 `revision`을 1 증가시킨다.
 
-### 6.3 전체 거절
+### 6.3 사장님 편집 반영
+
+```http
+PATCH /api/v1/seo/generations/{generationId}/drafts
+```
+
+```json
+{
+  "drafts": [
+    { "platform": "google", "draftText": "사장님이 고친 Google용 문구", "keywords": ["김치만두"] },
+    { "platform": "naver", "draftText": "사장님이 고친 Naver용 문구", "keywords": ["김치만두"] },
+    { "platform": "kakao", "draftText": "사장님이 고친 Kakao용 문구", "keywords": ["김치만두"] }
+  ]
+}
+```
+
+승인은 저장된 내용을 게시하므로, 확인 화면에서 고친 문구는 승인 전에 이 Endpoint로 저장한다. DRAFT만 가능하며 세 플랫폼을 모두 포함해야 하고 `revision`을 1 증가시킨다. `draftText`·`keywords` 제한은 생성 결과와 동일하다.
+
+### 6.4 전체 거절
 
 ```http
 POST /api/v1/seo/generations/{generationId}/reject
@@ -280,7 +299,7 @@ POST /api/v1/seo/generations/{generationId}/reject
 
 Body 없음. DRAFT를 `REJECTED`로 변경한다.
 
-### 6.4 전체 승인
+### 6.5 전체 승인
 
 ```http
 POST /api/v1/seo/generations/{generationId}/approve
@@ -349,10 +368,11 @@ Body 없음. 재시도 가능한 실패 Task만 `RETRYING`으로 변경하고 `2
 | 5 | GET | `/api/v1/store-profiles/{storeProfileId}/reviews/summary` | 200 |
 | 6 | POST | `/api/v1/seo/generations` | 201 |
 | 7 | POST | `/api/v1/seo/generations/{generationId}/regenerate` | 200 |
-| 8 | POST | `/api/v1/seo/generations/{generationId}/reject` | 200 |
-| 9 | POST | `/api/v1/seo/generations/{generationId}/approve` | 202 |
-| 10 | GET | `/api/v1/sync-jobs/{syncJobId}` | 200 |
-| 11 | POST | `/api/v1/sync-jobs/{syncJobId}/retry` | 202 |
+| 8 | PATCH | `/api/v1/seo/generations/{generationId}/drafts` | 200 |
+| 9 | POST | `/api/v1/seo/generations/{generationId}/reject` | 200 |
+| 10 | POST | `/api/v1/seo/generations/{generationId}/approve` | 202 |
+| 11 | GET | `/api/v1/sync-jobs/{syncJobId}` | 200 |
+| 12 | POST | `/api/v1/sync-jobs/{syncJobId}/retry` | 202 |
 
 `GET /health`는 운영 health 경로이며 `/api/v1` 제품 Endpoint 수에서 제외한다.
 

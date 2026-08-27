@@ -67,6 +67,12 @@ export interface CreateSeoGenerationResponse {
   drafts: SeoDraft[];
 }
 export type RegenerateSeoGenerationRequest = Omit<CreateSeoGenerationRequest, 'storeProfileId'>;
+export interface PlatformDraftEdit {
+  platform: Platform;
+  draftText: string;
+  keywords: string[];
+}
+export interface EditSeoDraftsRequest { drafts: PlatformDraftEdit[] }
 export type RegenerateSeoGenerationResponse = CreateSeoGenerationResponse;
 export interface GetReviewSummaryResponse extends ReviewSummary {
   storeProfileId: string;

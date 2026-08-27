@@ -1,0 +1,29 @@
+.platform-copy-editor { display:flex; flex-direction:column; gap:14px; }
+
+.platform-copy-editor__tabs { display:flex; gap:6px; padding:4px; border-radius:var(--radius-md, 12px); background:#f1f5f9; }
+.platform-copy-editor__tabs button { flex:1; padding:10px 8px; border:0; border-radius:calc(var(--radius-md, 12px) - 4px); background:transparent; color:#475569; font-size:15px; font-weight:650; }
+.platform-copy-editor__tabs button.is-selected { background:#fff; color:#0f172a; box-shadow:0 1px 3px rgb(15 23 42 / 0.12); }
+
+.platform-copy-editor__panel { display:flex; flex-direction:column; gap:10px; }
+.platform-copy-editor__label { font-size:14px; font-weight:700; color:#334155; }
+.platform-copy-editor__text { width:100%; padding:14px; border:1px solid #cbd5e1; border-radius:var(--radius-md, 12px); font-size:16px; line-height:1.7; resize:vertical; }
+.platform-copy-editor__count { margin:0; text-align:right; font-size:13px; color:#64748b; }
+
+.platform-copy-editor__accuracy { margin:0; padding:12px 14px; border:1px solid #fde68a; border-radius:var(--radius-md, 12px); background:#fffbeb; color:#92400e; font-size:14px; line-height:1.6; }
+
+.platform-copy-editor__keywords { display:flex; flex-direction:column; gap:8px; }
+.platform-copy-editor__keywords .tag-chip { display:inline-flex; align-items:center; gap:4px; }
+.platform-copy-editor__keywords .tag-chip button { border:0; background:transparent; color:inherit; font-size:13px; line-height:1; padding:2px; }
+.platform-copy-editor__keywords .tag-chip button:disabled { opacity:0.35; }
+.platform-copy-editor__add-keyword { display:flex; gap:8px; }
+.platform-copy-editor__add-keyword input { flex:1; padding:10px 12px; border:1px solid #cbd5e1; border-radius:var(--radius-md, 12px); font-size:15px; }
+.platform-copy-editor__add-keyword button { padding:10px 16px; border:1px solid #cbd5e1; border-radius:var(--radius-md, 12px); background:#fff; font-size:15px; font-weight:650; }
+
+.platform-copy-editor__tools { display:flex; flex-direction:column; gap:8px; }
+.platform-copy-editor__tones { display:flex; gap:8px; flex-wrap:wrap; }
+.platform-copy-editor__tones button { padding:10px 14px; border:1px solid #cbd5e1; border-radius:999px; background:#fff; font-size:15px; }
+.platform-copy-editor__restore { align-self:flex-start; padding:8px 0; border:0; background:transparent; color:#475569; font-size:14px; text-decoration:underline; }
+.platform-copy-editor__restore:disabled { opacity:0.4; text-decoration:none; }
+
+.platform-copy-editor__rules summary { font-size:14px; font-weight:650; color:#475569; cursor:pointer; }
+.platform-copy-editor__rules ul { margin:8px 0 0; padding-left:1.1rem; font-size:14px; line-height:1.7; color:#475569; }

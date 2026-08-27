@@ -5,11 +5,23 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapkeeper.adapters.seo_generation import DeterministicSEOStub
-from mapkeeper.api.schemas.seo import ContentGenerationInput, PlatformContentResult
+from mapkeeper.api.schemas.seo import (
+    ContentGenerationInput,
+    EditContentDraftsRequest,
+    PlatformContentResult,
+    PlatformDraftEdit,
+)
 from mapkeeper.core.errors import InvalidStateError, ResourceNotFoundError
-from mapkeeper.models import ContentGenerationStatus, LocalSEOContent, SourceReview, StoreProfile
+from mapkeeper.models import (
+    ContentGenerationStatus,
+    LocalSEOContent,
+    Platform,
+    SourceReview,
+    StoreProfile,
+)
 from mapkeeper.services.seo_generation import (
     create_generation,
+    edit_generation_drafts,
     regenerate_generation,
     reject_generation,
 )
@@ -154,3 +166,79 @@ async def test_source_review_must_belong_to_the_store(db_session: AsyncSession) 
 
     with pytest.raises(ResourceNotFoundError):
         _ = await create_generation(db_session, generation_input(uuid4()), profile.id)
+
+
+def draft_edits(text: str) -> EditContentDraftsRequest:
+    """Render one owner edit per platform."""
+    return EditContentDraftsRequest(
+        drafts=tuple(
+            PlatformDraftEdit(
+                platform=platform,
+                draft_text=f"{text} ({platform.value})",
+                keywords=("사장님수정",),
+            )
+            for platform in (Platform.GOOGLE, Platform.NAVER, Platform.KAKAO)
+        )
+    )
+
+
+async def test_owner_edits_replace_the_stored_copy_approval_will_publish(
+    db_session: AsyncSession,
+) -> None:
+    # Given: a generation whose copy the owner corrected on the review screen.
+    profile = await make_store_profile(db_session)
+    initial = await create_generation(db_session, generation_input(), profile.id)
+
+    # When: the edits are stored.
+    edited = await edit_generation_drafts(
+        db_session,
+        initial.generation_id,
+        draft_edits("사장님이 직접 고친 문구"),
+    )
+
+    # Then: what approval publishes is the text the owner read, not the original.
+    assert edited.revision == 2
+    assert all(draft.draft_text.startswith("사장님이 직접 고친 문구") for draft in edited.drafts)
+    assert all(draft.keywords == ("사장님수정",) for draft in edited.drafts)
+    stored = (
+        await db_session.execute(
+            select(LocalSEOContent).where(
+                LocalSEOContent.content_generation_id == initial.generation_id
+            )
+        )
+    ).scalars()
+    assert all("사장님이 직접 고친 문구" in draft.draft_text for draft in stored)
+
+
+async def test_owner_edits_are_masked_like_every_other_stored_text(
+    db_session: AsyncSession,
+) -> None:
+    # Given: an edit carrying a customer's phone number.
+    profile = await make_store_profile(db_session)
+    initial = await create_generation(db_session, generation_input(), profile.id)
+
+    # When: it is stored.
+    edited = await edit_generation_drafts(
+        db_session,
+        initial.generation_id,
+        draft_edits("문의는 010-1234-5678"),
+    )
+
+    # Then: the masking boundary holds for owner-written text too.
+    assert all("010-1234-5678" not in draft.draft_text for draft in edited.drafts)
+
+
+@pytest.mark.parametrize(
+    "status", [ContentGenerationStatus.APPROVED, ContentGenerationStatus.REJECTED]
+)
+async def test_editing_a_non_draft_is_refused(
+    db_session: AsyncSession,
+    status: ContentGenerationStatus,
+) -> None:
+    # Given: a generation that was already approved or rejected.
+    profile = await make_store_profile(db_session)
+    generation = await make_generation(db_session, profile.id, status=status)
+
+    # When / Then: settled content is not rewritten behind the decision.
+    with pytest.raises(InvalidStateError):
+        _ = await edit_generation_drafts(db_session, generation.id, draft_edits("늦은 수정"))

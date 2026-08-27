@@ -69,7 +69,10 @@ describe('민감정보 경계', () => {
       storeProfileId: 'store-123',
       purpose: 'INTRODUCTION',
       briefText: '따뜻한 가게. 친절함. 만두전골.',
-      seedKeywords: ['맛있는메뉴', '친절함', '다시찾는집'],
+      // No reviewSummary prop and no analysed reviews, so there are no review
+      // keywords to send. Inventing three to satisfy the old minimum is what put
+      // "#맛있는메뉴 #친절함" in copy for a store with zero reviews.
+      seedKeywords: [],
       sourceReviewIds: [DEMO_SOURCE_REVIEW_ID],
     });
     expect(JSON.stringify(body)).not.toContain(sensitiveReview);

@@ -19,6 +19,7 @@ from mapkeeper.api.schemas.seo import (
     ContentGenerationApprovalResponse,
     ContentGenerationResponse,
     CreateContentGenerationRequest,
+    EditContentDraftsRequest,
     RegenerateContentGenerationRequest,
 )
 from mapkeeper.core.config import get_settings
@@ -26,6 +27,9 @@ from mapkeeper.db.session import get_session, get_session_factory
 from mapkeeper.models import ApiResponseStatus, ContentGenerationStatus, Platform
 from mapkeeper.services.generation_approval import approve_generation as approve_generation_service
 from mapkeeper.services.seo_generation import create_generation as create_generation_service
+from mapkeeper.services.seo_generation import (
+    edit_generation_drafts as edit_generation_drafts_service,
+)
 from mapkeeper.services.seo_generation import regenerate_generation as regenerate_generation_service
 from mapkeeper.services.seo_generation import reject_generation as reject_generation_service
 from mapkeeper.services.sync_runner import run_job_in_background
@@ -81,6 +85,23 @@ async def regenerate_generation(
 ) -> GenerationEnvelope:
     """Replace all platform results and increment revision on a DRAFT."""
     data = await regenerate_generation_service(session, generation_id, body)
+    await session.commit()
+    return _success(data)
+
+
+@router.patch(
+    "/{generationId}/drafts",
+    status_code=status.HTTP_200_OK,
+    responses=error_responses(*TRANSITION_ERRORS),
+    summary="Replace the copy of a DRAFT generation with the owner's edits",
+)
+async def edit_generation_drafts(
+    generation_id: Annotated[UUID, Path(alias="generationId")],
+    body: EditContentDraftsRequest,
+    session: SessionDep,
+) -> GenerationEnvelope:
+    """Store the owner's corrections so approval publishes what they read."""
+    data = await edit_generation_drafts_service(session, generation_id, body)
     await session.commit()
     return _success(data)
 

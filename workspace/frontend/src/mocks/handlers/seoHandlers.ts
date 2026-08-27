@@ -53,6 +53,24 @@ export const seoHandlers = [
       revision: 2,
     }), responseOptions());
   }),
+  http.patch('*/api/v1/seo/generations/:generationId/drafts', async ({ params, request }) => {
+    await mockDelay(scenarioLatency());
+    const body = await request.json() as { drafts?: { platform?: string; draftText?: string; keywords?: string[] }[] };
+    const edits = body.drafts;
+    if (params.generationId !== 'gen-001' || !Array.isArray(edits) || edits.length !== 3) {
+      return HttpResponse.json(errorEnvelope(seoValidationErrorFixture), { status: 422, ...responseOptions() });
+    }
+    return HttpResponse.json(successEnvelope({
+      ...seoGenerationFixture,
+      revision: 2,
+      drafts: seoGenerationFixture.drafts.map((draft) => {
+        const edit = edits.find((item) => item.platform === draft.platform);
+        return edit?.draftText
+          ? { ...draft, draftText: edit.draftText, keywords: edit.keywords ?? draft.keywords }
+          : draft;
+      }),
+    }), responseOptions());
+  }),
   http.post('*/api/v1/seo/generations/:generationId/reject', async ({ params, request }) => {
     await mockDelay(scenarioLatency());
     if (params.generationId !== 'gen-001' || await request.text() !== '') {

@@ -12,6 +12,7 @@ from mapkeeper.adapters.seo_generation import SEOContentGenerator, get_seo_gener
 from mapkeeper.api.schemas.seo import (
     ContentGenerationInput,
     ContentGenerationResponse,
+    EditContentDraftsRequest,
     PlatformContentResult,
 )
 from mapkeeper.core.errors import InvalidStateError, ResourceNotFoundError
@@ -232,6 +233,32 @@ async def regenerate_generation(
         ),
         generation=generation,
     )
+
+
+async def edit_generation_drafts(
+    session: AsyncSession,
+    generation_id: UUID,
+    body: EditContentDraftsRequest,
+) -> ContentGenerationResponse:
+    """Replace the copy and keywords of a locked DRAFT with the owner's edits.
+
+    The generated text is a draft the owner is asked to check, so their correction
+    has to be the thing approval publishes. Revision moves because the stored
+    content changed, the same as a regeneration.
+    """
+    generation = await _load_locked_generation(session, generation_id)
+    if generation.status is not ContentGenerationStatus.DRAFT:
+        raise InvalidStateError(GENERATION_NOT_DRAFT_MESSAGE)
+    stored = {draft.platform: draft for draft in await _load_drafts(session, generation.id)}
+    for edit in body.drafts:
+        draft = stored.get(edit.platform)
+        if draft is None:
+            raise ResourceNotFoundError(GENERATION_NOT_FOUND_MESSAGE)
+        draft.draft_text = mask_customer_pii(edit.draft_text)
+        draft.keywords = [mask_customer_pii(keyword) for keyword in edit.keywords]
+    generation.revision += 1
+    await session.flush()
+    return _response(generation, await _load_drafts(session, generation.id))
 
 
 async def reject_generation(

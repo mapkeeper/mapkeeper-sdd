@@ -112,6 +112,13 @@ def build_prompt(
     rules = "\n".join(
         f"- {platform.value}: {guidance}" for platform, guidance in PLATFORM_GUIDANCE.items()
     )
+    # No reviews means no review keywords. Naming the line with nothing after it
+    # invites the model to fill the gap, so the line disappears instead.
+    keyword_block = (
+        f"\n반드시 고려할 키워드: {', '.join(content_input.seed_keywords)}\n"
+        if content_input.seed_keywords
+        else ""
+    )
     reviews = "\n".join(f"- {review}" for review in source_reviews[:MAX_SOURCE_REVIEWS])
     review_block = f"\n참고 리뷰(마스킹 완료):\n{reviews}\n" if reviews else ""
     match content_input.purpose:
@@ -138,14 +145,13 @@ def build_prompt(
 
 사장님이 강조하고 싶은 내용:
 {content_input.brief_text}
-
-반드시 고려할 키워드: {", ".join(content_input.seed_keywords)}
-{review_block}
+{keyword_block}{review_block}
 플랫폼별 작성 규칙:
 {rules}
 
 공통 규칙:
 - 입력에 없는 사실을 만들지 않는다. 과장하지 않는다.
+- 리뷰가 주어지지 않았으면 손님 반응이나 평판을 지어내지 않는다. 위에 적힌 내용만 쓴다.
 - 고객 이름·전화번호 같은 개인정보를 쓰지 않는다.
 - draftText는 {DRAFT_TEXT_MAX_LENGTH}자 이하로 쓴다.
 - keywords는 {PLATFORM_KEYWORDS_MIN}~{PLATFORM_KEYWORDS_MAX}개이며 각 {KEYWORD_MAX_LENGTH}자 이하다.

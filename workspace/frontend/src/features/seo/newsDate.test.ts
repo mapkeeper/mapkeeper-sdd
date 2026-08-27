@@ -44,3 +44,27 @@ describe('parseNewsSchedule', () => {
     expect(parseNewsSchedule(text, referenceDate)).toEqual({ range: null, hasNoDate: text !== '곧 진행할 예정이에요' });
   });
 });
+
+describe('parseNewsSchedule 공휴일', () => {
+  test('추석 연휴는 사장님이 날짜를 찾아 입력하지 않아도 확정된다', () => {
+    const parsed = parseNewsSchedule('추석 연휴 정상 영업합니다', referenceDate);
+
+    expect(parsed.range).toEqual({ start: '2026-09-24', end: '2026-09-26' });
+    expect(parsed.holiday?.name).toBe('2026년 추석 연휴');
+  });
+
+  test('이미 지난 연휴보다 다가오는 연휴를 먼저 고른다', () => {
+    // 2026-08-13 기준으로 설 연휴는 지났고 다음 설은 2027년이다.
+    expect(parseNewsSchedule('설 연휴에 쉬어요', referenceDate).range).toEqual({
+      start: '2027-02-06',
+      end: '2027-02-09',
+    });
+  });
+
+  test('직접 말한 날짜가 공휴일 이름보다 우선한다', () => {
+    expect(parseNewsSchedule('추석은 9월 25일 하루만 쉬어요', referenceDate).range).toEqual({
+      start: '2026-09-25',
+      end: '2026-09-25',
+    });
+  });
+});

@@ -84,8 +84,10 @@ describe('SeoGenerationWizard mobile flow', () => {
       seedKeywords: ['속이알참', '친절함', '주차편함'],
       sourceReviewIds: [DEMO_SOURCE_REVIEW_ID],
     });
-    expect(screen.getByText('추천 소개글')).toBeInTheDocument();
-    expect(screen.getByText('#속이알참')).toBeInTheDocument();
+    // The copy is editable where it is read, and the hashtags shown beside it are
+    // the ones the model returned for this platform.
+    expect(screen.getByRole('textbox', { name: /구글에 올릴 문구/ })).toHaveValue('추천 소개글');
+    expect(screen.getByText('#구글추천')).toBeInTheDocument();
   });
 
   test('문구 생성이 오래 걸리는 동안 대기 안내 문구를 보여준다', async () => {
@@ -188,7 +190,7 @@ describe('SeoGenerationWizard mobile flow', () => {
     render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
     await reachRecommendation(user);
 
-    await user.click(screen.getByRole('button', { name: '내용 수정' }));
+    await user.click(screen.getByRole('button', { name: '질문 다시 답하기' }));
 
     // Prior answers are kept, not wiped, so the owner edits only what changed.
     expect(await screen.findByText('정성이 가득한 동네 맛집')).toBeInTheDocument();
@@ -201,8 +203,11 @@ describe('SeoGenerationWizard mobile flow', () => {
     await user.click(screen.getByRole('button', { name: '전송' }));
     await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
 
-    expect(await screen.findByText('수정된 구글 문구')).toBeInTheDocument();
-    expect(screen.getAllByText('#재생성')).toHaveLength(3);
+    // Each platform keeps its own text, reachable from its own tab.
+    expect(await screen.findByDisplayValue('수정된 구글 문구')).toBeInTheDocument();
+    expect(screen.getByText('#재생성')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '네이버' }));
+    expect(screen.getByRole('textbox', { name: /네이버에 올릴 문구/ })).toHaveValue('수정된 네이버 문구');
     expect(regenerateBody).toMatchObject({
       purpose: 'INTRODUCTION',
       briefText: '정성이 가득한 동네 맛집. 깊은 국물과 친절한 서비스. 김치만두.',
@@ -327,7 +332,9 @@ describe('SeoGenerationWizard mobile flow', () => {
     await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '곧 진행할 예정이에요');
     await user.click(screen.getByRole('button', { name: '전송' }));
     expect(await screen.findByText(/정확한 시작일과 종료일을 알려주세요/)).toBeInTheDocument();
-    expect(screen.getByText('질문 4 / 4')).toBeInTheDocument();
+    // A follow-up is announced as one, not renumbered into "질문 4 / 4" after the
+    // purpose screen promised three.
+    expect(screen.getByRole('heading', { name: 'AI 인터뷰' }).parentElement).toHaveTextContent('추가 질문');
     await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '8월 15일부터 16일까지예요');
     await user.click(screen.getByRole('button', { name: '전송' }));
     expect(await screen.findByRole('heading', { name: '소식 기간을 확인해 주세요' })).toBeInTheDocument();
@@ -337,10 +344,10 @@ describe('SeoGenerationWizard mobile flow', () => {
     await user.click(screen.getByRole('button', { name: '이 기간으로 문구 만들기' }));
     await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
     expect(await screen.findByRole('heading', { name: '가게 소식 문구를 확인해 주세요' })).toBeInTheDocument();
-    expect(screen.getByRole('article', { name: '가게 소식 미리보기' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: '가게 소식 요약' })).toBeInTheDocument();
     expect(screen.getByLabelText('반영한 요청 내용')).toHaveTextContent('이번 주말 할인 이벤트. 만두전골을 할인해요.');
     expect(screen.getByRole('button', { name: '이 소식을 3사에 게시' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '내용 수정' }));
+    await user.click(screen.getByRole('button', { name: '질문 다시 답하기' }));
 
     // The interview is shown again, but prior answers are kept rather than
     // wiped: no quick-start prompt for a fresh answer, and no input box
@@ -550,6 +557,201 @@ describe('SeoGenerationWizard mobile flow', () => {
         reviewSummary={{ summary: '키워드가 비어 있는 분석 결과예요.', keywords: [], reviewCount: 3 }}
       />,
     );
-    expect(screen.getByText('#맛있는메뉴')).toBeInTheDocument();
+    // Nothing analysed means nothing to show. Filling the gap with defaults put
+    // "#맛있는메뉴 #친절함 #다시찾는집" beside "총 0건" and into the copy itself.
+    expect(screen.queryByLabelText('주요 리뷰 키워드')).not.toBeInTheDocument();
+    expect(screen.getByText(/리뷰가 쌓인 뒤에 알려드릴게요/)).toBeInTheDocument();
+  });
+
+  test('리뷰가 0건이면 키워드를 지어내지 않고 생성 요청에도 넣지 않는다', async () => {
+    const user = userEvent.setup();
+    let requestBody: unknown;
+    server.use(http.post('*/api/v1/seo/generations', async ({ request }) => {
+      requestBody = await request.json();
+      return HttpResponse.json({
+        success: true, status: 'SUCCESS',
+        data: {
+          generationId: 'gen-001', status: 'DRAFT', revision: 1,
+          drafts: [
+            { draftId: 'draft-001', platform: 'google', draftText: '구글 문구', keywords: ['만두전골'], contentRules: ['rule'] },
+            { draftId: 'draft-002', platform: 'naver', draftText: '네이버 문구', keywords: ['만두전골'], contentRules: ['rule'] },
+            { draftId: 'draft-003', platform: 'kakao', draftText: '카카오 문구', keywords: ['만두전골'], contentRules: ['rule'] },
+          ],
+        }, error: null, timestamp: '2026-08-27T00:00:00Z',
+      }, { status: 201 });
+    }));
+    render(
+      <SeoGenerationWizard
+        storeProfileId="store-123"
+        sourceReviews={[]}
+        reviewSummary={{ summary: '아직 분석할 리뷰가 없어요.', keywords: [], reviewCount: 0 }}
+      />,
+    );
+
+    expect(screen.getByText('총 0건 분석')).toBeInTheDocument();
+    expect(screen.queryByLabelText('주요 리뷰 키워드')).not.toBeInTheDocument();
+
+    await reachInterview(user);
+    await answerInterview(user, ['정성이 가득한 동네 맛집', '깊은 국물과 친절한 서비스', '만두전골']);
+    await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
+    expect(await screen.findByRole('heading', { name: '3사 전체 추천 문구를 확인해 주세요' })).toBeInTheDocument();
+
+    // Nothing was analysed, so nothing about customer reaction is asserted to
+    // the model either.
+    expect(requestBody).toMatchObject({ seedKeywords: [] });
+  });
+
+  test('플랫폼 탭마다 서로 다른 문구를 보여준다', async () => {
+    const user = userEvent.setup();
+    server.use(http.post('*/api/v1/seo/generations', () => HttpResponse.json({
+      success: true, status: 'SUCCESS',
+      data: {
+        generationId: 'gen-001', status: 'DRAFT', revision: 1,
+        drafts: [
+          { draftId: 'draft-001', platform: 'google', draftText: '구글용 사실 중심 문구', keywords: ['구글'], contentRules: ['사실 중심'] },
+          { draftId: 'draft-002', platform: 'naver', draftText: '네이버용 검색어 포함 문구', keywords: ['네이버'], contentRules: ['검색어 포함'] },
+          { draftId: 'draft-003', platform: 'kakao', draftText: '카카오용 짧은 문구', keywords: ['카카오'], contentRules: ['짧게'] },
+        ],
+      }, error: null, timestamp: '2026-08-27T00:00:00Z',
+    }, { status: 201 })));
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachRecommendation(user);
+
+    expect(screen.getByRole('textbox', { name: /구글에 올릴 문구/ })).toHaveValue('구글용 사실 중심 문구');
+    await user.click(screen.getByRole('tab', { name: '네이버' }));
+    expect(screen.getByRole('textbox', { name: /네이버에 올릴 문구/ })).toHaveValue('네이버용 검색어 포함 문구');
+    await user.click(screen.getByRole('tab', { name: '카카오' }));
+    expect(screen.getByRole('textbox', { name: /카카오에 올릴 문구/ })).toHaveValue('카카오용 짧은 문구');
+  });
+
+  test('결과 화면에서 고친 문구와 해시태그가 승인 전에 저장된다', async () => {
+    const user = userEvent.setup();
+    let editBody: unknown;
+    let approveCalls = 0;
+    server.use(
+      http.post('*/api/v1/seo/generations', () => HttpResponse.json({
+        success: true, status: 'SUCCESS',
+        data: {
+          generationId: 'gen-001', status: 'DRAFT', revision: 1,
+          drafts: [
+            { draftId: 'draft-001', platform: 'google', draftText: '구글 문구', keywords: ['구글'], contentRules: ['rule'] },
+            { draftId: 'draft-002', platform: 'naver', draftText: '네이버 문구', keywords: ['네이버'], contentRules: ['rule'] },
+            { draftId: 'draft-003', platform: 'kakao', draftText: '카카오 문구', keywords: ['카카오'], contentRules: ['rule'] },
+          ],
+        }, error: null, timestamp: '2026-08-27T00:00:00Z',
+      }, { status: 201 })),
+      http.patch('*/api/v1/seo/generations/gen-001/drafts', async ({ request }) => {
+        editBody = await request.json();
+        return HttpResponse.json({
+          success: true, status: 'SUCCESS',
+          data: {
+            generationId: 'gen-001', status: 'DRAFT', revision: 2,
+            drafts: [
+              { draftId: 'draft-001', platform: 'google', draftText: '사장님이 고친 구글 문구', keywords: ['구글', '만두전골'], contentRules: ['rule'] },
+              { draftId: 'draft-002', platform: 'naver', draftText: '네이버 문구', keywords: ['네이버'], contentRules: ['rule'] },
+              { draftId: 'draft-003', platform: 'kakao', draftText: '카카오 문구', keywords: ['카카오'], contentRules: ['rule'] },
+            ],
+          }, error: null, timestamp: '2026-08-27T00:00:00Z',
+        });
+      }),
+      http.post('*/api/v1/seo/generations/gen-001/approve', () => {
+        approveCalls += 1;
+        return HttpResponse.json({
+          success: true, status: 'PROCESSING',
+          data: {
+            generationId: 'gen-001',
+            generationStatus: 'APPROVED',
+            approvedPlatforms: ['google', 'naver', 'kakao'],
+            syncJobId: 'job-001',
+            status: 'PENDING',
+            statusUrl: '/api/v1/sync-jobs/job-001',
+          }, error: null, timestamp: '2026-08-27T00:00:00Z',
+        });
+      }),
+    );
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachRecommendation(user);
+
+    const copy = screen.getByRole('textbox', { name: /구글에 올릴 문구/ });
+    await user.clear(copy);
+    await user.type(copy, '사장님이 고친 구글 문구');
+    await user.type(screen.getByLabelText('해시태그 추가'), '만두전골');
+    await user.click(screen.getByRole('button', { name: '추가' }));
+    await user.click(screen.getByRole('button', { name: '3사 전체 승인' }));
+
+    // Approval publishes what the server stored, so the edit has to be written
+    // down first or the owner's correction never gets published.
+    await waitFor(() => expect(approveCalls).toBe(1));
+    expect(editBody).toMatchObject({
+      drafts: expect.arrayContaining([
+        { platform: 'google', draftText: '사장님이 고친 구글 문구', keywords: ['구글', '만두전골'] },
+      ]),
+    });
+  });
+
+  test('고치지 않고 승인하면 저장 호출 없이 바로 승인한다', async () => {
+    const user = userEvent.setup();
+    let editCalls = 0;
+    server.use(
+      http.patch('*/api/v1/seo/generations/gen-001/drafts', () => {
+        editCalls += 1;
+        return HttpResponse.json({ success: false, status: 'FAILED', data: null, error: null, timestamp: '' }, { status: 500 });
+      }),
+    );
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachRecommendation(user);
+    await user.click(screen.getByRole('button', { name: '3사 전체 승인' }));
+
+    expect(await screen.findByRole('heading', { name: '3사에 반영되었습니다!' })).toBeInTheDocument();
+    expect(editCalls).toBe(0);
+  });
+
+  test('게시 기간 날짜를 지우면 플랫폼 노출에 미치는 영향을 알려준다', async () => {
+    const user = userEvent.setup();
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachNewsInterview(user);
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '할인 행사를 알려드리고 싶어요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/어떤 메뉴를 얼마나 할인하나요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '만두전골을 20% 할인해요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/할인 행사는 언제부터 언제까지인가요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '9월 1일부터 9월 3일까지예요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    await user.click(await screen.findByRole('button', { name: '이 기간으로 문구 만들기' }));
+    await user.click(screen.getByRole('button', { name: '문구 추천받기' }));
+    expect(await screen.findByRole('heading', { name: '가게 소식 문구를 확인해 주세요' })).toBeInTheDocument();
+
+    const copy = screen.getByRole('textbox', { name: /구글에 올릴 문구/ });
+    await user.clear(copy);
+    await user.type(copy, '만두전골 할인합니다');
+
+    expect(screen.getByText(/카카오맵·네이버는 안내가 정확하고 구체적일수록 잘 노출돼요/)).toBeInTheDocument();
+  });
+
+  test('추석 연휴 소식은 날짜를 다시 묻지 않고 이름과 함께 확인만 받는다', async () => {
+    const user = userEvent.setup();
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachNewsInterview(user);
+
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '추석 연휴 정상 영업합니다');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    // The holiday decides which questions come next: whether the store is open,
+    // then its hours — not "어떤 혜택이 있는지", which invites an offer that does
+    // not exist.
+    expect(await screen.findByText(/연휴에 정상 영업하시나요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '연휴 내내 정상 영업해요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(await screen.findByText(/연휴 동안 영업시간은 어떻게 되나요/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '평소와 같아요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    // The owner already said which days they meant, so the app reads them back
+    // by name instead of asking them to look 9월 24일~26일 up.
+    expect(await screen.findByText(/2026년 추석 연휴인 9월 24일부터 9월 26일까지가 맞나요/)).toBeInTheDocument();
+    expect(screen.getByLabelText('시작일')).toHaveValue('2026-09-24');
+    expect(screen.getByLabelText('종료일')).toHaveValue('2026-09-26');
+    expect(screen.getByRole('button', { name: '맞아요, 이 기간으로 만들기' })).toBeInTheDocument();
   });
 });

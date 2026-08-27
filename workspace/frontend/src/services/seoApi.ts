@@ -3,6 +3,7 @@ import type {
   ApiResult,
   CreateSeoGenerationRequest,
   CreateSeoGenerationResponse,
+  EditSeoDraftsRequest,
   RegenerateSeoGenerationRequest,
   RegenerateSeoGenerationResponse,
   SeoApprovalResponse,
@@ -30,6 +31,28 @@ export function regenerateSeoGeneration(
     seoGenerationResponseSchema,
     {
     method: 'POST',
+    body: request,
+    ...(signal ? { signal } : {}),
+    },
+  );
+}
+
+/**
+ * Store the owner's corrections before approval publishes them.
+ *
+ * Approval sends no content of its own, so an edit that stays in the browser is
+ * an edit that never gets published.
+ */
+export function updateSeoDrafts(
+  generationId: string,
+  request: EditSeoDraftsRequest,
+  signal?: AbortSignal,
+): Promise<ApiResult<RegenerateSeoGenerationResponse>> {
+  return apiRequestParsed(
+    `/api/v1/seo/generations/${encodeURIComponent(generationId)}/drafts`,
+    seoGenerationResponseSchema,
+    {
+    method: 'PATCH',
     body: request,
     ...(signal ? { signal } : {}),
     },

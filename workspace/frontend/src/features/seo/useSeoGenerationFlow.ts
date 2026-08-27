@@ -6,6 +6,7 @@ import {
   generateSeoDrafts,
   regenerateSeoGeneration,
   rejectSeoGeneration,
+  updateSeoDrafts,
 } from '@/services/seoApi';
 import type { SeoDraft } from '@/types/domain';
 import { seoGenerationFixture } from '@/mocks/fixtures/seoFixtures';
@@ -13,6 +14,12 @@ import { seoGenerationFixture } from '@/mocks/fixtures/seoFixtures';
 export interface SeoSyncHandoff {
   syncJobId: string;
   statusUrl: string;
+}
+
+export interface SeoDraftEdit {
+  platform: SeoDraft['platform'];
+  draftText: string;
+  keywords: string[];
 }
 
 export interface SeoGenerationInput {
@@ -27,10 +34,12 @@ interface SeoGenerationFlow {
   revision: number | null;
   drafts: SeoDraft[];
   isGenerating: boolean;
+  isSavingEdits: boolean;
   isRejecting: boolean;
   isApproving: boolean;
   errorMessage: string | null;
   generate(request: SeoGenerationInput): Promise<SeoDraft[] | null>;
+  saveEdits(drafts: readonly SeoDraftEdit[]): Promise<boolean>;
   rejectFromButton(): Promise<boolean>;
   approveFromButton(): Promise<boolean>;
   setValidationError(message: string): void;
@@ -58,6 +67,7 @@ export function useSeoGenerationFlow(
   const [revision, setRevision] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<SeoDraft[]>([]);
   const [isGenerating, setGenerating] = useState(false);
+  const [isSavingEdits, setSavingEdits] = useState(false);
   const [isRejecting, setRejecting] = useState(false);
   const [isApproving, setApproving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -90,6 +100,36 @@ export function useSeoGenerationFlow(
       setGenerating(false);
     }
   }, [generationId, isGenerating, storeProfileId]);
+
+  /**
+   * Write the owner's edits down before anything is approved.
+   *
+   * Approval publishes what is stored, so skipping this would publish the text
+   * the owner just corrected.
+   */
+  const saveEdits = useCallback(async (edits: readonly SeoDraftEdit[]) => {
+    if (!generationId || isSavingEdits) return false;
+    setSavingEdits(true);
+    setErrorMessage(null);
+    try {
+      const result = await updateSeoDrafts(generationId, { drafts: edits.map((edit) => ({ ...edit })) });
+      setRevision(result.data.revision);
+      setDrafts(result.data.drafts.map((draft) => ({ ...draft, status: draft.status ?? 'DRAFT' })));
+      return true;
+    } catch (error: unknown) {
+      if (import.meta.env.VITE_API_MOCKING === 'true') {
+        setDrafts((current) => current.map((draft) => {
+          const edit = edits.find((item) => item.platform === draft.platform);
+          return edit ? { ...draft, draftText: edit.draftText, keywords: [...edit.keywords] } : draft;
+        }));
+        return true;
+      }
+      setErrorMessage(safeUserMessage(error));
+      return false;
+    } finally {
+      setSavingEdits(false);
+    }
+  }, [generationId, isSavingEdits]);
 
   const rejectFromButton = useCallback(async () => {
     if (!generationId || isRejecting) return false;
@@ -135,10 +175,12 @@ export function useSeoGenerationFlow(
     revision,
     drafts,
     isGenerating,
+    isSavingEdits,
     isRejecting,
     isApproving,
     errorMessage,
     generate,
+    saveEdits,
     rejectFromButton,
     approveFromButton,
     setValidationError: setErrorMessage,

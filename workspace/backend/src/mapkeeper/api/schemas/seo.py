@@ -11,7 +11,10 @@ from mapkeeper.models.enums import ContentGenerationStatus, ContentPurpose, Plat
 BRIEF_TEXT_MAX_LENGTH: Final = 500
 DRAFT_TEXT_MAX_LENGTH: Final = 750
 KEYWORD_MAX_LENGTH: Final = 30
-SEED_KEYWORDS_MIN: Final = 1
+# A store with no reviews yet has no keywords, and inventing three so the request
+# would validate is how "#맛있는메뉴 #친절함" ended up in copy for a store with
+# zero reviews. An empty list is the honest input and the prompt handles it.
+SEED_KEYWORDS_MIN: Final = 0
 SEED_KEYWORDS_MAX: Final = 5
 PLATFORM_KEYWORDS_MIN: Final = 1
 PLATFORM_KEYWORDS_MAX: Final = 10
@@ -119,6 +122,42 @@ class PlatformContentResult(ApiSchema):
         if isinstance(value, Sequence) and not isinstance(value, str):
             return normalize_keywords([item for item in value if isinstance(item, str)])
         return value
+
+
+class PlatformDraftEdit(ApiSchema):
+    """One platform's copy and keywords as the owner edited them."""
+
+    platform: Platform
+    draft_text: DraftText
+    keywords: PlatformKeywords
+
+    @field_validator("keywords", mode="before")
+    @classmethod
+    def _normalize_keywords(cls, value: object) -> object:
+        if isinstance(value, Sequence) and not isinstance(value, str):
+            return normalize_keywords([item for item in value if isinstance(item, str)])
+        return value
+
+
+class EditContentDraftsRequest(ApiSchema):
+    """Owner edits replacing the copy of a DRAFT generation.
+
+    Approval publishes what is stored, so an edit the owner makes on the review
+    screen has to be written down before it. Anything else publishes the text
+    they just corrected.
+    """
+
+    drafts: Annotated[tuple[PlatformDraftEdit, ...], Field(min_length=3, max_length=3)]
+
+    @model_validator(mode="after")
+    def _validate_platform_coverage(self) -> Self:
+        platforms = frozenset(draft.platform for draft in self.drafts)
+        if platforms != REQUIRED_PLATFORMS:
+            raise PydanticCustomError(
+                INVALID_PLATFORM_COVERAGE,
+                INVALID_PLATFORM_COVERAGE_MESSAGE,
+            )
+        return self
 
 
 class ContentGenerationResponse(ApiSchema):

@@ -1,3 +1,6 @@
+import { matchKoreanHoliday } from '@/features/seo/holidays';
+import type { KoreanHoliday } from '@/features/seo/holidays';
+
 export interface NewsDateRange {
   start: string;
   end: string;
@@ -6,6 +9,8 @@ export interface NewsDateRange {
 export interface ParsedNewsSchedule {
   range: NewsDateRange | null;
   hasNoDate: boolean;
+  /** Set when the range came from a named holiday, so it can be read back by name. */
+  holiday?: KoreanHoliday;
 }
 
 function toDateString(date: Date): string {
@@ -118,8 +123,13 @@ export function parseNewsSchedule(text: string, referenceDate = new Date()): Par
   const normalized = text.trim();
   const hasNoDate = /(?:없어요|없습니다|없음|기간\s*없|날짜\s*없|미정|정하지\s*않)/.test(normalized);
   if (hasNoDate) return { range: null, hasNoDate: true };
-  return {
-    range: parseExplicitRange(normalized, referenceDate) ?? parseSingleDate(normalized, referenceDate) ?? parseRelativeRange(normalized, referenceDate),
-    hasNoDate: false,
-  };
+  const explicit = parseExplicitRange(normalized, referenceDate) ?? parseSingleDate(normalized, referenceDate);
+  if (explicit) return { range: explicit, hasNoDate: false };
+  // "추석 연휴" already names the days. Making the owner look them up and type
+  // them back was the step the QA pass hit twice in one interview.
+  const holiday = matchKoreanHoliday(normalized, referenceDate);
+  if (holiday) {
+    return { range: { start: holiday.start, end: holiday.end }, hasNoDate: false, holiday };
+  }
+  return { range: parseRelativeRange(normalized, referenceDate), hasNoDate: false };
 }

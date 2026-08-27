@@ -555,7 +555,7 @@
               "type": "string"
             },
             "maxItems": 5,
-            "minItems": 1,
+            "minItems": 0,
             "title": "Seedkeywords",
             "type": "array"
           },
@@ -616,6 +616,26 @@
           "locale"
         ],
         "title": "CreateStoreChangeProposalRequest",
+        "type": "object"
+      },
+      "EditContentDraftsRequest": {
+        "additionalProperties": false,
+        "description": "Owner edits replacing the copy of a DRAFT generation.\n\nApproval publishes what is stored, so an edit the owner makes on the review\nscreen has to be written down before it. Anything else publishes the text\nthey just corrected.",
+        "properties": {
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformDraftEdit"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Drafts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "drafts"
+        ],
+        "title": "EditContentDraftsRequest",
         "type": "object"
       },
       "ErrorEnvelope": {
@@ -808,6 +828,39 @@
         "title": "PlatformContentResult",
         "type": "object"
       },
+      "PlatformDraftEdit": {
+        "additionalProperties": false,
+        "description": "One platform's copy and keywords as the owner edited them.",
+        "properties": {
+          "draftText": {
+            "maxLength": 750,
+            "minLength": 1,
+            "title": "Drafttext",
+            "type": "string"
+          },
+          "keywords": {
+            "items": {
+              "maxLength": 30,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Keywords",
+            "type": "array"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          }
+        },
+        "required": [
+          "platform",
+          "draftText",
+          "keywords"
+        ],
+        "title": "PlatformDraftEdit",
+        "type": "object"
+      },
       "PlatformErrorCode": {
         "description": "Normalized failure reported by one external platform adapter.",
         "enum": [
@@ -927,7 +980,7 @@
               "type": "string"
             },
             "maxItems": 5,
-            "minItems": 1,
+            "minItems": 0,
             "title": "Seedkeywords",
             "type": "array"
           },
@@ -1537,6 +1590,128 @@
           }
         },
         "summary": "Approve a whole DRAFT generation and start synchronization",
+        "tags": [
+          "seo"
+        ]
+      }
+    },
+    "/api/v1/seo/generations/{generationId}/drafts": {
+      "patch": {
+        "description": "Store the owner's corrections so approval publishes what they read.",
+        "operationId": "edit_generation_drafts_api_v1_seo_generations__generationId__drafts_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "generationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Generationid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional client trace id. The server generates one when it is absent.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional client trace id. The server generates one when it is absent.",
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditContentDraftsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope_ContentGenerationResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unparseable JSON or an unusable request combination. error.code is one of: MALFORMED_REQUEST."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "No resource matches the requested id. error.code is one of: RESOURCE_NOT_FOUND."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The requested transition cannot be performed in the current state. error.code is one of: INVALID_STATE, STALE_PROPOSAL, IDEMPOTENCY_CONFLICT, NO_RETRYABLE_TASKS."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Header, path or body field validation failed. error.code is one of: VALIDATION_ERROR."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "MapKeeper API request limit reached. error.code is one of: REQUEST_RATE_LIMITED."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal error replaced with a safe message. error.code is one of: INTERNAL_SERVER_ERROR."
+          }
+        },
+        "summary": "Replace the copy of a DRAFT generation with the owner's edits",
         "tags": [
           "seo"
         ]
