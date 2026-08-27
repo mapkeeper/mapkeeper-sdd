@@ -332,7 +332,10 @@ _FIELD_TOPICS: Final[tuple[tuple[str, str, re.Pattern[str]], ...]] = (
     (
         "businessHours",
         "영업시간",
-        re.compile(r"영업\s*시간|오픈\s*시간|마감\s*시간|영업\s*시작|영업\s*종료|문\s*(?:을\s*)?(?:여|열|닫)"),
+        # Deliberately not "문 닫는다": that is how a closure is stated, and
+        # reading it as an hours request made "내일 문 닫아" report an hours
+        # change it had dropped when it had done nothing of the sort.
+        re.compile(r"영업\s*시간|오픈\s*시간|마감\s*시간|영업\s*시작|영업\s*종료"),
     ),
     (
         "temporaryClosure",

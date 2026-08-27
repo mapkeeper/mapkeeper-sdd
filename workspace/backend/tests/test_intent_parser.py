@@ -451,3 +451,17 @@ def test_dropped_topics_are_reported_in_the_contracts_field_order() -> None:
 
     # When / Then: the labels read in the order the contract lists the fields.
     assert unmapped_request_labels(sentence, changes) == ("영업시간", "임시 휴무", "주차 정보")
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    ["내일 문 닫아", "내일 하루 쉽니다", "메뉴를 고기 만두로 바꿔줘"],
+)
+def test_an_ordinary_single_request_reports_nothing_dropped(sentence: str) -> None:
+    # Given: a sentence about exactly one field, phrased the way owners speak.
+    changes = parse_intent(sentence, make_profile(), today=date(2026, 8, 27))
+    assert changes is not None
+
+    # When / Then: no notice is raised. "문 닫아" states a closure, not an hours
+    # change, so it must not read as an hours request the proposal ignored.
+    assert unmapped_request_labels(sentence, changes) == ()

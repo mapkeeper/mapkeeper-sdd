@@ -5,6 +5,7 @@ import { DEMO_SOURCE_REVIEW_ID } from '@/config/demoStore';
 import { reviewSummaryFixture, sourceReviewFixtures } from '@/mocks/fixtures/storeFixtures';
 import { server } from '@/mocks/server';
 import { SeoGenerationWizard } from '@/features/seo/SeoGenerationWizard';
+import { describeHolidayRange, matchKoreanHoliday } from '@/features/seo/holidays';
 
 async function reachInterview(user: ReturnType<typeof userEvent.setup>): Promise<void> {
   await user.click(screen.getByRole('button', { name: '다음 (문구 만들기)' }));
@@ -748,10 +749,14 @@ describe('SeoGenerationWizard mobile flow', () => {
     await user.click(screen.getByRole('button', { name: '전송' }));
 
     // The owner already said which days they meant, so the app reads them back
-    // by name instead of asking them to look 9월 24일~26일 up.
-    expect(await screen.findByText(/2026년 추석 연휴인 9월 24일부터 9월 26일까지가 맞나요/)).toBeInTheDocument();
-    expect(screen.getByLabelText('시작일')).toHaveValue('2026-09-24');
-    expect(screen.getByLabelText('종료일')).toHaveValue('2026-09-26');
+    // by name instead of asking them to look 9월 24일~26일 up. Which 추석 that is
+    // depends on when this runs, so the expectation is taken from the table
+    // rather than pinned to one year.
+    const chuseok = matchKoreanHoliday('추석 연휴');
+    expect(chuseok).not.toBeNull();
+    expect(await screen.findByText(`${chuseok?.name}인 ${describeHolidayRange(chuseok!)}가 맞나요?`)).toBeInTheDocument();
+    expect(screen.getByLabelText('시작일')).toHaveValue(chuseok?.start);
+    expect(screen.getByLabelText('종료일')).toHaveValue(chuseok?.end);
     expect(screen.getByRole('button', { name: '맞아요, 이 기간으로 만들기' })).toBeInTheDocument();
   });
 });
