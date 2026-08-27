@@ -96,6 +96,21 @@ wait_for_worker() {
   local result delivery_id message
   result="$(last_json "$output_file")"
   delivery_id="$(jq -r '.result.deliveryId // empty' <<<"$result")"
+  if [[ "$(jq -r '.result.timedOut // false' <<<"$result")" == "true" ]]; then
+    local worker_state worker_failure worker_wait worker_terminal
+    worker_state="$(orca orchestration worker-show --dispatch "$dispatch_id" --json)"
+    worker_failure="$(jq -r '.result.dispatch.last_failure // .result.worker.last_error // empty' <<<"$worker_state")"
+    worker_wait="$(jq -r '.result.terminal.agentWait.reason // empty' <<<"$worker_state")"
+    worker_terminal="$(jq -r '.result.terminal.handle // empty' <<<"$worker_state")"
+    if [[ -n "$worker_failure" || -n "$worker_wait" ]]; then
+      [[ -n "$worker_failure" ]] && printf 'Dispatch 실패: %s\n' "$worker_failure" >&2
+      [[ -n "$worker_wait" ]] && printf '작업자 대기 사유: %s\n' "$worker_wait" >&2
+      [[ -n "$worker_terminal" ]] && printf '터미널: %s\n' "$worker_terminal" >&2
+      exit 3
+    fi
+    printf 'Dispatch 결과를 TIMEOUT까지 받지 못했습니다: %s\n' "$dispatch_id" >&2
+    exit 3
+  fi
   message="$(jq -c --arg dispatch "$dispatch_id" '
     .result.messages
     | map(select(.type == "worker_done" and ((.payload | try fromjson catch {}).dispatchId == $dispatch)))
