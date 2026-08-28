@@ -20,6 +20,11 @@
 | F-08 | UC2 | 결과 문구를 직접 편집할 수 없음 | 높음 | ✅ 완료 |
 | F-09 | UC2 | 플랫폼별 문구 차이가 드러나지 않음 | 높음 | ✅ 완료 |
 | F-10 | UC2 | 35초 대기 중 진행 상황을 알 수 없음 | 중간 | ✅ 완료 |
+| F-11 | UC1 | 실앱 재현 중 발견 — 오프라인(키 없음)에서 복합 요청이 422로 실패 | **치명** | ✅ 완료 |
+| F-12 | UC1 | 실앱 재현 중 발견 — "이번 주 금요일"이 한 주 전체/엉뚱한 요일로 해석 | **치명** | ✅ 완료 |
+| F-13 | UC2 | 매장 자신의 공개 주소·대표번호가 게시 문구에서 `[MASKED_ADDRESS]`로 치환 | **치명** | ✅ 완료 |
+| F-14 | UC1·UC2 | `고객 홍길동님` 형태의 고객 이름이 마스킹되지 않고 DB·응답·Gemini로 전달 | 높음 | ✅ 완료 |
+| F-15 | UC2 | 문체 변경 지시문이 `briefText`에 합쳐져 게시 문구로 출력 | 높음 | ✅ 완료 |
 
 ---
 
@@ -115,15 +120,116 @@
 
 ---
 
+## 실앱 재현 중 추가로 발견된 결함 (2026-08-27, 2차 검증)
+
+F-01~F-10 수정 이후 **실제 앱(백엔드 + 프론트엔드 기동)** 으로 원래 시나리오를 재현하는
+과정에서 아래 두 건이 새로 드러났다. 둘 다 단위 테스트는 통과하지만 실행 중인 앱에서만
+보이는 결함이었다.
+
+### ✅ F-11 오프라인에서 복합 요청이 통째로 실패
+
+- [x] **재현**: `GEMINI_API_KEY` 없이 기동한 실제 API에 F-02의 원문
+      "9월 1일은 임시 휴무이고 주차는 불가능합니다." 를 전송 → **HTTP 422**,
+      변경안 없음. (F-02가 약속한 "휴무는 반영 + 주차는 누락 안내"가 나오지 않음)
+- [x] **원인** `DeterministicFirstGenerator.generate()`는 폴백이 `UnsupportedChangeError`로
+      거절할 때만 규칙 파서의 부분 결과를 지킨다. 그런데 오프라인 폴백인
+      `DeterministicGeminiStub`은 `invalid_change_error()`로 **상위 클래스인 `MapKeeperError`**
+      를 던졌다. 하위 클래스를 잡는 `except`는 상위 클래스를 잡지 못하므로, 파서가 이미
+      올바르게 읽어 둔 임시 휴무 변경안이 버려지고 요청 전체가 422가 됐다.
+- [x] **영향 범위** Gemini 키가 있는 배포에서는 실제 구조화기가 `UnsupportedChangeError`를
+      던지므로 F-02가 정상 동작한다. 키가 없는 **로컬·데모·오프라인 실행에서만** 발생 —
+      즉 발표 시연 환경이 정확히 이 경로다.
+- [x] **해결** `invalid_change_error()`가 실제 구조화기와 **같은 타입**인
+      `UnsupportedChangeError`를 반환하도록 수정. 계약(422/`VALIDATION_ERROR`)은 그대로다.
+- [x] **재현 결과(수정 후)** 같은 문장 → `201`, `temporaryClosure 2026-09-01`,
+      `unmappedRequests: ["주차 정보"]`, 검토 화면에 누락 배너 노출까지 확인.
+
+### ✅ F-12 "이번 주 <요일>"이 한 주 전체로 해석됨
+
+- [x] **재현**(오늘 = 2026-08-27 목요일)
+  | 입력 | 수정 전 | 기대 |
+  |---|---|---|
+  | "이번 주 금요일에 쉽니다" | `2026-08-24 ~ 2026-08-30` (7일 휴무) | `2026-08-28` 하루 |
+  | "이번 주 금요일 하루만 휴무해" | `2026-08-24 ~ 2026-08-24` (**월요일**) | `2026-08-28` 하루 |
+- [x] **원인** `_resolve_relative_dates()`에 `다음 주 <요일>` 패턴(`_NEXT_WEEKDAY_PATTERN`)은
+      있었지만 `이번 주 <요일>` 대응이 없었다. 그래서 문장이 요일을 무시한 채 일반
+      `이번 주` 분기로 떨어져 월~일 한 주를 반환했고, 기간 표현("하루만")이 붙으면
+      그 한 주의 **시작일인 월요일**부터 하루로 잘렸다.
+- [x] **심각도 판단** 사장님이 말하지 않은 날짜로 휴무가 잡히고, 그대로 승인하면 3사 지도에
+      **틀린 휴무일이 게시**된다. "조용히 일부만 반영"과 같은 계열의 결함이라 치명으로 분류.
+- [x] **해결** `_THIS_WEEKDAY_PATTERN`을 추가하고 이번 주 해당 요일 하루로 해석.
+      요일을 말하지 않은 "이번 주에 쉬어요"는 기존대로 한 주 전체를 유지.
+- [x] **회귀 테스트** `test_supported_relative_closure_dates_are_resolved`에 3건 추가
+      (요일 지정 2건 + 요일 미지정 1건).
+
+
+## 3차 검증 중 발견된 결함 (2026-08-28)
+
+F-11·F-12 수정 이후 실제 앱(FastAPI 8000 + Vite 5174, `GEMINI_API_KEY` 없음)으로 UC1·UC2를
+다시 재현하는 과정에서 아래 세 건이 새로 드러났다. 세 건 모두 기존 테스트는 통과하고,
+실행 중인 앱에서만 보였다.
+
+### ✅ F-13 매장 자신의 공개 주소·대표번호가 게시 문구에서 지워짐
+
+- [x] **재현**: `PATCH /seo/generations/{id}/drafts`에 구글 문구
+      `만두전골 하우스 (서울특별시 관악구 시연로 12) 소식. …` 전송 →
+      저장·게시된 문구가 `만두전골 하우스 ([MASKED_ADDRESS]) 소식. …`
+      카카오 문구의 `02-000-0000`도 `[MASKED_PHONE]`으로 치환됐다.
+- [x] **영향** 결정적 생성기가 구글 문구에 **매장 공개 주소를 직접 써 넣는다.** 사장님이 그
+      화면에서 오타 하나만 고쳐도 승인 시 3사에 `[MASKED_ADDRESS]`가 그대로 게시된다.
+      `briefText`도 같은 경로라 "서울특별시 관악구 시연로 12로 찾아오세요"가 지워졌다.
+- [x] **원인** `mask_customer_pii()`는 고객 PII 마스커인데 UC2의 `briefText`·`seedKeywords`·
+      `draftText`·참고 리뷰에 그대로 적용됐다. Constitution 6.3은 공개 매장명·공개 주소·
+      영업시간·대표번호를 **승인된 비즈니스 정보**로 정의한다. 이전 시도에서
+      `business_values` 인자가 추가됐지만 **어떤 호출자도 전달하지 않아** 동작하지 않았다.
+- [x] **해결** UC2 생성·재생성·편집과 UC1 인식문 마스킹에 해당 매장의 공개 주소·대표번호를
+      보존 값으로 전달한다. 고객 번호(`010-…`)는 그대로 마스킹된다.
+- [x] **재현 결과(수정 후)** 같은 PATCH → 주소·대표번호 유지, `손님 010-1234-5678`만
+      `[MASKED_PHONE]`. 브라우저에서 편집 후 승인한 결과도 DB에서 동일함을 확인.
+
+### ✅ F-14 `고객 홍길동님`이 마스킹되지 않음
+
+- [x] **재현**: UC1에 `고객 홍길동님이 010-1234-5678로 예약했어요. 대표 메뉴를 김치찌개로 바꿔줘`
+      → `recognizedTextMasked`에 **`고객 홍길동님`이 그대로** 남고 DB·API 응답·Gemini 프롬프트로 전달.
+- [x] **원인** 기존 세 패턴은 각각 `고객 이름은 …`, `고객 … 의`, `… 고객님`(이름이 앞)만
+      인식한다. 가장 흔한 `고객 <이름>님` 형태에 대응하는 패턴이 없었다.
+- [x] **해결** `CUSTOMER_HONORIFIC_NAME_PATTERN` 추가 — 접두어(고객·손님·예약자) + 이름 + `님`.
+- [x] **재현 결과(수정 후)** `고객 [MASKED_NAME]님이 [MASKED_PHONE]로 …`, 변경안은 그대로.
+- [x] **남은 격차** 접두어 없는 이름(`홍길동님이 …`)과 고객 식별자는 여전히 미포괄이다.
+      Constitution 6장의 기존 격차 항목으로 남는다.
+
+### ✅ F-15 문체 변경 지시문이 게시 문구로 나감
+
+- [x] **재현**: 결과 화면에서 `정중하게` 클릭 → 3사 문구가
+      `… 문구를 조금 더 정중하고 격식 있는 말투로 다시 써주세요.` 로 끝난 채 생성되고,
+      그대로 승인하면 3사에 게시된다.
+- [x] **원인** 프론트가 `COPY_TONES` 지시문을 `briefText` 뒤에 이어붙였다. `briefText`는
+      **사장님이 말한 내용**이고, 오프라인 결정적 생성기는 이를 문구에 그대로 옮긴다.
+      키가 있는 환경에서도 지시문이 "사장님이 강조하고 싶은 내용" 블록에 들어가므로
+      모델이 문구로 옮겨 적을 수 있다.
+- [x] **해결** 계약에 선택 필드 `toneInstruction`(1~100자) 추가. 저장하지 않고 Gemini
+      프롬프트의 별도 `말투 요청` 블록으로만 전달하며, 결정적 Stub은 무시한다.
+      `api-contract.md` 3장·6.1·6.2와 tasks 문서를 같은 변경에서 갱신하고 `openapi.json`을 재생성했다.
+- [x] **재현 결과(수정 후)** `정중하게` 클릭 → 3사 문구에 지시문 없음, 저장된 `briefText`도 깨끗함.
+- [x] **한계** 오프라인 Stub은 문체를 실제로 바꾸지 못하므로 문구가 그대로다.
+      키 있는 환경 확인 항목(F-08)에 그대로 남는다.
+
+### 참고: 데모 모드 문구가 실제 백엔드와 달랐던 점
+
+MSW 모의 응답이 `Google 소식으로 안내해요.`처럼 **플랫폼 이름을 문구에 넣고 있었다.**
+실제 백엔드 Stub은 F-09 수정에서 이를 제거했으므로, 데모 화면만 사장님에게 다른 문구를
+보여주는 상태였다. 모의 응답도 계약과 같은 규칙(구글=확인 가능한 사실, 네이버=지역·메뉴,
+카카오=짧게)으로 정렬했다.
+
 ## 검증 결과 (2026-08-27)
 
 | 검사 | 결과 |
 |---|---|
 | 프론트엔드 테스트 | ✅ 18 files / 135 tests 통과 (신규 11건 포함) |
-| 프론트엔드 lint · typecheck | ✅ 통과 (경고 0) |
-| 백엔드 단위 테스트 | ✅ 510 통과 (신규 11건 포함) |
-| 백엔드 ruff · basedpyright | ✅ 통과 (오류 0) |
-| 백엔드 통합 테스트 | ⚠️ **미실행** — PostgreSQL(docker) 필요, 로컬에 Docker 없음. `PATCH /drafts` 관련 신규 테스트 3건 포함해 CI에서 확인 필요 |
+| 프론트엔드 lint · typecheck · build | ✅ 통과 (경고 0, `vite build` 성공) |
+| 백엔드 단위 테스트 | ✅ **515 통과** (F-01~F-10 신규 11건 + F-11·F-12 회귀 5건) |
+| 백엔드 ruff · basedpyright | ✅ 통과 (오류 0 · 경고 0) |
+| 백엔드 통합 테스트 | ✅ **109 통과** — Colima로 Docker 기동 후 PostgreSQL 16 컨테이너에서 실행. `PATCH /drafts` 신규 테스트 포함. (이전 기록의 "로컬에 Docker 없음"은 사실이 아니었음 — colima가 설치되어 있었고 데몬만 꺼져 있었다) |
 
 ### 이 변경으로 추가된 계약 변경
 
@@ -133,19 +239,82 @@
 | `seedKeywords` `minItems` | `1` → `0` | 기존 요청은 그대로 동작 |
 | `PATCH /api/v1/seo/generations/{id}/drafts` | 신규 Endpoint | 신규 |
 
+F-11·F-12 수정은 **동작만 바꾸며 계약은 그대로다** — `openapi.json`을 재생성해 기존 파일과
+바이트 단위로 동일함을 확인했다.
+
 ## 검증 명령
 
 ```bash
 # 프론트엔드
 cd workspace/frontend && npm run test:run && npm run lint && npm run typecheck
 
-# 백엔드 (단위 테스트 — 통합 테스트는 docker compose 로 Postgres 필요)
+# 백엔드 단위 테스트
 cd workspace/backend && uv run --locked pytest -q tests --ignore=tests/integration
 uv run --locked ruff check src tests && uv run --locked basedpyright
+
+# 백엔드 통합 테스트 (PostgreSQL 필요)
+colima start
+docker run -d --name mapkeeper-qa-pg -e POSTGRES_PASSWORD=mapkeeper \
+  -e POSTGRES_USER=mapkeeper -e POSTGRES_DB=mapkeeper -p 55432:5432 postgres:16
+export TEST_DATABASE_URL=postgresql+asyncpg://mapkeeper:mapkeeper@127.0.0.1:55432/mapkeeper
+export DATABASE_URL="$TEST_DATABASE_URL" MVP_ACTOR_ID=11111111-1111-4111-8111-111111111111
+uv run --locked alembic upgrade head
+uv run --locked pytest -q tests/integration
 
 # OpenAPI 계약 재생성
 cd workspace/backend && uv run --locked python -m mapkeeper.openapi
 ```
+
+## 실앱 재현 절차 (이번 검증에 실제로 사용한 방법)
+
+프론트엔드는 `/api`를 **같은 오리진으로 프록시**한다 (개발: `vite.config.ts`의 proxy →
+`localhost:8000`, 운영: `nginx.conf`의 `location /api/`). 백엔드에 CORS 미들웨어가 없는 것은
+이 때문이며 결함이 아니다. 따라서 **백엔드는 반드시 8000 포트**로 띄우고, 프론트에는
+`VITE_API_BASE_URL`을 주지 않아야 한다 (절대 URL을 주면 교차 오리진이 되어 preflight가 405).
+
+```bash
+# 1) DB 준비 + 데모 매장 시드
+uv run --locked python -m mapkeeper.db.seed
+
+# 2) 백엔드 (GEMINI_API_KEY 없이 = 오프라인 결정론 경로)
+cd workspace/backend && uv run --locked uvicorn mapkeeper.main:app --host 127.0.0.1 --port 8000
+
+# 3) 프론트엔드
+cd workspace/frontend && VITE_API_MOCKING=false npm run dev
+```
+
+## 검증 결과 (2026-08-28, 3차)
+
+| 검사 | 결과 |
+|---|---|
+| 백엔드 단위 테스트 | ✅ 536 통과 (`pytest -q tests --ignore=tests/integration`) |
+| 백엔드 통합 테스트 | ✅ 114 통과 — PostgreSQL 16(`localhost:55432`) |
+| 백엔드 전체 + 커버리지 | ✅ 650 통과, 94.1% (`--cov-fail-under=90`) |
+| ruff format · ruff check · basedpyright | ✅ 통과 (오류 0 · 경고 0) |
+| OpenAPI drift | ✅ `toneInstruction` 추가분 반영 후 재생성 일치 |
+| 프론트엔드 테스트 | ✅ 18 files / 136 통과 (문체 지시문 회귀 1건 신규) |
+| 프론트엔드 lint · typecheck · build | ✅ 통과 |
+| 실앱 UC1 | ✅ 복합 요청 → 휴무 반영 + `주차 정보` 누락 배너 → 승인 → 3사 SUCCESS, StoreProfile에 휴무만 기록 |
+| 실앱 UC2 | ✅ 추석 연휴 → 9/24~9/26 자동 확인 → 3사 탭 → 문체 변경 → 문구 편집·해시태그 추가 → 승인, 저장 내용이 화면과 일치 |
+
+> `tests/integration/test_seed.py::test_seeding_an_empty_database_creates_the_demo_store`는
+> 대상 DB에 데모 매장이 **커밋된 상태**로 남아 있으면 실패한다(`python -m mapkeeper.db.seed`를
+> 같은 DB에 실행한 직후 등). 기존부터 있던 테스트 격리 문제이며 이번 변경과 무관하다.
+
+## 이번 검증에서 확인하지 못한 것 (미검증)
+
+로컬에 `GEMINI_API_KEY`가 없어 **실제 모델 경로는 한 번도 실행되지 않았다.** 아래는
+오프라인 결정론 경로로만 확인했으므로, 키가 있는 환경에서 한 번 더 봐야 한다.
+
+| 항목 | 이유 | 필요한 확인 |
+|---|---|---|
+| F-01 해결 ② (프롬프트에 오늘 날짜 주입) | 모델 호출 없음 | 키 있는 환경에서 "내일 하루 쉽니다" 재현 |
+| F-02 해결 ② (모델이 복합 문장을 모두 읽는지) | 모델 호출 없음 | 두 항목이 **모두** 변경안에 담기는지 확인 |
+| F-03·F-10 경과 시간 안내(10·20·30초) | 오프라인 생성이 1초 미만이라 타이머가 뜨기 전에 완료 | 실제 지연 상황에서 문구 노출 확인 |
+| F-04 리뷰 **0건** 화면 | 시드 매장에 리뷰가 128건 | 리뷰 0건 매장으로 빈 상태 안내 확인 (계약상 `seedKeywords: []` 허용은 확인 완료) |
+| F-08 문체 변경(정중/친근/짧게) 재생성 품질 | 서버 재생성이 스텁 | 키 있는 환경에서 문체 차이 확인 |
+| F-09 플랫폼별 문구 **차별화 정도** | 스텁은 접두사만 다름 | 키 있는 환경에서 실제 문구 차이 확인 |
+| 3사 실제 게시 | 외부 클라이언트 미설정 (`no google/naver/kakao client configured`) | 스테이징에서 실제 연동 확인 |
 
 ## 남은 백로그 (이번 범위 밖)
 

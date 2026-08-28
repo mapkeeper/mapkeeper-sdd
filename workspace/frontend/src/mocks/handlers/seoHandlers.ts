@@ -2,23 +2,42 @@ import { http, HttpResponse } from 'msw';
 import { errorEnvelope, mockDelay, nextRequestId, successEnvelope } from '@/mocks/factories/envelopeFactory';
 import { seoApprovalFixture, seoGenerationFixture, seoValidationErrorFixture } from '@/mocks/fixtures/seoFixtures';
 import { getMockScenario, scenarioLatency } from '@/mocks/scenarios';
+import { DEMO_STORE } from '@/config/demoStore';
 import type { CreateSeoGenerationRequest, CreateSeoGenerationResponse, SeoApprovalResponse } from '@/services/api.types';
 
 const approvalReplay = new Map<string, SeoApprovalResponse>();
 const responseOptions = () => ({ headers: { 'X-Request-ID': nextRequestId() } });
 
+/**
+ * Mirror the shape the real backend produces, not a label naming the platform.
+ *
+ * The mock used to open every draft with "Google 소식으로 안내해요." — a word nobody
+ * said, which the server never writes. Demo mode is a screen the owner reads, so
+ * it differentiates by the same contract rules the server follows: Google states
+ * verifiable store facts, Naver carries the area and menu a customer searches
+ * for, Kakao stays short.
+ */
 function createMockGeneration(purpose: CreateSeoGenerationRequest['purpose'], briefText: string): CreateSeoGenerationResponse {
   const normalizedBrief = briefText.trim();
-  const sentenceEnd = /[.!?。]$/.test(normalizedBrief) ? '' : '.';
-  const isNews = purpose === 'NEWS';
-  const endings = isNews
-    ? { google: ' Google 소식으로 안내해요.', naver: ' 네이버 소식으로 알려드려요.', kakao: ' 카카오 소식으로 전해요.' }
-    : { google: ' Google 소개글로 정리했어요.', naver: ' 네이버 소개글로 정리했어요.', kakao: ' 카카오 소개글로 정리했어요.' };
+  const brief = /[.!?。]$/.test(normalizedBrief) ? normalizedBrief : `${normalizedBrief}.`;
+  const region = DEMO_STORE.publicAddress.split(' ').find((part) => /[시군구]$/.test(part) && part !== DEMO_STORE.publicAddress.split(' ')[0]) ?? '';
+  const headline = purpose === 'NEWS' ? `${DEMO_STORE.name} 소식` : DEMO_STORE.name;
+  const menuLine = purpose === 'NEWS' ? '' : ` 대표 메뉴는 ${DEMO_STORE.representativeMenuName}입니다.`;
+  const openings: Record<CreateSeoGenerationResponse['drafts'][number]['platform'], string> = {
+    google: `${headline} (${DEMO_STORE.publicAddress})`,
+    naver: region ? `${region} ${headline}` : headline,
+    kakao: headline,
+  };
+  const closings: Record<CreateSeoGenerationResponse['drafts'][number]['platform'], string> = {
+    google: menuLine,
+    naver: menuLine && region ? ` ${region}에서 찾는 대표 메뉴는 ${DEMO_STORE.representativeMenuName}입니다.` : menuLine,
+    kakao: '',
+  };
   return {
     ...seoGenerationFixture,
     drafts: seoGenerationFixture.drafts.map((draft) => ({
       ...draft,
-      draftText: `${normalizedBrief}${sentenceEnd}${endings[draft.platform]}`,
+      draftText: `${openings[draft.platform]}. ${brief}${closings[draft.platform]}`,
     })),
   };
 }

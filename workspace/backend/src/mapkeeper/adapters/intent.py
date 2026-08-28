@@ -52,6 +52,13 @@ _TIME_PATTERN: Final = re.compile(_MERIDIEM_GROUP + _CLOCK_GROUP)
 # "10시부터 9시까지" states both ends of a span. The readers below take a single
 # value each, so a sentence shaped like this has to reach the model instead.
 _SPAN_PATTERN: Final = re.compile(r"부터.*까지", re.DOTALL)
+# "오전 10시부터 오후 9시까지" opens a span with a clock time, not a date. The
+# closure reader's span guard below exists for date ranges it cannot read whole;
+# firing it on a business day meant "다음 주 월요일 하루 임시 휴무이고 영업시간은
+# 오전 10시부터 오후 9시까지입니다" dropped the closure and proposed the hours alone.
+_CLOCK_SPAN_PATTERN: Final = re.compile(
+    r"\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?\s*(?:부터|에서|~|-)",
+)
 TIME_PAIR: Final = 2
 _ISO_DATE_PATTERN: Final = re.compile(r"\d{4}-\d{2}-\d{2}")
 _KOREAN_DATE_PATTERN: Final = re.compile(
@@ -70,6 +77,11 @@ _DURATION_WORDS: Final = {
     "일주일": 7,
 }
 _NEXT_WEEKDAY_PATTERN: Final = re.compile(r"다음\s*주\s*(?P<weekday>[월화수목금토일])요일?")
+# "이번 주 금요일" names one day the same way "다음 주 금요일" does. Without this
+# the sentence fell through to the bare "이번 주" branch below, which answers with
+# the whole Monday-to-Sunday week — so asking to close one Friday proposed a
+# seven-day closure, and "이번 주 금요일 하루만" closed the Monday instead.
+_THIS_WEEKDAY_PATTERN: Final = re.compile(r"이번\s*주\s*(?P<weekday>[월화수목금토일])요일?")
 
 _HOURS_CONTEXT: Final = re.compile(r"영업|문\s*을?|마감|오픈|open|close|열|닫|시작|종료|폐점|개점")
 _OPENING_WORDS: Final = re.compile(r"열|오픈|시작|개점")
@@ -228,6 +240,12 @@ def _resolve_relative_dates(text: str, today: date) -> tuple[date, date] | None:
         next_monday = today - timedelta(days=today.weekday()) + timedelta(days=7)
         return next_monday, next_monday + timedelta(days=6)
 
+    this_weekday_match = _THIS_WEEKDAY_PATTERN.search(text)
+    if this_weekday_match is not None:
+        monday = today - timedelta(days=today.weekday())
+        resolved = monday + timedelta(days=_WEEKDAY_INDEX[this_weekday_match.group("weekday")])
+        return resolved, resolved
+
     if re.search(r"이번\s*주", text) is not None:
         monday = today - timedelta(days=today.weekday())
         return monday, monday + timedelta(days=6)
@@ -281,8 +299,12 @@ def _states_unreadable_span(text: str) -> bool:
     "8월 25일부터 26일까지" names two days, but the Korean date pattern needs a
     month beside each one and so sees only the first. Reading that would close the
     store for a single day when the owner asked for two.
+
+    Only a span between *dates* can be misread that way. A span opened by a clock
+    time states the business day, which the hours reader handles, so it is taken
+    out of the text before the guard looks for one.
     """
-    if _SPAN_PATTERN.search(text) is None:
+    if _SPAN_PATTERN.search(_CLOCK_SPAN_PATTERN.sub(" ", text)) is None:
         return False
     return (
         len(_ISO_DATE_PATTERN.findall(text)) != DATE_PAIR

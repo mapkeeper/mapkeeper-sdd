@@ -10,6 +10,8 @@ from mapkeeper.core.errors import ResourceNotFoundError
 from mapkeeper.db.seed import DEMO_STORE_PROFILE_ID, seed
 from mapkeeper.models import ApiResponseStatus
 
+from .factories import make_store_profile
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -39,3 +41,24 @@ async def test_review_summary_rejects_an_unknown_store(db_session: AsyncSession)
     # When / Then: the shared endpoint uses the contract's resource error.
     with pytest.raises(ResourceNotFoundError):
         _ = await get_review_summary(unknown_store_id, db_session)
+
+
+async def test_a_store_with_no_reviews_reports_no_keywords(db_session: AsyncSession) -> None:
+    """No reviews means no review keywords, and none may be invented.
+
+    The three demo keywords beside "분석한 리뷰 총 0건" were the start of the
+    hallucination chain: the screen showed them, sent them as ``seedKeywords``,
+    and the prompt then treated them as facts the copy had to carry.
+    """
+    # Given: a store that has never been reviewed.
+    profile = await make_store_profile(db_session)
+
+    # When: the shared review summary is requested.
+    envelope = await get_review_summary(profile.id, db_session)
+
+    # Then: nothing about customer reaction is claimed.
+    assert envelope.data is not None
+    assert envelope.data.review_count == 0
+    assert envelope.data.keywords == ()
+    assert envelope.data.source_reviews == ()
+    assert "없어요" in envelope.data.summary

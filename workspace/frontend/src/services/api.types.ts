@@ -59,6 +59,14 @@ export interface CreateSeoGenerationRequest {
   briefText: string;
   seedKeywords: string[];
   sourceReviewIds: string[];
+  /**
+   * How to rewrite the copy - never something to say in it.
+   *
+   * The tone buttons used to be appended to `briefText`, which made the request
+   * part of the owner's content: the offline generator echoed
+   * "다시 써주세요" into all three drafts, and approval publishes those drafts.
+   */
+  toneInstruction?: string;
 }
 export interface CreateSeoGenerationResponse {
   generationId: string;

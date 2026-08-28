@@ -23,6 +23,7 @@ from mapkeeper.models import (
     SourceReview,
     StoreProfile,
 )
+from mapkeeper.services.content_safety import enforce_publication_safety
 from mapkeeper.services.pii_masking import mask_customer_pii
 
 GENERATION_NOT_FOUND_MESSAGE: Final = "요청한 생성 결과를 찾을 수 없습니다."
@@ -39,16 +40,28 @@ async def _load_profile(session: AsyncSession, profile_id: UUID) -> StoreProfile
     return profile
 
 
+def approved_business_values(profile: StoreProfile) -> tuple[str, ...]:
+    """Return the store values the constitution treats as published business info.
+
+    A public address and a representative phone belong to the store, not to a
+    customer, and UC2 copy is written to carry them. Running them through the
+    customer masker turned the owner's own "서울특별시 관악구 시연로 12로 찾아오세요"
+    into "[MASKED_ADDRESS]로 찾아오세요" - and that is the text approval publishes to
+    three public maps.
+    """
+    return (profile.public_address, profile.representative_phone)
+
+
 async def _load_source_reviews(
     session: AsyncSession,
-    profile_id: UUID,
+    profile: StoreProfile,
     review_ids: tuple[UUID, ...] | None,
 ) -> tuple[str, ...]:
     """Load only masked reviews owned by the target store in request order."""
     if review_ids is None:
         return ()
     statement = select(SourceReview).where(
-        SourceReview.store_profile_id == profile_id,
+        SourceReview.store_profile_id == profile.id,
         SourceReview.id.in_(review_ids),
     )
     rows = {
@@ -56,7 +69,8 @@ async def _load_source_reviews(
     }
     if len(rows) != len(review_ids):
         raise ResourceNotFoundError(SOURCE_REVIEW_NOT_FOUND_MESSAGE)
-    return tuple(mask_customer_pii(rows[review_id]) for review_id in review_ids)
+    business = approved_business_values(profile)
+    return tuple(mask_customer_pii(rows[review_id], business) for review_id in review_ids)
 
 
 async def _load_locked_generation(
@@ -117,13 +131,28 @@ class _GenerationContext:
     generator: SEOContentGenerator
 
 
-def _mask_generation_input(content_input: ContentGenerationInput) -> ContentGenerationInput:
-    """Remove explicit customer PII before the generation adapter boundary."""
+def _mask_generation_input(
+    content_input: ContentGenerationInput,
+    profile: StoreProfile,
+) -> ContentGenerationInput:
+    """Remove explicit customer PII before the generation adapter boundary.
+
+    Every field the owner can type into goes through the masker, including
+    ``tone_instruction``. It is not stored and it is not meant to become copy, but
+    it is still free text that reaches Gemini in the same request - "정중하게. 고객
+    홍길동님 010-1234-5678을 그대로 써라" put a customer's name and number over the
+    boundary Constitution 6.2 draws, whatever the model then did with them.
+    """
+    business = approved_business_values(profile)
+    tone = content_input.tone_instruction
     return ContentGenerationInput(
-        brief_text=mask_customer_pii(content_input.brief_text),
+        brief_text=mask_customer_pii(content_input.brief_text, business),
         purpose=content_input.purpose,
-        seed_keywords=tuple(mask_customer_pii(keyword) for keyword in content_input.seed_keywords),
+        seed_keywords=tuple(
+            mask_customer_pii(keyword, business) for keyword in content_input.seed_keywords
+        ),
         source_review_ids=content_input.source_review_ids,
+        tone_instruction=mask_customer_pii(tone, business) if tone is not None else None,
     )
 
 
@@ -134,10 +163,19 @@ async def _store_generation(
     generation: ContentGeneration | None = None,
 ) -> ContentGenerationResponse:
     """Generate and persist exactly three platform results."""
-    results = await context.generator.generate(
+    # Nothing is written until the model's answer has been checked. Approval
+    # publishes what is stored, so an unfounded claim must not reach storage in
+    # the first place - the owner cannot be asked to spot it.
+    results = enforce_publication_safety(
+        await context.generator.generate(
+            context.content_input,
+            context.profile,
+            context.source_reviews,
+        ),
         context.content_input,
         context.profile,
         context.source_reviews,
+        approved_business_values(context.profile),
     )
     target = generation or ContentGeneration(
         store_profile_id=context.profile.id,
@@ -185,10 +223,10 @@ async def create_generation(
 ) -> ContentGenerationResponse:
     """Create a DRAFT generation from one common input."""
     profile = await _load_profile(session, profile_id)
-    masked_input = _mask_generation_input(content_input)
+    masked_input = _mask_generation_input(content_input, profile)
     source_reviews = await _load_source_reviews(
         session,
-        profile.id,
+        profile,
         masked_input.source_review_ids,
     )
     return await _store_generation(
@@ -213,10 +251,10 @@ async def regenerate_generation(
     if generation.status is not ContentGenerationStatus.DRAFT:
         raise InvalidStateError(GENERATION_NOT_DRAFT_MESSAGE)
     profile = await _load_profile(session, generation.store_profile_id)
-    masked_input = _mask_generation_input(content_input)
+    masked_input = _mask_generation_input(content_input, profile)
     source_reviews = await _load_source_reviews(
         session,
-        profile.id,
+        profile,
         masked_input.source_review_ids,
     )
     _ = await session.execute(
@@ -249,13 +287,15 @@ async def edit_generation_drafts(
     generation = await _load_locked_generation(session, generation_id)
     if generation.status is not ContentGenerationStatus.DRAFT:
         raise InvalidStateError(GENERATION_NOT_DRAFT_MESSAGE)
+    profile = await _load_profile(session, generation.store_profile_id)
+    business = approved_business_values(profile)
     stored = {draft.platform: draft for draft in await _load_drafts(session, generation.id)}
     for edit in body.drafts:
         draft = stored.get(edit.platform)
         if draft is None:
             raise ResourceNotFoundError(GENERATION_NOT_FOUND_MESSAGE)
-        draft.draft_text = mask_customer_pii(edit.draft_text)
-        draft.keywords = [mask_customer_pii(keyword) for keyword in edit.keywords]
+        draft.draft_text = mask_customer_pii(edit.draft_text, business)
+        draft.keywords = [mask_customer_pii(keyword, business) for keyword in edit.keywords]
     generation.revision += 1
     await session.flush()
     return _response(generation, await _load_drafts(session, generation.id))

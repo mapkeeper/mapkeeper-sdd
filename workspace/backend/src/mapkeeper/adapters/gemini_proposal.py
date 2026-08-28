@@ -167,8 +167,12 @@ class DeterministicFirstGenerator:
 
         The parser reads one field per sentence. When the owner named a second
         one in the same breath the parser's answer is incomplete, so the model
-        reads the whole sentence instead — and the parser's partial answer is
-        kept only if the model comes back with less than it did.
+        reads the whole sentence instead — and the two answers are then added
+        together rather than one replacing the other. Choosing between them lost
+        whichever half the winner did not carry: "다음 주 월요일 하루 임시 휴무이고
+        영업시간은 오전 10시부터 오후 9시까지입니다" came back as an hours change with
+        the closure reduced to an unmapped notice, so the owner had to ask for
+        their day off a second time.
         """
         if is_multiple_menu_request(masked_text):
             raise UnsupportedChangeError(UNSUPPORTED_CHANGE_MESSAGE)
@@ -181,9 +185,12 @@ class DeterministicFirstGenerator:
             if parsed is None:
                 raise
             return parsed
-        if parsed is not None and len(from_model) < len(parsed):
-            return parsed
-        return from_model
+        if parsed is None:
+            return from_model
+        # The model read the whole sentence, so its reading of a field it covered
+        # wins; the parser only fills in the fields it did not answer for.
+        covered = {change.field for change in from_model}
+        return (*from_model, *(change for change in parsed if change.field not in covered))
 
 
 @dataclass(frozen=True, slots=True)

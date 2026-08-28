@@ -92,7 +92,9 @@ describe('StoreChangeWizard', () => {
     render(<StoreChangeWizard storeProfileId="store-123" />);
     await createDraft(user);
     expect(screen.getByText('09:00-23:00')).toBeInTheDocument();
-    expect(screen.getByText('DRAFT')).toBeInTheDocument();
+    // The contract enum never reaches the owner, not even through a screen reader.
+    expect(screen.getByText('검토 중')).toBeInTheDocument();
+    expect(screen.queryByText('DRAFT')).not.toBeInTheDocument();
   });
 
   test('음성 또는 직접 입력 문장에 따라 허용된 변경 필드와 값이 동적으로 생성된다', async () => {

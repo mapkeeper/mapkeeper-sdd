@@ -92,6 +92,7 @@
 | `draftText` | 1~750자 |
 | `drafts[].keywords` | 1~10개, 각 1~30자 |
 | `sourceReviewIds` | 선택, 최대 10개, 중복 불가 |
+| `toneInstruction` | 선택, 1~100자 |
 | `Idempotency-Key` | 1~128자, `[A-Za-z0-9._:-]` |
 | `attemptCount` | 0~3 |
 
@@ -110,6 +111,17 @@
 | Kakao | 짧고 읽기 쉬운 매장 안내 중심으로 작성한다. |
 
 공통으로 입력에 없는 사실·과장·고객 PII를 만들지 않는다. `contentRules`는 서버가 생성한 읽기 전용 정보이며 클라이언트 요청으로 입력하거나 수정하지 않는다.
+
+이 규칙은 프롬프트 지시가 아니라 생성 응답 경계에서 강제한다. 모델 응답의 구조 검증(플랫폼 3종·길이·키워드 수)을 통과해도 다음을 추가로 적용한다.
+
+- `draftText`와 `keywords`의 고객 PII는 저장 전에 결정적으로 마스킹한다. 해당 매장의 공개 주소·대표번호는 Constitution 6.3의 승인된 비즈니스 정보이므로 유지한다.
+- 입력이 뒷받침하지 않는 주장을 담은 결과는 저장하지 않고 `500 INTERNAL_SERVER_ERROR`, `retryable: true`로 거절한다. 근거가 되는 입력은 `briefText`, `seedKeywords`, 참고 리뷰, StoreProfile이며 `toneInstruction`은 근거가 아니다.
+- 주장으로 판단하는 대상은 단위가 붙은 수치(`%`·`퍼센트`·`원`·`만원`·`천원`·`배`·`위`·`등`)와 최상급 표현(`최고`·`최상`·`최초`·`최대`·`최저`·`유일`·`무조건`·`보장`·`완벽`)이다. 단위가 없는 수(날짜·인원 등)는 주장으로 보지 않는다.
+- 마스킹 결과가 `draftText`·`keywords` 제한을 넘기면 잘라내지 않고 같은 방식으로 거절한다.
+
+`toneInstruction`은 문체를 바꿔 다시 써 달라는 지시이며 문구에 담을 내용이 아니다. 저장하지 않고 해당 요청의 프롬프트에만 사용하며, 결정적 Stub은 무시한다. 사장님이 직접 입력할 수 있는 자유 텍스트이므로 `briefText`·`seedKeywords`와 동일하게 Gemini 경계 이전에 고객 PII를 마스킹한다. `briefText`에 합쳐 보내지 않는다 — 합치면 사장님이 말한 내용이 되어 결정적 Stub이 지시문을 그대로 문구에 옮기고, 승인 시 3사에 게시된다.
+
+`briefText`와 `draftText`의 고객 PII는 마스킹하지만, 해당 매장의 공개 주소와 대표번호는 Constitution 6.3의 승인된 비즈니스 정보이므로 마스킹하지 않는다.
 
 > 현재 격차: `seedKeywords` 배열에 비문자 값과 문자열을 섞으면 비문자 값을 조용히 제거한다. 계약상 422로 거절하도록 수정해야 한다.
 
@@ -244,7 +256,7 @@ POST /api/v1/seo/generations
 }
 ```
 
-`purpose`를 생략하면 `INTRODUCTION`이다. 응답은 `201 Created`이며 `generationId`, `status=DRAFT`, `revision`, 플랫폼별 `drafts` 세 개를 반환한다.
+`purpose`를 생략하면 `INTRODUCTION`이다. `toneInstruction`도 선택이다. 응답은 `201 Created`이며 `generationId`, `status=DRAFT`, `revision`, 플랫폼별 `drafts` 세 개를 반환한다.
 
 ```json
 {
@@ -271,7 +283,7 @@ POST /api/v1/seo/generations
 POST /api/v1/seo/generations/{generationId}/regenerate
 ```
 
-Body는 생성 요청에서 `storeProfileId`를 제외한 형태다. DRAFT만 가능하며 기존 세 결과를 새 결과로 교체하고 `revision`을 1 증가시킨다.
+Body는 생성 요청에서 `storeProfileId`를 제외한 형태다. DRAFT만 가능하며 기존 세 결과를 새 결과로 교체하고 `revision`을 1 증가시킨다. 화면의 문체 변경(정중하게·친근하게·짧게)은 `briefText`를 그대로 두고 `toneInstruction`으로 전달한다.
 
 ### 6.3 사장님 편집 반영
 

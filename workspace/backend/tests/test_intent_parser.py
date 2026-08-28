@@ -228,6 +228,13 @@ def test_korean_dates_become_contract_date_ranges(
         ("내일 이틀 휴무", date(2026, 8, 4), date(2026, 8, 5)),
         ("모레 3일간 쉬어요", date(2026, 8, 5), date(2026, 8, 7)),
         ("다음 주 화요일 문 닫아", date(2026, 8, 11), date(2026, 8, 11)),
+        # A named weekday inside the current week is one day, not the whole week.
+        # Reading it as the week closed the store for seven days, and pairing it
+        # with a duration closed the Monday the owner never mentioned.
+        ("이번 주 금요일에 쉽니다", date(2026, 8, 7), date(2026, 8, 7)),
+        ("이번 주 금요일 하루만 휴무해", date(2026, 8, 7), date(2026, 8, 7)),
+        # A week with no weekday named still covers the whole week.
+        ("이번 주에 쉬어요", date(2026, 8, 3), date(2026, 8, 9)),
     ],
 )
 def test_supported_relative_closure_dates_are_resolved(
@@ -465,3 +472,25 @@ def test_an_ordinary_single_request_reports_nothing_dropped(sentence: str) -> No
     # When / Then: no notice is raised. "문 닫아" states a closure, not an hours
     # change, so it must not read as an hours request the proposal ignored.
     assert unmapped_request_labels(sentence, changes) == ()
+
+
+def test_a_clock_span_does_not_hide_a_relative_closure() -> None:
+    """ "10시부터 9시까지" is a clock span, not a date range.
+
+    The unreadable-span guard exists for "8월 25일부터 26일까지", whose second date
+    the date pattern cannot see. Applying it to a business day meant a sentence
+    stating both a closure and the day's hours dropped the closure entirely.
+    """
+    # Given: one sentence naming a relative closure and a spoken business day.
+    sentence = "다음 주 월요일 하루 임시 휴무이고 영업시간은 오전 10시부터 오후 9시까지입니다"
+
+    # When: the parser reads it against a known current date.
+    changes = parse_intent(sentence, make_profile(), today=date(2026, 8, 28))
+
+    # Then: the closure is read. The hours span is still left to the model.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, TemporaryClosureChange)
+    assert change.proposed_value.start_date == date(2026, 8, 31)
+    assert change.proposed_value.end_date == date(2026, 8, 31)
+    assert unmapped_request_labels(sentence, changes) == ("영업시간",)

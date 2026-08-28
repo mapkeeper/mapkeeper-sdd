@@ -1,6 +1,7 @@
 """T239: UC1 and UC2 happy paths through the HTTP API."""
 
 from collections.abc import AsyncGenerator, Callable
+from datetime import timedelta
 from typing import Final
 from uuid import UUID
 
@@ -18,6 +19,7 @@ from mapkeeper.adapters.base import (
     PlatformSyncError,
     SyncRequest,
 )
+from mapkeeper.adapters.gemini_proposal import today_in_seoul
 from mapkeeper.adapters.registry import AcceptingAdapter
 from mapkeeper.core.config import get_settings
 from mapkeeper.core.json_types import JsonObject
@@ -305,3 +307,106 @@ async def test_retrying_a_partial_failure_recovers_the_job(
     assert job_status == "SUCCESS"
     assert tasks["naver"]["attemptCount"] == 2
     assert tasks["google"]["attemptCount"] == 1
+
+
+COMPOUND_SENTENCE: Final = (
+    "다음 주 월요일 하루 임시 휴무이고 영업시간은 오전 10시부터 오후 9시까지입니다"
+)
+
+
+def _next_monday() -> str:
+    today = today_in_seoul()
+    return (today - timedelta(days=today.weekday()) + timedelta(days=7)).isoformat()
+
+
+@pytest.mark.parametrize(
+    "recognized_text",
+    [
+        COMPOUND_SENTENCE,
+        f"고객 홍길동님 010-1234-5678 문의가 있었고 {COMPOUND_SENTENCE}",
+    ],
+)
+async def test_uc1_a_compound_sentence_keeps_both_requests(
+    api_database: tuple[str, list[UUID]],
+    client: TestClient,
+    recognized_text: str,
+) -> None:
+    """One sentence naming two fields must propose both, not silently drop one.
+
+    The final gate reproduced the loss here, through the real API: the hours were
+    proposed and the closure came back only as an unmapped notice, so the owner
+    had to say the same thing twice to get a day off.
+    """
+    database_url, created_profiles = api_database
+    profile_id = await _create_profile(database_url, created_profiles)
+
+    # Given / When: the owner states a closure and a business day in one breath.
+    response = client.post(
+        "/api/v1/store-change-proposals",
+        json={
+            "storeProfileId": str(profile_id),
+            "recognizedText": recognized_text,
+            "locale": "ko-KR",
+        },
+    )
+
+    # Then: both changes are in the proposal and nothing is reported as dropped.
+    assert response.status_code == status.HTTP_201_CREATED
+    data = obj(body_of(response.text)["data"])
+    changes = {text_of(obj(change)["field"]): obj(change) for change in arr(data["changes"])}
+    assert set(changes) == {"businessHours", "temporaryClosure"}
+    hours = obj(changes["businessHours"]["proposedValue"])
+    assert text_of(hours["open"]) == "10:00"
+    assert text_of(hours["close"]) == "21:00"
+    closure = obj(changes["temporaryClosure"]["proposedValue"])
+    assert text_of(closure["startDate"]) == _next_monday()
+    assert text_of(closure["endDate"]) == _next_monday()
+    assert arr(data["unmappedRequests"]) == []
+
+    # And: the customer's name never reaches the stored sentence.
+    assert "홍길동" not in text_of(data["recognizedTextMasked"])
+
+
+async def test_uc1_a_single_field_sentence_still_proposes_only_that_field(
+    api_database: tuple[str, list[UUID]],
+    client: TestClient,
+) -> None:
+    """The merge must not invent a second change for an ordinary request."""
+    database_url, created_profiles = api_database
+    profile_id = await _create_profile(database_url, created_profiles)
+
+    response = client.post(
+        "/api/v1/store-change-proposals",
+        json={
+            "storeProfileId": str(profile_id),
+            "recognizedText": "내일 하루 쉽니다",
+            "locale": "ko-KR",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    data = obj(body_of(response.text)["data"])
+    assert [text_of(obj(change)["field"]) for change in arr(data["changes"])] == [
+        "temporaryClosure"
+    ]
+    assert arr(data["unmappedRequests"]) == []
+
+
+async def test_uc1_an_unsupported_sentence_is_still_refused(
+    api_database: tuple[str, list[UUID]],
+    client: TestClient,
+) -> None:
+    """A sentence naming none of the four fields must not become a proposal."""
+    database_url, created_profiles = api_database
+    profile_id = await _create_profile(database_url, created_profiles)
+
+    response = client.post(
+        "/api/v1/store-change-proposals",
+        json={
+            "storeProfileId": str(profile_id),
+            "recognizedText": "오늘 날씨 어때?",
+            "locale": "ko-KR",
+        },
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT

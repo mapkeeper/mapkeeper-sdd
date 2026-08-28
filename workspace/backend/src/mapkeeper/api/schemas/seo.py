@@ -16,6 +16,7 @@ KEYWORD_MAX_LENGTH: Final = 30
 # zero reviews. An empty list is the honest input and the prompt handles it.
 SEED_KEYWORDS_MIN: Final = 0
 SEED_KEYWORDS_MAX: Final = 5
+TONE_INSTRUCTION_MAX_LENGTH: Final = 100
 PLATFORM_KEYWORDS_MIN: Final = 1
 PLATFORM_KEYWORDS_MAX: Final = 10
 SOURCE_REVIEW_IDS_MAX: Final = 10
@@ -42,6 +43,10 @@ PlatformKeywords = Annotated[
     Field(min_length=PLATFORM_KEYWORDS_MIN, max_length=PLATFORM_KEYWORDS_MAX),
 ]
 SourceReviewIds = Annotated[tuple[UUID, ...], Field(max_length=SOURCE_REVIEW_IDS_MAX)]
+ToneInstruction = Annotated[
+    str,
+    StringConstraints(min_length=1, max_length=TONE_INSTRUCTION_MAX_LENGTH, strip_whitespace=True),
+]
 
 REQUIRED_PLATFORMS: Final = frozenset({Platform.GOOGLE, Platform.NAVER, Platform.KAKAO})
 INVALID_PLATFORM_COVERAGE: Final = "invalid_platform_coverage"
@@ -73,6 +78,13 @@ class ContentGenerationInput(ApiSchema):
     purpose: ContentPurpose = ContentPurpose.INTRODUCTION
     seed_keywords: SeedKeywords
     source_review_ids: SourceReviewIds | None = None
+    # How to rewrite the copy, not something to say in it. Sent as its own field
+    # because folding "조금 더 정중한 말투로 다시 써주세요" into briefText made it the
+    # owner's content: offline the deterministic generator echoed the sentence
+    # into every platform draft, one approval away from three public maps, and a
+    # model can copy it out of the brief just as easily. Not stored - it describes
+    # one regeneration, not the owner's standing input.
+    tone_instruction: ToneInstruction | None = None
 
     @field_validator("seed_keywords", mode="before")
     @classmethod

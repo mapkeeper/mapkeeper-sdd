@@ -41,7 +41,7 @@ describe('MSW browser transport boundary', () => {
     expect(envelope.data.drafts.find((draft) => draft.platform === 'google')?.draftText).toContain('따뜻한 동네 맛집');
   });
 
-  test('NEWS 목적은 소개글 접미사 대신 소식 접미사를 사용한다', async () => {
+  test('목적에 따라 문구가 달라지되 어떤 문구도 플랫폼 이름을 쓰지 않는다', async () => {
     const response = await fetch('/api/v1/seo/generations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -51,7 +51,13 @@ describe('MSW browser transport boundary', () => {
       data: { drafts: Array<{ platform: string; draftText: string }> };
     };
 
-    expect(envelope.data.drafts.find((draft) => draft.platform === 'google')?.draftText).toContain('Google 소식으로 안내해요.');
-    expect(envelope.data.drafts.find((draft) => draft.platform === 'google')?.draftText).not.toContain('소개글로 정리했어요.');
+    // The demo copy is a screen the owner reads. Naming the platform inside it is
+    // a word nobody said, and the real backend never writes one.
+    for (const draft of envelope.data.drafts) {
+      expect(draft.draftText).toContain('소식');
+      expect(draft.draftText.toLowerCase()).not.toMatch(/google|naver|kakao/);
+      expect(draft.draftText).not.toMatch(/구글|네이버|카카오/);
+    }
+    expect(new Set(envelope.data.drafts.map((draft) => draft.draftText)).size).toBe(3);
   });
 });

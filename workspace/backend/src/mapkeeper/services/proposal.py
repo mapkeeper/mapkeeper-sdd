@@ -79,7 +79,10 @@ async def create_proposal(
     if profile is None:
         raise ResourceNotFoundError(PROFILE_NOT_FOUND_MESSAGE)
     selected_generator = generator if generator is not None else get_gemini_generator()
-    masked_text = mask_customer_pii(body.recognized_text)
+    masked_text = mask_customer_pii(
+        body.recognized_text,
+        (profile.public_address, profile.representative_phone),
+    )
     changes = await selected_generator.generate(masked_text, profile)
     if not has_effective_change(changes):
         raise InvalidStateError(NO_EFFECTIVE_CHANGE_MESSAGE)

@@ -7,13 +7,22 @@ import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
-import type { ProposalChange, ProposalField } from '@/types/domain';
+import type { ProposalChange, ProposalField, ProposalStatus } from '@/types/domain';
 import { useStoreChangeFlow } from '@/features/store-change/useStoreChangeFlow';
 import type { StoreChangeSyncHandoff } from '@/features/store-change/useStoreChangeFlow';
 import { safeDiagnostic } from '@/services/safeDiagnostics';
 import './storeChange.css';
 
 type WizardStep = 'INPUT' | 'MANUAL' | 'REVIEW' | 'EDIT' | 'CONFIRM' | 'REJECTED';
+
+// The API status is an external enum. Owners - including the ones reading this
+// screen with a screen reader - are told what the proposal is, not what the
+// contract calls it.
+const proposalStatusLabels: Record<ProposalStatus, string> = {
+  DRAFT: '검토 중',
+  APPROVED: '승인됨',
+  REJECTED: '변경하지 않음',
+};
 
 const fieldLabels: Record<ProposalField, string> = {
   businessHours: '영업시간',
@@ -269,7 +278,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
       {step === 'REVIEW' && flow.proposal ? (
         <section className="store-change-wizard__step">
           <h1 className="sr-only">변경안을 확인해 주세요</h1>
-          <span className="sr-only">{flow.proposal.status}</span>
+          <span className="sr-only">{proposalStatusLabels[flow.proposal.status]}</span>
           <div className="store-change-wizard__bot"><span aria-hidden="true"><Robot weight="regular" /></span><p>{flow.proposal.changes.length > 0
             ? <>아래 내용이 맞는지<br />확인해 주세요</>
             : <>말씀하신 내용에서<br />바꿀 항목을 찾지 못했어요</>}</p></div>

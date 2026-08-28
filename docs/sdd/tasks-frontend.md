@@ -40,6 +40,7 @@
 | NEWS 기간 추출·달력 확인 | Done |
 | 3사 draftText·keywords·contentRules 표시 | Done |
 | Generation 전체 재생성 | Done |
+| 문체 변경을 `toneInstruction`으로 전달 | Done |
 | Generation 전체 거절 | Done |
 | Generation 전체 승인, draftIds 없음 | Done |
 | 실제 FastAPI UC1·UC2 계약 회귀 | Done |

@@ -4,6 +4,7 @@ import { HttpResponse, http } from 'msw';
 import { DEMO_SOURCE_REVIEW_ID } from '@/config/demoStore';
 import { reviewSummaryFixture, sourceReviewFixtures } from '@/mocks/fixtures/storeFixtures';
 import { server } from '@/mocks/server';
+import { COPY_TONES } from '@/components/PlatformCopyEditor/copyTones';
 import { SeoGenerationWizard } from '@/features/seo/SeoGenerationWizard';
 import { describeHolidayRange, matchKoreanHoliday } from '@/features/seo/holidays';
 
@@ -218,6 +219,50 @@ describe('SeoGenerationWizard mobile flow', () => {
 
     expect(await screen.findByRole('heading', { name: '문구를 반영하지 않았습니다' })).toBeInTheDocument();
     expect(rejectCalls).toBe(1);
+  });
+
+  test('문체 변경은 지시문을 문구가 아니라 별도 필드로 보낸다', async () => {
+    // The tone request used to be concatenated onto briefText, which made it the
+    // owner's content: offline the server echoes the brief, so pressing a tone
+    // button published three drafts ending in "다시 써주세요".
+    const user = userEvent.setup();
+    let regenerateBody: { briefText?: string; toneInstruction?: string } | undefined;
+    server.use(
+      http.post('*/api/v1/seo/generations/gen-001/regenerate', async ({ request }) => {
+        regenerateBody = await request.json() as { briefText?: string; toneInstruction?: string };
+        return HttpResponse.json({
+          success: true,
+          status: 'SUCCESS',
+          data: {
+            generationId: 'gen-001',
+            status: 'DRAFT',
+            revision: 2,
+            drafts: [
+              { draftId: 'draft-t1', platform: 'google', draftText: '정중한 구글 문구', keywords: ['문체'], contentRules: ['rule'] },
+              { draftId: 'draft-t2', platform: 'naver', draftText: '정중한 네이버 문구', keywords: ['문체'], contentRules: ['rule'] },
+              { draftId: 'draft-t3', platform: 'kakao', draftText: '정중한 카카오 문구', keywords: ['문체'], contentRules: ['rule'] },
+            ],
+          },
+          error: null,
+          timestamp: '2026-08-03T00:00:00Z',
+        });
+      }),
+    );
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachRecommendation(user);
+
+    await user.click(screen.getByRole('button', { name: '정중하게' }));
+
+    await waitFor(() => expect(regenerateBody).toBeDefined());
+    // What matters is the contract split, not the wording of the instruction:
+    // the tone travels in its own field, and briefText carries only what the
+    // owner answered. Asserting on prose from the instruction made this test
+    // fail whenever the button's copy was reworded, which is not a regression.
+    const polite = COPY_TONES.find((tone) => tone.key === 'POLITE');
+    expect(regenerateBody?.toneInstruction).toBe(polite?.instruction);
+    expect(regenerateBody?.briefText).toBe('정성이 가득한 동네 맛집. 깊은 국물과 친절한 서비스. 만두전골.');
+    expect(regenerateBody?.briefText).not.toContain(polite?.instruction);
+    expect(await screen.findByRole('textbox', { name: /구글에 올릴 문구/ })).toHaveValue('정중한 구글 문구');
   });
 
   test('답변 누락을 막고 취소와 닫기는 승인 없이 홈 callback을 호출한다', async () => {

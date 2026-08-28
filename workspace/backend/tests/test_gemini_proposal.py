@@ -16,7 +16,12 @@ from mapkeeper.adapters.gemini_proposal import (
     parse_changes,
 )
 from mapkeeper.adapters.gemini_seo import GENERATION_TIMEOUT_MESSAGE, GeminiTimeoutError
-from mapkeeper.api.schemas.store_change import BusinessHoursChange, ParkingInfoChange
+from mapkeeper.adapters.intent import unmapped_request_labels
+from mapkeeper.api.schemas.store_change import (
+    BusinessHoursChange,
+    ParkingInfoChange,
+    TemporaryClosureChange,
+)
 from mapkeeper.core.config import get_settings
 from mapkeeper.models import StoreProfile
 
@@ -355,3 +360,79 @@ async def test_the_parsers_answer_survives_a_model_that_reads_less() -> None:
     # Then: the half the parser could read is kept rather than failing the request.
     (change,) = changes
     assert change.field == "temporaryClosure"
+
+
+@pytest.mark.asyncio
+async def test_offline_a_compound_request_keeps_the_reading_the_parser_managed() -> None:
+    """A second field the stub cannot read must not discard the first one.
+
+    The owner names a closure and parking in one breath. The parser reads the
+    closure and declines parking, so the sentence goes to the fallback — offline
+    that is the stub, which cannot read "9월 1일" and refuses. The refusal has to
+    leave the parser's closure standing, and the dropped field has to be named,
+    rather than failing the whole request.
+    """
+    # Given: the offline generator and a sentence naming two fields.
+    generator = DeterministicFirstGenerator(DeterministicGeminiStub())
+    sentence = "9월 1일은 임시 휴무이고 주차는 불가능합니다."
+
+    # When: the sentence is structured with no Gemini key configured.
+    changes = await generator.generate(sentence, make_profile())
+
+    # Then: the closure survives and parking is reported as unmapped.
+    (change,) = changes
+    assert isinstance(change, TemporaryClosureChange)
+    assert change.proposed_value.start_date == date(2026, 9, 1)
+    assert unmapped_request_labels(sentence, changes) == ("주차 정보",)
+
+
+@pytest.mark.asyncio
+async def test_offline_a_sentence_neither_side_can_read_is_still_refused() -> None:
+    # Given: a sentence the parser declines and the stub cannot read either.
+    generator = DeterministicFirstGenerator(DeterministicGeminiStub())
+
+    # When / Then: nothing was read, so the request is refused rather than guessed.
+    with pytest.raises(UnsupportedChangeError):
+        _ = await generator.generate("오늘 날씨 어때?", make_profile())
+
+
+@pytest.mark.asyncio
+async def test_offline_a_closure_and_a_business_day_are_both_proposed() -> None:
+    """The parser reads one half and the stub the other; both have to survive.
+
+    Offline the stub reads "영업시간은 오전 10시부터 오후 9시까지" and cannot resolve
+    "다음 주 월요일". Returning the stub's answer alone dropped the closure into an
+    unmapped notice, so the owner had to ask for their day off a second time.
+    """
+    # Given: the offline generator and a sentence naming two fields.
+    generator = DeterministicFirstGenerator(DeterministicGeminiStub())
+    sentence = "다음 주 월요일 하루 임시 휴무이고 영업시간은 오전 10시부터 오후 9시까지입니다"
+
+    # When: the sentence is structured with no Gemini key configured.
+    changes = await generator.generate(sentence, make_profile())
+
+    # Then: both readings are accumulated and nothing is reported as dropped.
+    by_field = {change.field: change for change in changes}
+    assert set(by_field) == {"businessHours", "temporaryClosure"}
+    hours = by_field["businessHours"]
+    assert isinstance(hours, BusinessHoursChange)
+    assert hours.proposed_value.open == "10:00"
+    assert hours.proposed_value.close == "21:00"
+    assert unmapped_request_labels(sentence, changes) == ()
+
+
+@pytest.mark.asyncio
+async def test_the_model_still_decides_a_field_the_parser_also_read() -> None:
+    """Merging adds the fields the model missed; it does not overrule the ones it read."""
+    # Given: a model that reads the same closure the parser does, plus parking.
+    client = CountingClient(closure_and_parking_output())
+    generator = DeterministicFirstGenerator(GeminiProposalStructurer(client))
+
+    # When: the compound sentence is structured.
+    changes = await generator.generate(
+        "9월 1일은 임시 휴무이고 주차는 불가능합니다",
+        make_profile(),
+    )
+
+    # Then: the closure is not duplicated by the merge.
+    assert [change.field for change in changes] == ["temporaryClosure", "parkingInfo"]

@@ -6,7 +6,9 @@ Three separations keep this testable and safe:
   handling are checked without a network or an API key.
 - Whatever the model returns is re-validated against the published response schema
   before anything is stored. Length, keyword count and platform coverage are the
-  contract's, not the model's.
+  contract's, not the model's. That check is structural only - what the copy
+  *claims* is checked by ``services.content_safety``, which every generator's
+  answer passes through on its way to storage.
 - Only masked input reaches the prompt. The caller masks before handing values over,
   and nothing here reads raw reviews or customer data.
 """
@@ -121,6 +123,14 @@ def build_prompt(
     )
     reviews = "\n".join(f"- {review}" for review in source_reviews[:MAX_SOURCE_REVIEWS])
     review_block = f"\n참고 리뷰(마스킹 완료):\n{reviews}\n" if reviews else ""
+    # Kept out of the owner's content block on purpose. A rewrite request that
+    # sits under "사장님이 강조하고 싶은 내용" reads as something to say, and the model
+    # can put it straight into the published copy.
+    tone_block = (
+        f"\n말투 요청(문구에 쓰지 말고 문체에만 반영한다): {content_input.tone_instruction}\n"
+        if content_input.tone_instruction
+        else ""
+    )
     match content_input.purpose:
         case ContentPurpose.INTRODUCTION:
             purpose_guidance = (
@@ -145,12 +155,13 @@ def build_prompt(
 
 사장님이 강조하고 싶은 내용:
 {content_input.brief_text}
-{keyword_block}{review_block}
+{keyword_block}{review_block}{tone_block}
 플랫폼별 작성 규칙:
 {rules}
 
 공통 규칙:
 - 입력에 없는 사실을 만들지 않는다. 과장하지 않는다.
+- 위 요청·지시 문장 자체를 문구에 옮겨 적지 않는다.
 - 리뷰가 주어지지 않았으면 손님 반응이나 평판을 지어내지 않는다. 위에 적힌 내용만 쓴다.
 - 고객 이름·전화번호 같은 개인정보를 쓰지 않는다.
 - draftText는 {DRAFT_TEXT_MAX_LENGTH}자 이하로 쓴다.
@@ -179,10 +190,14 @@ def _load_json(raw: str) -> JsonValue:
 
 
 def parse_results(raw: str) -> tuple[PlatformContentResult, ...]:
-    """Turn the model output into validated results, or refuse it.
+    """Turn the model output into structurally valid results, or refuse it.
 
     The published schema does the checking, so a model that ignores a limit is
-    rejected here instead of reaching the database.
+    rejected here instead of reaching the database. Shape is all this can judge:
+    "검증되지 않은 50% 할인, 고객 홍길동님 010-1234-5678" is a perfectly well-formed
+    draft. Customer PII and claims the input never made are caught by
+    ``mapkeeper.services.content_safety.enforce_publication_safety``, which runs on
+    this function's output before anything is stored or becomes approvable.
 
     Raises:
         GeminiGenerationError: the output was not usable.

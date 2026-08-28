@@ -361,7 +361,7 @@ export function SeoGenerationWizard({
     submitInterviewAnswer(speech.recognizedText);
   }, [speech.recognizedText, speech.state, step, submitInterviewAnswer]);
 
-  const composeBriefText = (extraInstruction = ''): string => {
+  const composeBriefText = (): string => {
     // Drop the raw date/no-date answer once a structured decision exists for
     // it: newsScheduleText below is the authoritative statement, and keeping
     // the original phrase too can contradict it (e.g. a later "기간 없이
@@ -377,10 +377,7 @@ export function SeoGenerationWizard({
         : newsDateRange
           ? ` 행사 기간은 ${newsDateRange.start}부터 ${newsDateRange.end}까지입니다.`
           : '';
-    const brief = `${answerText}${newsScheduleText}`;
-    if (!extraInstruction) return brief.slice(0, BRIEF_TEXT_MAX_LENGTH);
-    const room = BRIEF_TEXT_MAX_LENGTH - extraInstruction.length - 1;
-    return `${brief.slice(0, Math.max(room, 0))} ${extraInstruction}`.trim();
+    return `${answerText}${newsScheduleText}`.slice(0, BRIEF_TEXT_MAX_LENGTH);
   };
 
   const openEditors = (drafts: readonly SeoDraft[]) => {
@@ -409,13 +406,17 @@ export function SeoGenerationWizard({
     setStep('RECOMMEND');
   };
 
+  // The tone travels as its own instruction, never inside briefText. Folded into
+  // the brief it became the owner's content: offline the server echoes the brief,
+  // so "친근하게" published three drafts ending in "다시 써주세요".
   const regenerateWithTone = async (tone: CopyToneKey) => {
-    const instruction = COPY_TONES.find((option) => option.key === tone)?.instruction ?? '';
+    const instruction = COPY_TONES.find((option) => option.key === tone)?.instruction;
     const generated = await flow.generate({
       purpose: purpose === 'NEWS' ? 'NEWS' : 'INTRODUCTION',
-      briefText: composeBriefText(instruction),
+      briefText: composeBriefText(),
       seedKeywords: [...seedKeywords],
       sourceReviewIds: selectedReviewIds,
+      ...(instruction ? { toneInstruction: instruction } : {}),
     });
     if (generated) openEditors(generated);
   };

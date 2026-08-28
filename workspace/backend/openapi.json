@@ -579,6 +579,19 @@
             "format": "uuid",
             "title": "Storeprofileid",
             "type": "string"
+          },
+          "toneInstruction": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toneinstruction"
           }
         },
         "required": [
@@ -999,6 +1012,19 @@
               }
             ],
             "title": "Sourcereviewids"
+          },
+          "toneInstruction": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toneinstruction"
           }
         },
         "required": [

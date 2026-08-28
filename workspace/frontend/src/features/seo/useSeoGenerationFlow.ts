@@ -27,6 +27,8 @@ export interface SeoGenerationInput {
   briefText: string;
   seedKeywords: string[];
   sourceReviewIds: string[];
+  /** A rewrite request for the model, kept out of the copy it produces. */
+  toneInstruction?: string;
 }
 
 interface SeoGenerationFlow {
