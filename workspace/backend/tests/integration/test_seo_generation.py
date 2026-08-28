@@ -578,6 +578,7 @@ async def test_the_api_boundary_refuses_a_fabricated_claim(
     with pytest.raises(UnsafeGeneratedContentError) as failure:
         _ = await create_generation_route(body, db_session)
     assert failure.value.message == UNSAFE_CONTENT_MESSAGE
+    assert failure.value.http_status == 422
     assert failure.value.retryable is True
 
 

@@ -21,12 +21,13 @@ import re
 from decimal import Decimal
 from typing import Final
 
+from fastapi import status
 from pydantic import ValidationError
 
 from mapkeeper.api.schemas.seo import ContentGenerationInput, PlatformContentResult
 from mapkeeper.core.errors import MapKeeperError
 from mapkeeper.core.logging import get_logger
-from mapkeeper.models import StoreProfile
+from mapkeeper.models import ApiErrorCode, StoreProfile
 from mapkeeper.services.pii_masking import mask_customer_pii
 
 logger = get_logger(__name__)
@@ -65,6 +66,9 @@ class UnsafeGeneratedContentError(MapKeeperError):
     Retryable: the same request with a cooperative answer succeeds, so the owner
     is told to try again rather than shown an internal failure.
     """
+
+    http_status: int = status.HTTP_422_UNPROCESSABLE_CONTENT
+    code: ApiErrorCode = ApiErrorCode.VALIDATION_ERROR
 
     def __init__(self) -> None:
         """Report the fixed, caller-safe message."""
