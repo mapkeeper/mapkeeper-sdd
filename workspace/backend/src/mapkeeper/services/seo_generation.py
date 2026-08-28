@@ -290,12 +290,46 @@ async def edit_generation_drafts(
     profile = await _load_profile(session, generation.store_profile_id)
     business = approved_business_values(profile)
     stored = {draft.platform: draft for draft in await _load_drafts(session, generation.id)}
+    content_input = ContentGenerationInput(
+        brief_text=generation.brief_text,
+        purpose=generation.purpose,
+        seed_keywords=tuple(generation.seed_keywords),
+        source_review_ids=(
+            tuple(generation.source_review_ids)
+            if generation.source_review_ids is not None
+            else None
+        ),
+    )
+    source_reviews = await _load_source_reviews(
+        session,
+        profile,
+        content_input.source_review_ids,
+    )
+    edited_results = tuple(
+        PlatformContentResult(
+            draft_id=stored[edit.platform].id,
+            platform=edit.platform,
+            draft_text=edit.draft_text,
+            keywords=tuple(edit.keywords),
+            content_rules=tuple(str(rule) for rule in stored[edit.platform].content_rules),
+        )
+        for edit in body.drafts
+    )
+    safe_results = enforce_publication_safety(
+        edited_results,
+        content_input,
+        profile,
+        source_reviews,
+        business,
+    )
+    safe_by_platform = {result.platform: result for result in safe_results}
     for edit in body.drafts:
         draft = stored.get(edit.platform)
         if draft is None:
             raise ResourceNotFoundError(GENERATION_NOT_FOUND_MESSAGE)
-        draft.draft_text = mask_customer_pii(edit.draft_text, business)
-        draft.keywords = [mask_customer_pii(keyword, business) for keyword in edit.keywords]
+        safe_result = safe_by_platform[edit.platform]
+        draft.draft_text = safe_result.draft_text
+        draft.keywords = list(safe_result.keywords)
     generation.revision += 1
     await session.flush()
     return _response(generation, await _load_drafts(session, generation.id))

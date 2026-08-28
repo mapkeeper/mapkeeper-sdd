@@ -35,7 +35,14 @@ CUSTOMER_HONORIFIC_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(
 
 # A stand-in for an approved business value while the patterns run. It carries no
 # digit and no Hangul, so none of the patterns above can match inside it.
-_BUSINESS_SENTINEL: Final = "\ue000{index}\ue001"
+_BUSINESS_SENTINEL_PREFIX: Final = "\ue000"
+_BUSINESS_SENTINEL: Final = f"{_BUSINESS_SENTINEL_PREFIX}{{index}}\ue001"
+
+
+def _mask_labeled_address(match: re.Match[str]) -> str:
+    if match.group(2).startswith(_BUSINESS_SENTINEL_PREFIX):
+        return match.group(0)
+    return f"{match.group(1)}[MASKED_ADDRESS]"
 
 
 def mask_customer_pii(text: str, business_values: Iterable[str] = ()) -> str:
@@ -59,7 +66,7 @@ def mask_customer_pii(text: str, business_values: Iterable[str] = ()) -> str:
     for index, value in enumerate(protected):
         masked = masked.replace(value, _BUSINESS_SENTINEL.format(index=index))
     masked = PHONE_PATTERN.sub("[MASKED_PHONE]", masked)
-    masked = ADDRESS_PATTERN.sub(r"\1[MASKED_ADDRESS]", masked)
+    masked = ADDRESS_PATTERN.sub(_mask_labeled_address, masked)
     masked = ROAD_ADDRESS_PATTERN.sub("[MASKED_ADDRESS]", masked)
     masked = CUSTOMER_NAME_PATTERN.sub(r"\1[MASKED_NAME]", masked)
     masked = CUSTOMER_HONORIFIC_NAME_PATTERN.sub(r"\1[MASKED_NAME]", masked)

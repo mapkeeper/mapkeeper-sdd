@@ -243,3 +243,14 @@ def test_the_stores_own_public_values_are_not_treated_as_customer_pii() -> None:
     assert address in masked
     assert phone in masked
     assert "010-1234-5678" not in masked
+
+
+def test_the_stores_own_public_address_survives_an_address_label() -> None:
+    # Given: generated copy labels the store's approved address explicitly.
+    address = "서울특별시 관악구 시연로 12"
+
+    # When: the generated copy crosses the customer masking boundary.
+    masked = mask_customer_pii(f"주소: {address}", (address,))
+
+    # Then: the label does not turn the approved business value into a placeholder.
+    assert masked == f"주소: {address}"

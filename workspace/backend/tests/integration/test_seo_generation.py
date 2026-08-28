@@ -240,6 +240,25 @@ async def test_owner_edits_are_masked_like_every_other_stored_text(
     assert all("010-1234-5678" not in draft.draft_text for draft in edited.drafts)
 
 
+async def test_owner_edits_cannot_bypass_publication_safety(
+    db_session: AsyncSession,
+) -> None:
+    # Given: a DRAFT whose original brief does not announce a discount.
+    profile = await make_store_profile(db_session)
+    initial = await create_generation(db_session, generation_input(), profile.id)
+    unsupported = draft_edits("전 메뉴 90% 할인, 전국 1위 맛집, 만두전골 1만원")
+
+    # When / Then: direct edits are held to the same grounding boundary as generation.
+    with pytest.raises(UnsafeGeneratedContentError):
+        _ = await edit_generation_drafts(db_session, initial.generation_id, unsupported)
+
+    # And: the ungrounded copy is not stored for approval.
+    assert all(
+        "90%" not in draft.draft_text
+        for draft in await _stored_drafts(db_session, initial.generation_id)
+    )
+
+
 @pytest.mark.parametrize(
     "status", [ContentGenerationStatus.APPROVED, ContentGenerationStatus.REJECTED]
 )
