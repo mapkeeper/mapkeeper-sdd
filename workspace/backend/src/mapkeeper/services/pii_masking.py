@@ -8,7 +8,7 @@ PHONE_PATTERN: Final[re.Pattern[str]] = re.compile(
     r"(?<!\d)(?:01\d[- .]?\d{3,4}[- .]?\d{4}|0\d{1,2}[- .]?\d{3,4}[- .]?\d{4})(?!\d)"
 )
 ADDRESS_PATTERN: Final[re.Pattern[str]] = re.compile(
-    r"((?:주소|사는 곳|거주지)\s*(?:는|은|:)?\s*)([^,.;\n]+)",
+    r"((?:주소|사는 곳|거주지)\s*(?:는|은|:)\s*)([^,.;\n]+)",
 )
 ROAD_ADDRESS_LOCALITY: Final = r"(?:[가-힣]+(?:특별시|광역시|특별자치시|특별자치도|도)|서울시)\s+"
 ROAD_ADDRESS_STREET: Final = r"(?:[가-힣]+(?:시|군|구)\s+){1,2}[가-힣0-9]+(?:로|길)\s*\d+(?:-\d+)?"
@@ -21,8 +21,19 @@ CUSTOMER_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(
 CUSTOMER_REFERENCE_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(
     r"((?:고객|손님|예약자)\s+)([가-힣]{2,4})(?=의(?:\s|$))",
 )
+KOREAN_SINGLE_SURNAMES_PART_1: Final = (
+    "김이박최정강조윤장임한오서신권황안송전홍유고문양손배백허노남심하곽성차주우구민진지엄채원천"
+)
+KOREAN_SINGLE_SURNAMES_PART_2: Final = (
+    "방공현함변염여추도소석선설마길연위표명기반왕금옥육인맹제모탁국어은편용"
+)
+KOREAN_SINGLE_SURNAMES: Final = f"{KOREAN_SINGLE_SURNAMES_PART_1}{KOREAN_SINGLE_SURNAMES_PART_2}"
+KOREAN_COMPOUND_SURNAMES: Final = ("남궁", "황보", "제갈", "선우", "독고", "동방", "사공", "서문")
+KOREAN_SURNAME_PATTERN: Final = (
+    rf"(?:{'|'.join(KOREAN_COMPOUND_SURNAMES)}|[{KOREAN_SINGLE_SURNAMES}])"
+)
 CUSTOMER_SUFFIX_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(
-    r"([가-힣]{2,4})(\s*(?:고객|손님|예약자)(?:님)?)",
+    rf"(?<![가-힣])({KOREAN_SURNAME_PATTERN}[가-힣]{{1,2}})(\s*(?:고객|손님|예약자)(?:님)?)",
 )
 # "고객 홍길동님이 예약하셨어요" is how an owner most often names a customer out
 # loud, and none of the patterns above saw it: one wants the word "이름", one
@@ -73,5 +84,12 @@ def mask_customer_pii(text: str, business_values: Iterable[str] = ()) -> str:
     masked = CUSTOMER_REFERENCE_NAME_PATTERN.sub(r"\1[MASKED_NAME]", masked)
     masked = CUSTOMER_SUFFIX_NAME_PATTERN.sub(r"[MASKED_NAME]\2", masked)
     for index, value in enumerate(protected):
-        masked = masked.replace(_BUSINESS_SENTINEL.format(index=index), value)
+        sentinel = _BUSINESS_SENTINEL.format(index=index)
+        marker = "[MASKED_PHONE]" if PHONE_PATTERN.fullmatch(value) else "[MASKED_ADDRESS]"
+        masked = re.sub(
+            rf"{re.escape(sentinel)}\s*(?:\(\s*)?{re.escape(marker)}(?:\s*\))?",
+            sentinel,
+            masked,
+        )
+        masked = masked.replace(sentinel, value)
     return masked
