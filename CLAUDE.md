@@ -59,3 +59,15 @@ A successful test command is not proof of completion until the original user sce
 ## Agent routing
 
 If Codex reports `FAIL`, address only the listed blockers, rerun the exact reproduction, and report the before/after result. Do not rewrite the review or weaken the acceptance criteria.
+
+## Token-efficient loop policy
+
+When invoked through `tools/claude-codex-loop.sh` for a named SDD Task, work
+within the script's maximum of two review rounds unless the user explicitly
+requests more. The whole feature's Claude Pro five-hour usage budget is 40%;
+do not broaden scope, and report `STATUS: BLOCKED` with the remaining work when
+continuing would exceed it. Do not invoke the broad `review-work` 5-lane
+process or spawn additional review agents. Load `debugging` only for an
+observed runtime failure, hang, or unexplained behavior. Keep the completion
+report concise: changed files, exact scenarios, focused tests, quality-gate
+results, and known gaps only.

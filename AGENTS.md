@@ -58,3 +58,23 @@ BLOCKERS: <empty or numbered list>
 ## Ownership
 
 Claude owns implementation and repairs. Codex owns independent verification. Orca owns sequencing, task state, and routing feedback. Never claim a Claude report is verified without executing the relevant scenario.
+
+## Token-efficient implementation loop
+
+For a named SDD Task such as T256, use the smallest review surface that can
+prove the task:
+
+- The default loop is at most **2** Claude/Codex rounds. More rounds require an
+  explicit user request.
+- The whole named feature has a rolling five-hour usage budget of **40% for
+  Claude Pro** and **25% for Codex Plus**. The loop snapshots Orca's provider
+  usage before starting and stops at worker handoffs when either cumulative
+  delta reaches its cap. A higher cap requires explicit user authorization.
+- Run one focused Codex verification worker. Do not invoke the 5-lane
+  `review-work` orchestrator for a narrow Task.
+- Use `debugging` only when a runtime failure, hang, or unexplained behavior is
+  actually observed.
+- Do not repeatedly print full skill files, transcripts, or command logs into
+  the coordinator context.
+- Preserve exact FAIL findings in worker handoffs, but bound reports passed to
+  the next worker and show only the final summary to the user.

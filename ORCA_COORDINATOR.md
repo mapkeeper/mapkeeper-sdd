@@ -37,9 +37,22 @@ the loop run and reports its final evidence.
 
 - Use one writer at a time. Never run Claude and another modifying worker concurrently in the same worktree.
 - Preserve unrelated dirty changes; do not reset, stash, commit, or push without explicit authorization.
-- Stop after five review rounds by default, or sooner when the same failure repeats without a meaningful change.
+- Stop after two review rounds by default. A larger loop requires explicit user authorization.
+- Apply one cumulative feature budget per rolling five-hour window: Claude Pro
+  40% and Codex Plus 25%. Snapshot both providers with `orca account list
+  --json` before dispatching, refuse to start unless the full budget remains,
+  and stop before the next worker when a provider reaches its cap. Raising a
+  cap requires explicit user authorization.
 - Do not acknowledge a worker delivery until the next owner has been chosen and started or the current worker has been released.
 - Redact secrets and personal data from Task specs, reports, and handoffs.
+
+## Token-efficient focused Task policy
+
+For a named SDD Task, run one focused Codex verification worker after Claude's
+implementation. Do not invoke the broad `review-work` five-lane orchestrator,
+spawn review sub-agents, or load `debugging` without observed runtime failure
+evidence. Bound worker reports and transcript output; surface only the final
+verdict and exact blockers to the coordinator.
 
 ## User-facing completion report
 

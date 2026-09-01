@@ -9,7 +9,9 @@ Usage:
 Options:
   --run <run_id>          Reuse an existing Orca Run. Omit to create a new Run.
   --worktree <selector>   Orca worktree selector (default: current).
-  --max-rounds <n>        Maximum Codex review rounds (default: 5).
+  --max-rounds <n>        Maximum Codex review rounds (default: 2; hard cap: 2).
+  --claude-budget <n>     Claude feature budget percent (default/hard cap: 40).
+  --codex-budget <n>      Codex feature budget percent (default/hard cap: 25).
   --timeout-ms <n>        Wait timeout per worker result (default: 900000).
   --help                  Show this help.
 EOF
@@ -17,7 +19,9 @@ EOF
 
 RUN_ID=""
 WORKTREE="current"
-MAX_ROUNDS=5
+MAX_ROUNDS=2
+CLAUDE_BUDGET_PERCENT=40
+CODEX_BUDGET_PERCENT=25
 TIMEOUT_MS=900000
 OBJECTIVE=""
 
@@ -27,6 +31,8 @@ while (($# > 0)); do
     --run) RUN_ID="${2:?--run requires a value}"; shift 2 ;;
     --worktree) WORKTREE="${2:?--worktree requires a value}"; shift 2 ;;
     --max-rounds) MAX_ROUNDS="${2:?--max-rounds requires a value}"; shift 2 ;;
+    --claude-budget) CLAUDE_BUDGET_PERCENT="${2:?--claude-budget requires a value}"; shift 2 ;;
+    --codex-budget) CODEX_BUDGET_PERCENT="${2:?--codex-budget requires a value}"; shift 2 ;;
     --timeout-ms) TIMEOUT_MS="${2:?--timeout-ms requires a value}"; shift 2 ;;
     --help|-h) usage; exit 0 ;;
     *) printf '알 수 없는 옵션: %s\n\n' "$1" >&2; usage >&2; exit 2 ;;
@@ -39,7 +45,30 @@ if [[ -z "$OBJECTIVE" ]]; then
   exit 2
 fi
 
-for command in orca jq rg; do
+for value_name in MAX_ROUNDS CLAUDE_BUDGET_PERCENT CODEX_BUDGET_PERCENT TIMEOUT_MS; do
+  value="${!value_name}"
+  if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+    printf '%s는 양의 정수여야 합니다: %s\n' "$value_name" "$value" >&2
+    exit 2
+  fi
+done
+
+if ((MAX_ROUNDS > 2)); then
+  printf '집중 Task 루프는 최대 2라운드만 허용합니다.\n' >&2
+  exit 2
+fi
+
+if ((CLAUDE_BUDGET_PERCENT > 40)); then
+  printf 'Claude 기능 예산은 최대 40%%입니다.\n' >&2
+  exit 2
+fi
+
+if ((CODEX_BUDGET_PERCENT > 25)); then
+  printf 'Codex 기능 예산은 최대 25%%입니다.\n' >&2
+  exit 2
+fi
+
+for command in orca jq rg sed; do
   command -v "$command" >/dev/null || { printf '%s 명령을 찾을 수 없습니다.\n' "$command" >&2; exit 2; }
 done
 
@@ -54,6 +83,94 @@ run_orca_json() {
 
 last_json() {
   sed '/^{"_keepalive":/d' "$1" | jq -s '.[-1]'
+}
+
+usage_state() {
+  local provider="$1"
+  orca account list --json | jq -er --arg provider "$provider" '
+    .result.rateLimits[$provider] as $limit
+    | select($limit.status == "ok")
+    | select($limit.session.usedPercent != null and $limit.session.resetsAt != null)
+    | [($limit.session.usedPercent | ceil), $limit.session.resetsAt]
+    | @tsv
+  '
+}
+
+read_usage_state() {
+  local provider="$1" state
+  if ! state="$(usage_state "$provider")"; then
+    printf '%s 5시간 사용량을 읽을 수 없어 예산을 안전하게 적용할 수 없습니다.\n' "$provider" >&2
+    return 6
+  fi
+  IFS=$'\t' read -r USAGE_USED_PERCENT USAGE_RESETS_AT <<<"$state"
+}
+
+capture_usage_baseline() {
+  read_usage_state claude
+  CLAUDE_BASE_USED="$USAGE_USED_PERCENT"
+  CLAUDE_BASE_RESET="$USAGE_RESETS_AT"
+
+  read_usage_state codex
+  CODEX_BASE_USED="$USAGE_USED_PERCENT"
+  CODEX_BASE_RESET="$USAGE_RESETS_AT"
+
+  if ((100 - CLAUDE_BASE_USED < CLAUDE_BUDGET_PERCENT)); then
+    printf 'Claude 남은 5시간 용량이 기능 예산 %d%%보다 작습니다: used=%d%%\n' \
+      "$CLAUDE_BUDGET_PERCENT" "$CLAUDE_BASE_USED" >&2
+    exit 6
+  fi
+  if ((100 - CODEX_BASE_USED < CODEX_BUDGET_PERCENT)); then
+    printf 'Codex 남은 5시간 용량이 기능 예산 %d%%보다 작습니다: used=%d%%\n' \
+      "$CODEX_BUDGET_PERCENT" "$CODEX_BASE_USED" >&2
+    exit 6
+  fi
+
+  printf 'Usage budgets: Claude %d%% (start %d%%), Codex %d%% (start %d%%)\n' \
+    "$CLAUDE_BUDGET_PERCENT" "$CLAUDE_BASE_USED" \
+    "$CODEX_BUDGET_PERCENT" "$CODEX_BASE_USED"
+}
+
+usage_delta() {
+  local provider="$1" baseline_used="$2" baseline_reset="$3"
+  if ! read_usage_state "$provider"; then
+    return 6
+  fi
+  if [[ "$USAGE_RESETS_AT" != "$baseline_reset" ]]; then
+    printf '%s 사용량 창이 작업 중 초기화되어 기능별 소비량을 안전하게 계산할 수 없습니다.\n' \
+      "$provider" >&2
+    return 6
+  fi
+  if ((USAGE_USED_PERCENT < baseline_used)); then
+    printf '%s 사용량이 기준값보다 작아 기능별 소비량을 안전하게 계산할 수 없습니다.\n' \
+      "$provider" >&2
+    return 6
+  fi
+  USAGE_DELTA_PERCENT=$((USAGE_USED_PERCENT - baseline_used))
+}
+
+enforce_budget_after_worker() {
+  local provider="$1" budget="$2" baseline_used="$3" baseline_reset="$4"
+  if ! usage_delta "$provider" "$baseline_used" "$baseline_reset"; then
+    return 6
+  fi
+  printf 'Usage: %s feature delta=%d%% / cap=%d%%\n' \
+    "$provider" "$USAGE_DELTA_PERCENT" "$budget"
+  if ((USAGE_DELTA_PERCENT > budget)); then
+    printf '%s 기능 예산을 초과했습니다. 다음 worker를 시작하지 않습니다.\n' "$provider" >&2
+    return 6
+  fi
+}
+
+require_budget_headroom() {
+  local provider="$1" budget="$2" baseline_used="$3" baseline_reset="$4"
+  if ! usage_delta "$provider" "$baseline_used" "$baseline_reset"; then
+    return 6
+  fi
+  if ((USAGE_DELTA_PERCENT >= budget)); then
+    printf '%s 기능 예산 %d%%를 모두 사용해 다음 worker를 시작하지 않습니다.\n' \
+      "$provider" "$budget" >&2
+    return 6
+  fi
 }
 
 create_run() {
@@ -132,6 +249,7 @@ ack_delivery() {
   WAIT_DELIVERY=""
 }
 
+capture_usage_baseline
 [[ -z "$RUN_ID" ]] && create_run
 
 claude_task="$(create_task "Claude 구현" "TASK: $OBJECTIVE
@@ -139,20 +257,38 @@ claude_task="$(create_task "Claude 구현" "TASK: $OBJECTIVE
 ROLE: 구현 및 수정 담당.
 SOURCE OF TRUTH: 반드시 docs/sdd/constitution.md, specify.md, plan.md, data-model.md, api-contract.md, tasks-frontend.md, tasks-backend.md를 읽고 그 기준으로 구현하라.
 REQUIREMENTS: 원래 사용자 시나리오를 실제 앱 또는 API에서 재현하고, 관련 회귀 테스트와 품질 검사를 실행하라. docs/qa는 관찰된 증거로만 사용하고 SDD를 임의로 덮어쓰지 말라.
+LOOP POLICY: 집중 Task다. 이 기능 전체의 Claude 5시간 창 소비 상한은 ${CLAUDE_BUDGET_PERCENT}%다. 범위를 넓히지 말고, 상한을 넘길 것으로 예상되면 추가 작업 대신 STATUS: BLOCKED와 남은 작업을 보고하라. review-work 5-lane 오케스트레이터나 추가 review agent를 실행하지 말라. 실제 런타임 장애가 관찰될 때만 debugging을 사용하라. 보고는 간결하게 유지하라.
 REPORT: STATUS, CHANGED_FILES, SCENARIOS, TESTS, KNOWN_GAPS를 보고하라." "claude-initial")"
 claude_dispatch="$(start_worker "$claude_task" claude "claude-initial")"
 printf 'Claude started: task=%s dispatch=%s\n' "$claude_task" "$claude_dispatch"
 
 for ((round = 1; round <= MAX_ROUNDS; round += 1)); do
   wait_for_worker "$claude_dispatch" "claude-${round}"
-  claude_report="$(jq -r '.body' <<<"$WAIT_MESSAGE")"
+  claude_report="$(jq -r '.body[0:24000]' <<<"$WAIT_MESSAGE")"
   printf '\n[round %d] Claude completed\n%s\n' "$round" "$claude_report"
+  if ! enforce_budget_after_worker claude "$CLAUDE_BUDGET_PERCENT" "$CLAUDE_BASE_USED" "$CLAUDE_BASE_RESET"; then
+    ack_delivery
+    release_worker "$claude_dispatch"
+    exit 6
+  fi
+  if printf '%s\n' "$claude_report" | rg -q 'STATUS:[[:space:]]*BLOCKED|^BLOCKED([:[:space:]]|$)'; then
+    ack_delivery
+    release_worker "$claude_dispatch"
+    printf 'Claude가 예산 또는 구현 blocker를 보고해 Codex worker를 시작하지 않습니다.\n' >&2
+    exit 6
+  fi
 
+  if ! require_budget_headroom codex "$CODEX_BUDGET_PERCENT" "$CODEX_BASE_USED" "$CODEX_BASE_RESET"; then
+    ack_delivery
+    release_worker "$claude_dispatch"
+    exit 6
+  fi
   codex_task="$(create_task "Codex 독립 검토 round $round" "TASK: $OBJECTIVE
 
 ROLE: 독립 검토·재현 담당. Claude가 방금 수정한 현재 작업 트리를 검토하라.
 SOURCE OF TRUTH: docs/sdd/ 전체를 읽고 모든 판정을 SDD와 대조하라. docs/qa는 검증 증거로 참조하라.
 VERIFY: 원래 사용자 시나리오를 실제 앱 또는 API에서 재현하고, 테스트·lint·typecheck·build와 관련 통합 검사를 실행하라. silent data loss, fabricated content, PII, mock-only behavior, 계약 불일치를 확인하라.
+LOOP POLICY: 집중 Task다. 이 기능 전체의 Codex 5시간 창 소비 상한은 ${CODEX_BUDGET_PERCENT}%다. 필요한 검증만 수행하고, 상한을 넘길 것으로 예상되면 추가 검증 대신 VERDICT: INCONCLUSIVE와 남은 검증을 보고하라. review-work 5-lane 오케스트레이터나 추가 review agent를 실행하지 말라. 실제 런타임 장애가 관찰될 때만 debugging을 사용하라. 최종 handoff만 보고하라.
 OUTPUT: 반드시 VERDICT: PASS 또는 VERDICT: FAIL 또는 VERDICT: INCONCLUSIVE 중 하나를 포함하라. FAIL이면 파일·라인·입력·기대 결과·실제 결과·최소 수정 방향을 제시하라. 기본 검토에서는 파일을 수정하지 말라.
 CLAUDE REPORT:
 $claude_report" "codex-${round}")"
@@ -162,9 +298,14 @@ $claude_report" "codex-${round}")"
   release_worker "$claude_dispatch"
 
   wait_for_worker "$codex_dispatch" "codex-${round}"
-  codex_report="$(jq -r '.body' <<<"$WAIT_MESSAGE")"
+  codex_report="$(jq -r '.body[0:24000]' <<<"$WAIT_MESSAGE")"
   codex_subject="$(jq -r '.subject' <<<"$WAIT_MESSAGE")"
   printf '\n[round %d] Codex result: %s\n%s\n' "$round" "$codex_subject" "$codex_report"
+  if ! enforce_budget_after_worker codex "$CODEX_BUDGET_PERCENT" "$CODEX_BASE_USED" "$CODEX_BASE_RESET"; then
+    ack_delivery
+    release_worker "$codex_dispatch"
+    exit 6
+  fi
 
   if printf '%s\n%s\n' "$codex_subject" "$codex_report" | rg -q 'VERDICT:[[:space:]]*PASS|^PASS([:[:space:]]|$)'; then
     ack_delivery
@@ -182,10 +323,17 @@ $claude_report" "codex-${round}")"
 
   ack_delivery
   release_worker "$codex_dispatch"
+  if ((round == MAX_ROUNDS)); then
+    break
+  fi
+  if ! require_budget_headroom claude "$CLAUDE_BUDGET_PERCENT" "$CLAUDE_BASE_USED" "$CLAUDE_BASE_RESET"; then
+    exit 6
+  fi
   claude_task="$(create_task "Claude 수정 round $round" "TASK: Codex의 FAIL 지적사항만 수정하라.
 
 SOURCE OF TRUTH: docs/sdd/ 전체를 다시 읽고 SDD 기준으로 수정하라. 기존에 통과한 동작은 회귀시키지 말라.
 VERIFY: Codex가 제시한 동일 입력을 실제 앱 또는 API에서 다시 재현하고, 관련 회귀 테스트와 품질 검사를 실행하라.
+LOOP POLICY: 집중 Task다. 이 기능 전체의 Claude 5시간 창 소비 상한은 ${CLAUDE_BUDGET_PERCENT}%다. FAIL blocker만 수정하고, 상한을 넘길 것으로 예상되면 추가 작업 대신 STATUS: BLOCKED와 남은 작업을 보고하라. review-work 5-lane 오케스트레이터나 추가 review agent를 실행하지 말라. 실제 런타임 장애가 관찰될 때만 debugging을 사용하라. 보고는 간결하게 유지하라.
 REPORT: STATUS, CHANGED_FILES, SCENARIOS, TESTS, KNOWN_GAPS를 보고하라.
 
 CODEX FINDINGS:
