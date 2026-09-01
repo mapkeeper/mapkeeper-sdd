@@ -110,7 +110,12 @@ async def handle_mapkeeper_error(request: Request, exc: Exception) -> Response:
     if not isinstance(exc, MapKeeperError):  # pragma: no cover - defensive
         raise exc
     logger.warning("%s %s -> %s", request.method, request.url.path, exc.code.value)
-    error = ApiError(code=exc.code, message=exc.message, retryable=exc.retryable)
+    error = ApiError(
+        code=exc.code,
+        message=exc.message,
+        retryable=exc.retryable,
+        failure=exc.failure,
+    )
     return build_error_response(exc.http_status, error, request)
 
 

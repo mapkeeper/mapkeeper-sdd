@@ -7,7 +7,7 @@ import { VoicePanel } from '@/components/VoicePanel/VoicePanel';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
-import type { ProposalChange, ProposalField, ProposalStatus } from '@/types/domain';
+import type { ProposalChange, ProposalFailure, ProposalField, ProposalStatus } from '@/types/domain';
 import { useStoreChangeFlow } from '@/features/store-change/useStoreChangeFlow';
 import type { StoreChangeSyncHandoff } from '@/features/store-change/useStoreChangeFlow';
 import { safeDiagnostic } from '@/services/safeDiagnostics';
@@ -68,6 +68,46 @@ const stepBackTargets: Partial<Record<WizardStep, WizardStep>> = {
   CONFIRM: 'REVIEW',
 };
 
+interface FailureNoticeProps {
+  failure: ProposalFailure;
+  submittedText: string;
+  onRetry(text: string): void;
+}
+
+/**
+ * What went wrong, what to change, and the owner's own sentence to change.
+ *
+ * A refusal that only says "입력 내용을 다시 확인해 주세요." ends the task: the
+ * owner cannot tell which part of what they said was the problem, and the
+ * sentence is gone from the screen, so the next attempt is a guess.
+ */
+function FailureNotice({ failure, submittedText, onRetry }: FailureNoticeProps) {
+  const preserved = failure.recognizedTextMasked ?? submittedText;
+  return (
+    <section className="store-change-wizard__failure" role="alert">
+      <h2>{failure.message}</h2>
+      <p className="store-change-wizard__failure-guidance">{failure.guidance}</p>
+      <p className="store-change-wizard__failure-retry">{failure.retry}</p>
+      {failure.examples.length > 0 ? (
+        <ul className="store-change-wizard__failure-examples" aria-label="이렇게 말씀해 보세요">
+          {failure.examples.map((example) => (
+            <li key={example}>
+              <button type="button" onClick={() => onRetry(example)}>{example}</button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {preserved.trim() !== '' ? (
+        <div className="store-change-wizard__failure-original">
+          <p>방금 말씀하신 내용</p>
+          <blockquote>{preserved}</blockquote>
+          <button type="button" onClick={() => onRetry(preserved)}>이 내용 고쳐서 다시 시도</button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 interface WizardHeaderProps {
   step: WizardStep;
   onBack(): void;
@@ -101,6 +141,7 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
   const [isDraftPreparing, setDraftPreparing] = useState(false);
   const [editedChanges, setEditedChanges] = useState<ProposalChange[]>([]);
   const [autoApproveCancelled, setAutoApproveCancelled] = useState(false);
+  const [lastSubmittedText, setLastSubmittedText] = useState('');
   const submittedTranscriptRef = useRef('');
   const autoApprovedProposalIdRef = useRef<string | null>(null);
   const spokenStepRef = useRef<WizardStep | null>(null);
@@ -149,6 +190,9 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
     if (!normalizedText || isDraftPreparing) return;
     setDraftPreparing(true);
     setDraftNote(null);
+    // Kept before the request so a refusal can offer the sentence back. Losing
+    // it meant a voice request that failed had to be spoken from scratch.
+    setLastSubmittedText(normalizedText);
     try {
       const [proposal] = await Promise.all([
         flow.create(normalizedText),
@@ -225,7 +269,19 @@ export function StoreChangeWizard({ storeProfileId, onSyncHandoff, onExit = () =
     <main className="store-change-wizard">
       <WizardHeader step={step} onBack={goBack} onClose={onExit} />
       <p className="store-change-wizard__progress">매장정보 변경 · 현재 단계</p>
-      {flow.errorMessage ? <div className="store-change-wizard__alert" role="alert">{flow.errorMessage}</div> : null}
+      {flow.failure ? (
+        <FailureNotice
+          failure={flow.failure}
+          submittedText={lastSubmittedText}
+          onRetry={(text) => {
+            flow.clearError();
+            setManualText(text);
+            setStep('MANUAL');
+          }}
+        />
+      ) : flow.errorMessage ? (
+        <div className="store-change-wizard__alert" role="alert">{flow.errorMessage}</div>
+      ) : null}
 
       {step === 'INPUT' ? (
         <section className="store-change-wizard__step">

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PROPOSAL_FAILURE_REASONS } from '@/types/domain';
 
 export const platformSchema = z.enum(['google', 'naver', 'kakao']);
 export const envelopeStatusSchema = z.enum(['SUCCESS', 'PROCESSING', 'FAILED']);
@@ -37,11 +38,24 @@ export const validationDetailSchema = z.strictObject({
   reason: z.string(),
 });
 
+// Why the request was refused and how to say it again. Absent on the failures
+// that have nothing more to say than their code; the envelope is strict, so it
+// has to be declared here before the server can start sending it.
+export const proposalFailureSchema = z.strictObject({
+  reason: z.enum(PROPOSAL_FAILURE_REASONS),
+  message: z.string(),
+  guidance: z.string(),
+  retry: z.string(),
+  examples: z.array(z.string()).default([]),
+  recognizedTextMasked: z.string().nullable().default(null),
+});
+
 export const apiErrorSchema = z.strictObject({
   code: apiErrorCodeSchema,
   message: z.string(),
   details: z.array(validationDetailSchema).default([]),
   retryable: z.boolean().nullable().default(null),
+  failure: proposalFailureSchema.nullable().default(null),
 });
 
 export const apiEnvelopeSchema = z.strictObject({

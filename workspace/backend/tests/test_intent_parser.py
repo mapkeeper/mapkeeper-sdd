@@ -391,12 +391,48 @@ def test_a_single_stated_hour_is_still_parsed() -> None:
     assert change[0].proposed_value.open == "11:00"
 
 
-def test_a_closure_span_missing_its_second_month_is_left_to_the_model() -> None:
-    # Given: a range whose second date omits the month, which the date pattern
-    # cannot see - reading it would close the store for one day, not two.
+@pytest.mark.parametrize(
+    ("sentence", "expected_start", "expected_end"),
+    [
+        # The second date omits the month it shares with the first.
+        ("8월 25일부터 26일까지 쉬어요", date(2026, 8, 25), date(2026, 8, 26)),
+        # The second end omits the week the first one named.
+        ("다음 주 월요일부터 수요일까지 쉽니다", date(2026, 9, 7), date(2026, 9, 9)),
+        ("이번 주 금요일부터 일요일까지 휴무", date(2026, 9, 4), date(2026, 9, 6)),
+        ("내일부터 모레까지 쉽니다", date(2026, 9, 2), date(2026, 9, 3)),
+        ("9월 1일부터 9월 3일까지 임시 휴무", date(2026, 9, 1), date(2026, 9, 3)),
+    ],
+)
+def test_both_ends_of_a_stated_closure_range_are_structured(
+    sentence: str,
+    expected_start: date,
+    expected_end: date,
+) -> None:
+    # Given: a range whose two ends are written in different shapes - the second
+    # routinely drops the month or the week it shares with the first. Reading only
+    # the first end closed the store for one day when the owner asked for three.
 
-    # When / Then: the parser declines.
-    assert parse_intent("8월 25일부터 26일까지 쉬어요", make_profile()) is None
+    # When: the parser reads it against a known current date.
+    changes = parse_intent(sentence, make_profile(), today=date(2026, 9, 1))
+
+    # Then: both the start and the end date are structured.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, TemporaryClosureChange)
+    assert change.proposed_value.start_date == expected_start
+    assert change.proposed_value.end_date == expected_end
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    ["8월 25일부터 다다음 주까지 쉬어요", "9월 1일부터 나중까지 쉽니다"],
+)
+def test_a_range_whose_far_end_cannot_be_read_is_declined(sentence: str) -> None:
+    # Given: a range whose second end names no day this module can resolve.
+
+    # When / Then: the parser declines rather than proposing the single day it can
+    # see, which would reopen the store while the owner is away.
+    assert parse_intent(sentence, make_profile(), today=date(2026, 9, 1)) is None
 
 
 # --- conjugated closure verbs --------------------------------------------------
@@ -429,15 +465,34 @@ def test_conjugated_closure_verbs_are_read_as_a_closure(sentence: str) -> None:
 # --- requests the changes do not cover -----------------------------------------
 
 
-def test_a_second_topic_the_changes_miss_is_named() -> None:
-    # Given: one sentence asking for two things, only one of which was read.
+def test_a_compound_sentence_becomes_one_change_per_request() -> None:
+    # Given: one sentence asking for two things at once.
     sentence = "9월 1일은 임시 휴무이고 주차는 불가능합니다"
+
+    # When: the parser reads it.
+    changes = parse_intent(sentence, make_profile(), today=date(2026, 8, 27))
+
+    # Then: each request is its own change and nothing is left to report as
+    # dropped. Reading only the closure made the owner say the second half again.
+    assert changes is not None
+    closure, parking = changes
+    assert isinstance(closure, TemporaryClosureChange)
+    assert closure.proposed_value.start_date == date(2026, 9, 1)
+    assert isinstance(parking, ParkingInfoChange)
+    assert parking.proposed_value == "주차 불가"
+    assert unmapped_request_labels(sentence, changes) == ()
+
+
+def test_a_second_topic_the_changes_miss_is_named() -> None:
+    # Given: one sentence asking for two things, only one of which this module
+    # reads - the hours half is a span it declines and leaves to the model.
+    sentence = "다음 주 월요일 하루 임시 휴무이고 영업시간은 오전 10시부터 오후 9시까지입니다"
     changes = parse_intent(sentence, make_profile(), today=date(2026, 8, 27))
     assert changes is not None
 
     # When: the dropped topics are collected.
-    # Then: the parking request is reported rather than silently disappearing.
-    assert unmapped_request_labels(sentence, changes) == ("주차 정보",)
+    # Then: the hours request is reported rather than silently disappearing.
+    assert unmapped_request_labels(sentence, changes) == ("영업시간",)
 
 
 def test_a_fully_covered_sentence_reports_nothing_dropped() -> None:
@@ -494,3 +549,73 @@ def test_a_clock_span_does_not_hide_a_relative_closure() -> None:
     assert change.proposed_value.start_date == date(2026, 8, 31)
     assert change.proposed_value.end_date == date(2026, 8, 31)
     assert unmapped_request_labels(sentence, changes) == ("영업시간",)
+
+
+# --- parking stated as availability ---------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("sentence", "expected"),
+    [
+        ("주차는 불가능합니다", "주차 불가"),
+        ("주차 불가능해요", "주차 불가"),
+        ("주차 안 됩니다", "주차 불가"),
+        ("주차 공간이 없습니다", "주차 불가"),
+        ("주차 가능합니다", "주차 가능"),
+        ("주차 됩니다", "주차 가능"),
+    ],
+)
+def test_parking_stated_as_availability_becomes_a_parking_change(
+    sentence: str,
+    expected: str,
+) -> None:
+    # Given: the way an owner actually states parking, which names no value to
+    # copy the way "…으로 바꿔줘" does.
+    changes = parse_intent(sentence, make_profile())
+
+    # Then: it is read rather than reported as a request that was dropped.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, ParkingInfoChange)
+    assert change.proposed_value == expected
+
+
+def test_no_parking_is_never_read_as_parking_available() -> None:
+    # Given: "불가능" contains "가능". Reading the sentence the wrong way round
+    # would publish "주차 가능" for a store that has none.
+    changes = parse_intent("주차는 불가능합니다", make_profile())
+
+    assert changes is not None
+    assert changes[0].proposed_value == "주차 불가"
+
+
+# --- clauses that are not separate requests -------------------------------------
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    ["10시에 시작하고 21시에 마감해", "오전 10시에 열고 밤 11시에 닫아요"],
+)
+def test_one_business_day_is_never_split_into_two_requests(sentence: str) -> None:
+    # Given: a sentence whose two halves are the two ends of a single day.
+
+    # When / Then: splitting it would keep one end and drop the other, publishing
+    # a day the owner never stated, so the whole sentence is left to the model.
+    assert parse_intent(sentence, make_profile()) is None
+
+
+def test_a_compound_menu_and_parking_sentence_becomes_two_changes() -> None:
+    # Given: a rename and a parking notice joined by a connective.
+    sentence = "대표 메뉴를 김치찌개로 바꾸고 주차는 불가능합니다"
+
+    # When: the parser reads it.
+    changes = parse_intent(sentence, make_profile())
+
+    # Then: both halves survive as their own change.
+    assert changes is not None
+    menu, parking = changes
+    assert isinstance(menu, RepresentativeMenuNameChange)
+    assert menu.proposed_value == "김치찌개"
+    assert isinstance(parking, ParkingInfoChange)
+    assert parking.proposed_value == "주차 불가"
+    assert unmapped_request_labels(sentence, changes) == ()

@@ -99,6 +99,7 @@ def test_failure_envelope_serializes_the_contract_shape() -> None:
             "message": "invalid input",
             "details": [],
             "retryable": None,
+            "failure": None,
         },
         "timestamp": "2026-08-07T00:00:00Z",
     }

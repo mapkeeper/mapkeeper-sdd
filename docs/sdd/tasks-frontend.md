@@ -1,7 +1,7 @@
 # MapKeeper Frontend TASK
 
 > 담당: 프론트엔드
-> 상태: **Canonical / current implementation mapped**
+> 상태: **Canonical / PM Beta scope mapped**
 > 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
 
 ## 1. 완료된 계약·공통 작업
@@ -26,6 +26,10 @@
 | 승인 변경값만 결과 화면에 표시 | Done |
 | 동일 값 변경 거절 안내 | Done |
 | 여러 대표 메뉴 후보 거절 | Done |
+| 상대 날짜·기간 변경안 표시 (T256) | Done |
+| 복합 요청의 항목별 변경안 표시 (T256) | Done |
+| 실패 원인·재시도 방법·예시 문장 표시 (T256) | Done |
+| 원본 입력 보존과 고쳐서 다시 시도 (T256) | Done |
 
 ## 3. UC2
 
@@ -82,13 +86,21 @@ npm run test:run
 npm run build
 ```
 
-현재 기준: 19 files, 115 tests passed.
+실제 백엔드 계약 검증은 FastAPI를 띄운 뒤 `npm run test:backend-contract`로 실행한다.
+
+현재 기준: 18 files, 143 tests passed (Vitest), live backend contract 5 tests passed (2026-08-30).
 
 ## 7. 남은 우선순위
 
 | 우선순위 | 작업 |
 |---:|---|
-| P0 | 최신 변경 CI·개발 배포 검증 |
-| P1 | 실제 모바일 마이크·네트워크 지연 수동 QA |
-| P1 | OpenAPI 변경 시 Zod schema 동시 갱신 검토 |
-| P2 | URL 기반 화면 이동·새로고침 복구 검토 |
+| ~~P0~~ | ~~UC1 상대 날짜·복합 요청·구체적 오류·입력 보존~~ T256 완료 |
+| P0 | UC2 리뷰 0건 안내·허위 생성 차단·3개 기본 질문·추가 확인 단계 |
+| P0 | 플랫폼별 결과 탭·직접 편집·부분 재생성·개별 승인 |
+| P0 | 생성 단계·10초 지연·30초 재시도/백그라운드 안내 |
+| P0 | 매장 데이터 정합성·모의 연동 표시·승인 전 반영 차단 |
+| P1 | 공휴일·아주대 일정 추천과 날짜 확인 |
+| P1 | 플랫폼별 게시 준비도·프로필 진단·보완 권장 |
+| P1 | 실제 모바일 마이크·느린 네트워크 수동 QA |
+| P1 | OpenAPI 변경 시 Zod schema 동시 갱신 |
+| P2 | URL 기반 화면 이동·새로고침 복구 |

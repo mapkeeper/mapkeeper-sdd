@@ -1,6 +1,6 @@
 # MapKeeper 통합 TASK
 
-> 상태: **Canonical task index**
+> 상태: **Canonical task index / PM Beta scope adopted 2026-08-26**
 > 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
 > 최종 대조일: `2026-08-17`
 > 담당: PM 관리, 각 영역 담당자가 상태 갱신
@@ -77,5 +77,18 @@
 | T253 | 백엔드 | 실제 retry backoff 실행 | Done |
 | T254 | 백엔드 | PII 마스킹·로그 경계 강화 | Done |
 | T255 | FE·BE | 실제 FastAPI 기반 FE 계약 자동 검증 | Done, current changes need remote CI rerun |
+
+## 6. PM Beta 범위에서 추가된 작업
+
+| ID | 담당 | 작업 | 상태 | 근거 |
+|---|---|---|---|---|
+| T256 | 백엔드 | UC1 상대 날짜·기간·복합 요청의 전체 추출과 구체적 오류 | Planned | Specify UC1 |
+| T257 | FE·BE | UC1 처리 단계·지연 안내·입력 보존·재시도 | Planned | Constitution 상태·재시도 |
+| T258 | 백엔드 | 리뷰 0건·근거 없는 메뉴·가격·혜택·장점 차단 | Planned | Specify 사실성 |
+| T259 | FE·BE | UC2 기본 3질문·추가 확인 분리 | Planned | Specify 질문 구성 |
+| T260 | FE·BE | 플랫폼별 결과·직접 편집·부분 재생성·개별 승인 | Planned | Specify UC2 |
+| T261 | 백엔드 | CalendarEvent와 공식 공휴일·아주대 일정 연동 | Planned | Specify 일정 |
+| T262 | FE·BE | 플랫폼별 생성 규칙·프로필 진단·게시 준비도 | Planned | Specify 플랫폼 최적화 |
+| T263 | 전원 | PM Beta 내부·현장 검증 세트와 완료 지표 | Planned | Specify 검증 범위 |
 
 세부 작업은 `tasks-frontend.md`, `tasks-backend.md`에서 관리한다.

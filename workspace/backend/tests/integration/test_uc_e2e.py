@@ -410,3 +410,158 @@ async def test_uc1_an_unsupported_sentence_is_still_refused(
     )
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
+def _tomorrow() -> str:
+    return (today_in_seoul() + timedelta(days=1)).isoformat()
+
+
+def _next_weekday(weekday: int) -> str:
+    today = today_in_seoul()
+    return (today - timedelta(days=today.weekday()) + timedelta(days=7 + weekday)).isoformat()
+
+
+async def test_uc1_a_relative_day_off_is_structured_as_an_exact_date(
+    api_database: tuple[str, list[UUID]],
+    client: TestClient,
+) -> None:
+    """T256: "내일" is resolved against today rather than sent back to be re-said."""
+    database_url, created_profiles = api_database
+    profile_id = await _create_profile(database_url, created_profiles)
+
+    response = client.post(
+        "/api/v1/store-change-proposals",
+        json={
+            "storeProfileId": str(profile_id),
+            "recognizedText": "내일 하루 쉽니다",
+            "locale": "ko-KR",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    data = obj(body_of(response.text)["data"])
+    (change,) = arr(data["changes"])
+    closure = obj(obj(change)["proposedValue"])
+    assert text_of(closure["startDate"]) == _tomorrow()
+    assert text_of(closure["endDate"]) == _tomorrow()
+
+
+async def test_uc1_a_stated_period_structures_both_its_ends(
+    api_database: tuple[str, list[UUID]],
+    client: TestClient,
+) -> None:
+    """T256: a range names two days and the proposal has to carry both.
+
+    "다음 주 월요일부터 수요일까지" was refused outright before, so the owner could
+    only ask for a period one day at a time.
+    """
+    database_url, created_profiles = api_database
+    profile_id = await _create_profile(database_url, created_profiles)
+
+    response = client.post(
+        "/api/v1/store-change-proposals",
+        json={
+            "storeProfileId": str(profile_id),
+            "recognizedText": "다음 주 월요일부터 수요일까지 쉽니다",
+            "locale": "ko-KR",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    data = obj(body_of(response.text)["data"])
+    (change,) = arr(data["changes"])
+    assert text_of(obj(change)["field"]) == "temporaryClosure"
+    closure = obj(obj(change)["proposedValue"])
+    assert text_of(closure["startDate"]) == _next_weekday(0)
+    assert text_of(closure["endDate"]) == _next_weekday(2)
+    assert arr(data["unmappedRequests"]) == []
+
+
+async def test_uc1_a_compound_closure_and_parking_becomes_two_changes(
+    api_database: tuple[str, list[UUID]],
+    client: TestClient,
+) -> None:
+    """T256: both halves of one sentence become their own change.
+
+    The parking half used to survive only as an unmapped notice, which meant the
+    owner had to say it again on its own before it could ever be approved.
+    """
+    database_url, created_profiles = api_database
+    profile_id = await _create_profile(database_url, created_profiles)
+
+    response = client.post(
+        "/api/v1/store-change-proposals",
+        json={
+            "storeProfileId": str(profile_id),
+            "recognizedText": "9월 1일은 임시 휴무이고 주차는 불가능합니다",
+            "locale": "ko-KR",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    data = obj(body_of(response.text)["data"])
+    changes = {text_of(obj(change)["field"]): obj(change) for change in arr(data["changes"])}
+    assert set(changes) == {"temporaryClosure", "parkingInfo"}
+    closure = obj(changes["temporaryClosure"]["proposedValue"])
+    assert text_of(closure["startDate"]).endswith("-09-01")
+    assert text_of(closure["endDate"]).endswith("-09-01")
+    assert text_of(changes["parkingInfo"]["proposedValue"]) == "주차 불가"
+    assert arr(data["unmappedRequests"]) == []
+
+
+async def test_uc1_an_ambiguous_time_names_its_cause_and_a_way_to_retry(
+    api_database: tuple[str, list[UUID]],
+    client: TestClient,
+) -> None:
+    """T256: an unreadable sentence must not be a dead end.
+
+    "오후에 문을 닫습니다" names a time of day and no hour. The refusal has to say
+    which of those is missing, offer a sentence that works, and hand the owner's
+    own words back so the screen can put them in the retry box.
+    """
+    database_url, created_profiles = api_database
+    profile_id = await _create_profile(database_url, created_profiles)
+    sentence = "오후에 문을 닫습니다"
+
+    response = client.post(
+        "/api/v1/store-change-proposals",
+        json={
+            "storeProfileId": str(profile_id),
+            "recognizedText": sentence,
+            "locale": "ko-KR",
+        },
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    error = obj(body_of(response.text)["error"])
+    assert text_of(error["code"]) == "VALIDATION_ERROR"
+    failure = obj(error["failure"])
+    assert text_of(failure["reason"]) == "AMBIGUOUS_TIME"
+    assert text_of(failure["message"]).strip() != ""
+    assert text_of(failure["guidance"]).strip() != ""
+    assert text_of(failure["retry"]).strip() != ""
+    assert arr(failure["examples"]) != []
+    # The sentence survives the refusal so the screen can offer it back.
+    assert text_of(failure["recognizedTextMasked"]) == sentence
+
+
+async def test_uc1_an_unreadable_period_is_refused_rather_than_halved(
+    api_database: tuple[str, list[UUID]],
+    client: TestClient,
+) -> None:
+    """T256: a range with one unreadable end is named, never quietly shortened."""
+    database_url, created_profiles = api_database
+    profile_id = await _create_profile(database_url, created_profiles)
+
+    response = client.post(
+        "/api/v1/store-change-proposals",
+        json={
+            "storeProfileId": str(profile_id),
+            "recognizedText": "9월 1일부터 나중까지 쉽니다",
+            "locale": "ko-KR",
+        },
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    failure = obj(obj(body_of(response.text)["error"])["failure"])
+    assert text_of(failure["reason"]) == "UNREADABLE_DATE_RANGE"

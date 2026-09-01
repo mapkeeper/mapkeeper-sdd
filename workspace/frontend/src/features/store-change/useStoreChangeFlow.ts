@@ -9,7 +9,7 @@ import {
 } from '@/services/storeChangeApi';
 import type { StoreChangeApprovalResponse } from '@/services/api.types';
 import { storeChangeApprovalFixture } from '@/mocks/fixtures/storeChangeFixtures';
-import type { ProposalChange, StoreChangeProposal } from '@/types/domain';
+import type { ProposalChange, ProposalFailure, StoreChangeProposal } from '@/types/domain';
 
 export interface StoreChangeSyncHandoff {
   syncJobId: string;
@@ -24,12 +24,26 @@ interface StoreChangeFlow {
   isRejecting: boolean;
   isApproving: boolean;
   errorMessage: string | null;
+  /**
+   * Why the last request was refused, when the server could say.
+   *
+   * `errorMessage` alone gives the screen one sentence and nothing to offer: the
+   * owner is told the request failed and has to guess whether the hour, the date
+   * or the field was the problem, with their own sentence already gone from the
+   * box. This carries the cause, a way to say it again, and the sentence itself.
+   */
+  failure: ProposalFailure | null;
   create(recognizedText: string): Promise<StoreChangeProposal | null>;
   save(changes: ProposalChange[]): Promise<StoreChangeProposal | null>;
   rejectFromButton(): Promise<boolean>;
   approveFromButton(): Promise<StoreChangeApprovalResponse | null>;
   clear(): void;
   clearError(): void;
+}
+
+function failureOf(error: unknown): ProposalFailure | null {
+  if (!(error instanceof ApiClientError)) return null;
+  return error.causeBody?.failure ?? null;
 }
 
 function safeUserMessage(error: unknown): string {
@@ -78,12 +92,14 @@ export function useStoreChangeFlow(
   const [isRejecting, setRejecting] = useState(false);
   const [isApproving, setApproving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [failure, setFailure] = useState<ProposalFailure | null>(null);
   const approvalLockRef = useRef(false);
 
   const create = useCallback(async (recognizedText: string) => {
     if (isCreating || !recognizedText.trim()) return null;
     setCreating(true);
     setErrorMessage(null);
+    setFailure(null);
     try {
       const result = await createStoreChangeProposal({
         storeProfileId,
@@ -93,13 +109,19 @@ export function useStoreChangeFlow(
       setProposal(result.data);
       return result.data;
     } catch (error: unknown) {
-      if (isFlexibleMockMode()) {
+      // A server that named the cause has told the owner something worth
+      // showing. Substituting a local stand-in proposal for it hid the one
+      // response that says which part of their sentence to change.
+      const cause = failureOf(error);
+      if (cause === null && isFlexibleMockMode()) {
         const fallback = createLocalMockFallback(recognizedText.trim());
         setProposal(fallback);
         setErrorMessage(null);
+        setFailure(null);
         return fallback;
       }
-      setErrorMessage(safeUserMessage(error));
+      setErrorMessage(cause?.message ?? safeUserMessage(error));
+      setFailure(cause);
       return null;
     } finally {
       setCreating(false);
@@ -110,12 +132,14 @@ export function useStoreChangeFlow(
     if (!proposal || isSaving) return null;
     setSaving(true);
     setErrorMessage(null);
+    setFailure(null);
     try {
       const result = await patchStoreChangeProposal(proposal.proposalId, changes);
       setProposal(result.data);
       return result.data;
     } catch (error: unknown) {
       setErrorMessage(safeUserMessage(error));
+      setFailure(failureOf(error));
       return null;
     } finally {
       setSaving(false);
@@ -132,6 +156,7 @@ export function useStoreChangeFlow(
     approvalLockRef.current = true;
     setApproving(true);
     setErrorMessage(null);
+    setFailure(null);
     const lease = acquireIdempotencyKey(`store-change:${proposal.proposalId}`);
     try {
       const result = await approveStoreChangeProposal(proposal.proposalId, lease.key);
@@ -145,6 +170,7 @@ export function useStoreChangeFlow(
         return storeChangeApprovalFixture;
       }
       setErrorMessage(safeUserMessage(error));
+      setFailure(failureOf(error));
       return null;
     } finally {
       lease.resolve();
@@ -157,12 +183,14 @@ export function useStoreChangeFlow(
     if (!proposal || isRejecting || proposal.status !== 'DRAFT') return false;
     setRejecting(true);
     setErrorMessage(null);
+    setFailure(null);
     try {
       const result = await rejectStoreChangeProposal(proposal.proposalId);
       setProposal(result.data);
       return result.data.status === 'REJECTED';
     } catch (error: unknown) {
       setErrorMessage(safeUserMessage(error));
+      setFailure(failureOf(error));
       return false;
     } finally {
       setRejecting(false);
@@ -172,6 +200,7 @@ export function useStoreChangeFlow(
   const clear = useCallback(() => {
     setProposal(null);
     setErrorMessage(null);
+    setFailure(null);
   }, []);
 
   return {
@@ -181,11 +210,15 @@ export function useStoreChangeFlow(
     isRejecting,
     isApproving,
     errorMessage,
+    failure,
     create,
     save,
     rejectFromButton,
     approveFromButton,
     clear,
-    clearError: () => setErrorMessage(null),
+    clearError: () => {
+      setErrorMessage(null);
+      setFailure(null);
+    },
   };
 }

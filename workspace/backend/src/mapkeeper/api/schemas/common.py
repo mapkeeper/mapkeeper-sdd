@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
 from pydantic.alias_generators import to_camel
 from pydantic_core import PydanticCustomError
 
-from mapkeeper.models.enums import ApiErrorCode, ApiResponseStatus
+from mapkeeper.models.enums import ApiErrorCode, ApiResponseStatus, ProposalFailureReason
 
 IDEMPOTENCY_KEY_MAX_LENGTH: Final = 128
 IDEMPOTENCY_KEY_PATTERN: Final = r"^[A-Za-z0-9._:-]+$"
@@ -47,6 +47,30 @@ class ValidationDetail(ApiSchema):
     reason: str
 
 
+class ProposalFailure(ApiSchema):
+    """Why a request was refused, and what the caller can do about it.
+
+    ``code`` says which contract rule was broken and ``message`` says it in one
+    sentence, but neither tells the screen what to *offer*. A refusal the owner
+    cannot act on ends the task: they hear "다시 확인해 주세요", have no idea what
+    to change, and the sentence they spoke is gone. So every refusal carries the
+    machine-readable ``reason``, the sentence itself, and a concrete way to say it
+    again.
+
+    ``recognizedTextMasked`` is the submitted sentence after customer PII has been
+    removed, which is the same value a successful proposal echoes back. It is here
+    so the screen can put the owner's own words back in the box instead of asking
+    them to start over.
+    """
+
+    reason: ProposalFailureReason
+    message: str
+    guidance: str
+    retry: str
+    examples: tuple[str, ...] = ()
+    recognized_text_masked: str | None = None
+
+
 class ApiError(ApiSchema):
     """Safe error body returned at the MapKeeper API boundary."""
 
@@ -54,6 +78,9 @@ class ApiError(ApiSchema):
     message: str
     details: tuple[ValidationDetail, ...] = ()
     retryable: bool | None = None
+    # Present when the endpoint can name what the caller has to change. Absent
+    # everywhere else, so an existing client keeps parsing the envelope it knows.
+    failure: ProposalFailure | None = None
 
 
 DataT = TypeVar("DataT")

@@ -84,3 +84,18 @@
 
 @keyframes store-change-spin { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce) { .store-change-wizard__spinner { animation:none; } }
+
+/* A refused request that names its cause. The owner has to be able to read what
+   to change and press one thing to change it, so the guidance, the retry
+   sentence and their own words are separate blocks rather than one paragraph. */
+.store-change-wizard__failure { display:grid; gap:10px; margin:0 0 16px; padding:15px 16px; border:1px solid #fecaca; border-radius:var(--radius-md); background:#fef2f2; color:#7f1d1d; text-align:left; }
+.store-change-wizard__failure h2 { margin:0; font-size:15px; font-weight:800; line-height:1.5; }
+.store-change-wizard__failure p { margin:0; font-size:13px; line-height:1.65; }
+.store-change-wizard__failure-guidance { color:#9f1239; }
+.store-change-wizard__failure-retry { font-weight:700; }
+.store-change-wizard__failure-examples { display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:0; list-style:none; }
+.store-change-wizard__failure-examples button { min-height:38px; padding:0 13px; border:1px solid #fca5a5; border-radius:999px; background:#fff; color:#b91c1c; font-size:13px; font-weight:700; }
+.store-change-wizard__failure-original { display:grid; gap:9px; padding-top:11px; border-top:1px solid #fecaca; }
+.store-change-wizard__failure-original p { color:#9f1239; font-size:12px; font-weight:700; }
+.store-change-wizard__failure-original blockquote { margin:0; padding:11px 13px; border-radius:var(--radius-md); background:#fff; color:#334155; font-size:14px; line-height:1.6; word-break:keep-all; }
+.store-change-wizard__failure-original button { min-height:44px; border:0; border-radius:var(--radius-md); background:#b91c1c; color:#fff; font-size:14px; font-weight:750; }

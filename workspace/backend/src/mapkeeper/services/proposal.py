@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mapkeeper.adapters.gemini import GeminiProposalGenerator, get_gemini_generator
+from mapkeeper.adapters.gemini_proposal import UnsupportedChangeError
 from mapkeeper.adapters.intent import unmapped_request_labels
 from mapkeeper.api.schemas.store_change import (
     CreateStoreChangeProposalRequest,
@@ -20,6 +21,7 @@ from mapkeeper.core.errors import InvalidStateError, ResourceNotFoundError, Stal
 from mapkeeper.core.json_types import JsonValue
 from mapkeeper.models import ProposalStatus, StoreChangeProposal, StoreProfile
 from mapkeeper.services.pii_masking import mask_customer_pii
+from mapkeeper.services.proposal_failure import classify, no_effective_change_error
 
 PROPOSAL_NOT_FOUND_MESSAGE: Final = "요청한 변경안을 찾을 수 없습니다."
 PROFILE_NOT_FOUND_MESSAGE: Final = "요청한 매장 정보를 찾을 수 없습니다."
@@ -83,9 +85,17 @@ async def create_proposal(
         body.recognized_text,
         (profile.public_address, profile.representative_phone),
     )
-    changes = await selected_generator.generate(masked_text, profile)
+    try:
+        changes = await selected_generator.generate(masked_text, profile)
+    except UnsupportedChangeError as exc:
+        # The refusal already knows it failed; what it does not carry is *why*, in
+        # a form the screen can turn into a retry. Diagnosing the sentence here
+        # keeps that decision in one place for the parser, the offline stub and
+        # Gemini alike, all of which decline with this same error.
+        failure = classify(masked_text)
+        raise UnsupportedChangeError(failure.message, failure=failure) from exc
     if not has_effective_change(changes):
-        raise InvalidStateError(NO_EFFECTIVE_CHANGE_MESSAGE)
+        raise no_effective_change_error(masked_text, NO_EFFECTIVE_CHANGE_MESSAGE)
     proposal = StoreChangeProposal(
         store_profile_id=profile.id,
         recognized_text_masked=masked_text,

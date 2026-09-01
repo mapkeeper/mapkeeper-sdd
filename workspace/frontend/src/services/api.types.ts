@@ -2,6 +2,7 @@ import type {
   EnvelopeStatus,
   ErrorCode,
   PlatformTaskError,
+  ProposalFailure,
   SeoDraft,
   StoreChangeProposal,
   Platform,
@@ -20,6 +21,8 @@ export interface ApiErrorBody {
   message: string;
   details?: ValidationDetail[];
   retryable?: boolean | null;
+  /** Present when the server can name what the caller has to change. */
+  failure?: ProposalFailure | null;
 }
 
 export interface ApiEnvelope<T> {

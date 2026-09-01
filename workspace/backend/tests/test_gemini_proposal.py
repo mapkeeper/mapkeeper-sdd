@@ -310,6 +310,25 @@ async def test_a_model_timeout_is_reported_as_a_retryable_failure() -> None:
         assert leak not in error.message.lower()
 
 
+def closure_and_hours_output() -> str:
+    """Render the two changes a closure-plus-business-day sentence states."""
+    return json.dumps(
+        [
+            {
+                "field": "temporaryClosure",
+                "currentValue": None,
+                "proposedValue": {"startDate": "2026-09-07", "endDate": "2026-09-07"},
+            },
+            {
+                "field": "businessHours",
+                "currentValue": dict(HOURS),
+                "proposedValue": {"open": "10:00", "close": "21:00"},
+            },
+        ],
+        ensure_ascii=False,
+    )
+
+
 def closure_and_parking_output() -> str:
     """Render the two changes a compound sentence states."""
     return json.dumps(
@@ -329,9 +348,10 @@ def closure_and_parking_output() -> str:
 
 
 @pytest.mark.asyncio
-async def test_a_sentence_naming_a_second_topic_reaches_the_model() -> None:
-    # Given: one sentence asking for two changes. The parser reads one field per
-    # sentence, so its answer alone would drop the parking request in silence.
+async def test_a_compound_sentence_the_parser_reads_whole_skips_the_model() -> None:
+    # Given: one sentence asking for two changes, both of which the parser now
+    # splits out for itself. Nothing is left over, so there is nothing to ask a
+    # model about - and the owner does not wait on a round trip to be told so.
     client = CountingClient(closure_and_parking_output())
     generator = DeterministicFirstGenerator(GeminiProposalStructurer(client))
 
@@ -341,19 +361,38 @@ async def test_a_sentence_naming_a_second_topic_reaches_the_model() -> None:
         make_profile(),
     )
 
-    # Then: the model read the whole sentence and both requests survive.
-    assert client.calls == 1
+    # Then: both requests survive and the model was never called.
+    assert client.calls == 0
     assert {change.field for change in changes} == {"temporaryClosure", "parkingInfo"}
 
 
 @pytest.mark.asyncio
+async def test_a_sentence_naming_a_second_topic_reaches_the_model() -> None:
+    # Given: a sentence whose hours half is a span the parser declines to read, so
+    # its own answer would drop that half in silence.
+    client = CountingClient(closure_and_hours_output())
+    generator = DeterministicFirstGenerator(GeminiProposalStructurer(client))
+
+    # When: the sentence is structured.
+    changes = await generator.generate(
+        "다음 주 월요일 하루 임시 휴무이고 영업시간은 오전 10시부터 오후 9시까지입니다",
+        make_profile(),
+    )
+
+    # Then: the model read the whole sentence and both requests survive.
+    assert client.calls == 1
+    assert {change.field for change in changes} == {"temporaryClosure", "businessHours"}
+
+
+@pytest.mark.asyncio
 async def test_the_parsers_answer_survives_a_model_that_reads_less() -> None:
-    # Given: a compound sentence and a model that comes back with a refusal.
+    # Given: a compound sentence whose hours half only the model can read, and a
+    # model that comes back with a refusal.
     generator = DeterministicFirstGenerator(GeminiProposalStructurer(CountingClient("[]")))
 
     # When: the sentence is structured.
     changes = await generator.generate(
-        "9월 1일은 임시 휴무이고 주차는 불가능합니다",
+        "다음 주 월요일 하루 임시 휴무이고 영업시간은 오전 10시부터 오후 9시까지입니다",
         make_profile(),
     )
 
@@ -363,14 +402,12 @@ async def test_the_parsers_answer_survives_a_model_that_reads_less() -> None:
 
 
 @pytest.mark.asyncio
-async def test_offline_a_compound_request_keeps_the_reading_the_parser_managed() -> None:
-    """A second field the stub cannot read must not discard the first one.
+async def test_offline_a_compound_request_produces_a_change_for_each_half() -> None:
+    """The owner asks for two things in one breath and gets two changes.
 
-    The owner names a closure and parking in one breath. The parser reads the
-    closure and declines parking, so the sentence goes to the fallback — offline
-    that is the stub, which cannot read "9월 1일" and refuses. The refusal has to
-    leave the parser's closure standing, and the dropped field has to be named,
-    rather than failing the whole request.
+    The stub cannot read "9월 1일" and refuses the sentence outright, so nothing
+    but the parser stands between this request and a 422. Both halves have to come
+    back as separate changes with no Gemini key configured at all.
     """
     # Given: the offline generator and a sentence naming two fields.
     generator = DeterministicFirstGenerator(DeterministicGeminiStub())
@@ -379,11 +416,14 @@ async def test_offline_a_compound_request_keeps_the_reading_the_parser_managed()
     # When: the sentence is structured with no Gemini key configured.
     changes = await generator.generate(sentence, make_profile())
 
-    # Then: the closure survives and parking is reported as unmapped.
-    (change,) = changes
-    assert isinstance(change, TemporaryClosureChange)
-    assert change.proposed_value.start_date == date(2026, 9, 1)
-    assert unmapped_request_labels(sentence, changes) == ("주차 정보",)
+    # Then: each half is its own change and nothing is reported as dropped.
+    closure, parking = changes
+    assert isinstance(closure, TemporaryClosureChange)
+    assert closure.proposed_value.start_date == date(2026, 9, 1)
+    assert closure.proposed_value.end_date == date(2026, 9, 1)
+    assert isinstance(parking, ParkingInfoChange)
+    assert parking.proposed_value == "주차 불가"
+    assert unmapped_request_labels(sentence, changes) == ()
 
 
 @pytest.mark.asyncio

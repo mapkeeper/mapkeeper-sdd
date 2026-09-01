@@ -3,15 +3,34 @@
 > 문서 역할: 결정 배경을 설명하는 참고 자료
 > 상태: **Informative / current decisions**
 > 기준 코드: `2026-08-17 current working tree` (base `12687c2ed099cc6369d45b59791fa3ca62ea106d`)
-> 최종 대조일: `2026-08-17`
+> PM 범위 기준일: `2026-08-26`
+> 최종 대조일: `2026-08-30`
 
-## 1. UC2 승인 단위
+## 0. PM Beta 범위 채택
 
 ### 결정
 
-Google·Naver·Kakao Draft를 개별 선택하지 않고 `ContentGeneration` 전체를 승인한다.
+2026-08-26 PM 문서의 기술적 완성도 범위를 현재 SDD의 우선순위와 사용자-facing acceptance 기준으로 채택한다. 기존 구현 기준과 충돌하는 항목은 구현 완료로 간주하지 않고 `Planned` 또는 `Verification needed`로 추적한다.
 
-### 이유
+### 주요 변경
+
+- UC1에 상대 날짜·기간·복합 요청·구체적 오류 안내를 추가한다.
+- UC2에 리뷰 0건 사실성, 질문 수 일치, 일정 연동, 플랫폼별 결과·승인·직접 편집을 추가한다.
+- 공휴일·아주대학교 공개 일정은 `CalendarEvent`로 별도 관리한다.
+- 검색 순위 보장이 아닌 사실성·최신성·플랫폼 적합성 기반 `게시 준비도`를 사용한다.
+- 점주 승인 전 외부 반영 금지와 모의 연동 표시를 유지한다.
+
+### 충돌 처리
+
+기존 SDD의 UC2 전체 승인·`LocalSEOContent` 개별 승인 없음 규칙은 PM Beta 범위와 충돌하므로 폐기한다. 현재 코드·OpenAPI는 아직 기존 모델을 반영하므로, 플랫폼별 승인으로 전환하기 전까지 해당 기능은 `Planned`다.
+
+## 1. UC2 승인 단위 (superseded)
+
+### 결정
+
+기존 MVP에서는 Google·Naver·Kakao Draft를 개별 선택하지 않고 `ContentGeneration` 전체를 승인했다. 이 결정은 PM Beta 범위 채택으로 폐기되었다.
+
+### 당시 이유
 
 - 플랫폼별 선택 UI가 사용자의 판단 부담을 키운다.
 - Generation·DB·승인 API의 상태 단위를 하나로 유지할 수 있다.

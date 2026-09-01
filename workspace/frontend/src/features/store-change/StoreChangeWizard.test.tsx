@@ -13,6 +13,71 @@ async function createDraft(user: ReturnType<typeof userEvent.setup>): Promise<vo
 
 describe('StoreChangeWizard', () => {
   afterEach(() => vi.unstubAllEnvs());
+  // --- T256: 상대 날짜·기간·복합 요청·실패 원인 -------------------------------
+
+  async function submit(user: ReturnType<typeof userEvent.setup>, text: string): Promise<void> {
+    await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
+    await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), text);
+    await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
+  }
+
+  test('기간 요청은 시작일과 종료일을 모두 보여준다', async () => {
+    const user = userEvent.setup();
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+
+    await submit(user, '9월 1일부터 9월 3일까지 쉽니다');
+
+    // 한쪽 끝만 반영하면 사장님은 실제보다 짧게 쉬는 것으로 올라간 줄 모른 채 승인한다.
+    expect(await screen.findByText('임시 휴무')).toBeInTheDocument();
+    expect(screen.getByText(/2026-09-01/)).toBeInTheDocument();
+    expect(screen.getByText(/2026-09-03/)).toBeInTheDocument();
+  });
+
+  test('복합 요청은 항목별 변경안으로 나뉘고 누락 안내가 남지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+
+    await submit(user, '9월 1일은 임시 휴무이고 주차는 불가능합니다');
+
+    expect(await screen.findByText('임시 휴무')).toBeInTheDocument();
+    expect(screen.getByText('주차 정보')).toBeInTheDocument();
+    expect(screen.queryByText(/이번 변경안에 담지 못했어요/)).not.toBeInTheDocument();
+  });
+
+  test('모호한 요청은 원인·재시도 방법·원본 입력을 함께 보여준다', async () => {
+    const user = userEvent.setup();
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+
+    await submit(user, '오후에 문을 닫습니다');
+
+    // 원인을 말하지 않으면 사장님은 시각이 문제였는지 날짜가 문제였는지 알 수 없다.
+    const notice = await screen.findByRole('alert');
+    expect(notice).toHaveTextContent('몇 시인지 정확히 알 수 없어요');
+    expect(notice).toHaveTextContent('몇 시인지 함께 말씀해 주세요');
+    expect(notice).toHaveTextContent('오후에 문을 닫습니다');
+  });
+
+  test('실패한 요청의 원본 입력을 그대로 다시 고쳐 시도할 수 있다', async () => {
+    const user = userEvent.setup();
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+
+    await submit(user, '오후에 문을 닫습니다');
+    await user.click(await screen.findByRole('button', { name: '이 내용 고쳐서 다시 시도' }));
+
+    // 처음부터 다시 말하게 하면 음성으로 입력한 사장님은 과업을 포기한다.
+    expect(screen.getByLabelText('변경할 매장 정보 직접 입력')).toHaveValue('오후에 문을 닫습니다');
+  });
+
+  test('제안 예시를 누르면 그 문장이 입력창에 채워진다', async () => {
+    const user = userEvent.setup();
+    render(<StoreChangeWizard storeProfileId="store-123" />);
+
+    await submit(user, '오후에 문을 닫습니다');
+    await user.click(await screen.findByRole('button', { name: '내일 하루 쉽니다' }));
+
+    expect(screen.getByLabelText('변경할 매장 정보 직접 입력')).toHaveValue('내일 하루 쉽니다');
+  });
+
   test('빠른 시작 버튼이 대표 메뉴 예시를 직접 입력창에 채운다', async () => {
     const user = userEvent.setup();
     render(<StoreChangeWizard storeProfileId="store-123" />);
@@ -332,9 +397,14 @@ describe('StoreChangeWizard', () => {
     await user.type(screen.getByLabelText('변경할 매장 정보 직접 입력'), '안녕하세요');
     await user.click(screen.getByRole('button', { name: '변경안 만들기' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('변경할 매장 정보를 인식하지 못했어요');
+    // 읽지 못한 문장은 원인과 다시 말하는 방법을 함께 알려주고, 사장님이 방금 한
+    // 말을 그대로 되돌려 준다. "인식하지 못했어요"만 남기면 무엇을 고칠지 알 수 없다.
+    const notice = await screen.findByRole('alert');
+    expect(notice).toHaveTextContent('지금은 바꿀 수 없는 항목이에요');
+    expect(notice).toHaveTextContent('바꿀 수 있는 건 영업시간, 임시 휴무, 대표 메뉴, 주차 정보예요');
+    expect(notice).toHaveTextContent('안녕하세요');
     expect(screen.queryByRole('button', { name: '승인 단계로 이동' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '다시 입력하기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '이 내용 고쳐서 다시 시도' })).toBeInTheDocument();
     expect(approveCalls).toBe(0);
   });
 

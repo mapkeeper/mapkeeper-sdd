@@ -1,6 +1,7 @@
 import { ApiClientError, apiRequest } from '@/services/api';
 import type { CreateSeoGenerationResponse, CreateStoreChangeResponse, GetSyncJobResponse, RetrySyncJobResponse, SeoApprovalResponse, StoreChangeApprovalResponse } from '@/services/api.types';
 import { MOCK_TIMESTAMP } from '@/mocks/factories/envelopeFactory';
+import { FAILURE_COPY } from '@/mocks/fixtures/storeChangeFixtures';
 import { setMockScenario } from '@/mocks/scenarios';
 
 describe('API contract mocks', () => {
@@ -43,23 +44,69 @@ describe('API contract mocks', () => {
     } satisfies Partial<ApiClientError>);
   });
 
-  test('UC1 mock 생성은 인식 불가능한 자유 문장도 빈 변경 목록의 DRAFT로 수용한다', async () => {
-    const created = await apiRequest<CreateStoreChangeResponse>('/api/v1/store-change-proposals', {
+  test('UC1 mock 생성은 읽지 못한 문장을 원인과 함께 거절한다', async () => {
+    // 빈 변경 목록의 DRAFT를 돌려주면 사장님은 "인식하지 못했어요"만 보고 무엇을
+    // 고쳐야 할지 알 수 없다. 실제 API처럼 원인·재시도 방법·원본 입력을 함께 준다.
+    await expect(apiRequest<CreateStoreChangeResponse>('/api/v1/store-change-proposals', {
       method: 'POST',
       body: { storeProfileId: 'store-123', recognizedText: '사장님 마음대로 예쁘게 정리해 주세요', locale: 'ko-KR' },
-    });
-
-    expect(created.data).toMatchObject({ proposalId: 'prop-001', status: 'DRAFT', changes: [] });
+    })).rejects.toMatchObject({
+      status: 422,
+      causeBody: {
+        code: 'VALIDATION_ERROR',
+        message: FAILURE_COPY.UNSUPPORTED_FIELD.message,
+        failure: {
+          reason: 'UNSUPPORTED_FIELD',
+          ...FAILURE_COPY.UNSUPPORTED_FIELD,
+          recognizedTextMasked: '사장님 마음대로 예쁘게 정리해 주세요',
+        },
+      },
+    } satisfies Partial<ApiClientError>);
   });
 
-  test('변경되지 않는 모호한 영업시간 요청은 반영하지 않는다', async () => {
+  test('시각을 말하지 않은 영업시간 요청은 무엇이 빠졌는지 알려준다', async () => {
     await expect(apiRequest<CreateStoreChangeResponse>('/api/v1/store-change-proposals', {
       method: 'POST',
       body: { storeProfileId: 'store-123', recognizedText: '영업 시간 정보를 정리해 줘', locale: 'ko-KR' },
     })).rejects.toMatchObject({
-      status: 409,
-      causeBody: { code: 'INVALID_STATE', message: '현재 매장 정보와 달라진 내용이 없습니다.' },
+      status: 422,
+      causeBody: {
+        code: 'VALIDATION_ERROR',
+        message: FAILURE_COPY.AMBIGUOUS_TIME.message,
+        failure: {
+          reason: 'AMBIGUOUS_TIME',
+          ...FAILURE_COPY.AMBIGUOUS_TIME,
+          recognizedTextMasked: '영업 시간 정보를 정리해 줘',
+        },
+      },
     } satisfies Partial<ApiClientError>);
+  });
+
+  test('현재 값과 같은 변경은 반영하지 않는다', async () => {
+    await expect(apiRequest<CreateStoreChangeResponse>('/api/v1/store-change-proposals', {
+      method: 'POST',
+      body: { storeProfileId: 'store-123', recognizedText: '영업시간을 밤 10시까지로 바꿔줘', locale: 'ko-KR' },
+    })).rejects.toMatchObject({
+      status: 409,
+      causeBody: {
+        code: 'INVALID_STATE',
+        message: '현재 매장 정보와 달라진 내용이 없습니다.',
+        failure: {
+          reason: 'NO_EFFECTIVE_CHANGE',
+          ...FAILURE_COPY.NO_EFFECTIVE_CHANGE,
+          recognizedTextMasked: '영업시간을 밤 10시까지로 바꿔줘',
+        },
+      },
+    } satisfies Partial<ApiClientError>);
+  });
+
+  test('상대 날짜·기간·복합 요청은 mock에서도 실제 API와 같게 구조화된다', async () => {
+    const compound = await apiRequest<CreateStoreChangeResponse>('/api/v1/store-change-proposals', {
+      method: 'POST',
+      body: { storeProfileId: 'store-123', recognizedText: '9월 1일은 임시 휴무이고 주차는 불가능합니다', locale: 'ko-KR' },
+    });
+
+    expect(compound.data.changes.map(({ field }) => field)).toEqual(['temporaryClosure', 'parkingInfo']);
   });
 
   test.each(['all-success', 'partial-success', 'retryable-failure', 'non-retryable-failure'] as const)('sync scenario %s returns contracted platform tasks', async (scenario) => {

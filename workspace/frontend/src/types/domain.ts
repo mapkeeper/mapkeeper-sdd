@@ -38,6 +38,36 @@ export type ErrorCode =
   | 'INTERNAL_SERVER_ERROR';
 export type EnvelopeStatus = 'SUCCESS' | 'PROCESSING' | 'FAILED';
 
+/**
+ * Why one store-change request was refused.
+ *
+ * The error code says which contract rule broke; this says what the owner has to
+ * change about what they said. Without it the screen can only ever show the same
+ * retry box, so "몇 시인지 말씀해 주세요" and "메뉴를 하나만 말씀해 주세요" looked
+ * identical to the person who had to act on them.
+ */
+export const PROPOSAL_FAILURE_REASONS = [
+  'AMBIGUOUS_TIME',
+  'AMBIGUOUS_DATE',
+  'UNREADABLE_DATE_RANGE',
+  'INVALID_DATE',
+  'MULTIPLE_MENU_CANDIDATES',
+  'UNSUPPORTED_FIELD',
+  'NO_CHANGE_FOUND',
+  'NO_EFFECTIVE_CHANGE',
+] as const;
+export type ProposalFailureReason = (typeof PROPOSAL_FAILURE_REASONS)[number];
+
+export interface ProposalFailure {
+  reason: ProposalFailureReason;
+  message: string;
+  guidance: string;
+  retry: string;
+  examples: string[];
+  /** The submitted sentence, masked - what the retry box is refilled with. */
+  recognizedTextMasked: string | null;
+}
+
 export interface StoreProfile {
   id: string;
   storeName: string;

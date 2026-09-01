@@ -12,6 +12,7 @@
 | `0001` | StoreProfile, Proposal, Generation, LocalSEOContent, SyncJob, PlatformSyncTask |
 | `0002` | SourceReview |
 | `0003` | `ContentPurpose` Enum과 `content_generation.purpose` |
+| `0004` (planned) | `LocalSEOContent` 플랫폼별 승인 상태, `CalendarEvent` |
 
 현재 Alembic head는 `0003`이다.
 
@@ -64,7 +65,9 @@ createdAt: timestamptz
 updatedAt: timestamptz
 ```
 
-`changes`는 API Contract의 `ProposalChange` discriminated union을 통과한 값만 저장한다.
+`changes`는 API Contract의 `ProposalChange` discriminated union을 통과한 값만 저장한다. 한 문장이 여러 항목을 말하면 항목마다 하나씩 담기므로 `changes`는 여러 개일 수 있다.
+
+거절된 요청은 Proposal을 만들지 않으므로 `error.failure`의 실패 원인은 저장하지 않는다. `unmappedRequests`도 저장하지 않고 `recognizedTextMasked`와 `changes`에서 매번 파생한다 — 변경안을 수정하면 누락 목록도 함께 움직여야 한다.
 
 ## 5. SourceReview
 
@@ -88,6 +91,7 @@ briefText: varchar(500)
 purpose: ContentPurpose NOT NULL DEFAULT INTRODUCTION
 seedKeywords: text[]
 sourceReviewIds: UUID[] nullable
+calendarEventIds: UUID[] nullable
 status: ContentGenerationStatus
 revision: integer CHECK revision >= 1
 approvedAt: timestamptz nullable
@@ -112,9 +116,37 @@ updatedAt: timestamptz
 UNIQUE(contentGenerationId, platform)
 ```
 
-개별 승인 상태는 두지 않는다. 승인 상태는 ContentGeneration이 관리한다.
+PM Beta에서는 플랫폼별 승인·게시를 지원하므로 다음 필드를 추가한다. 기존 `ContentGeneration.status`는 전체 Generation의 생명주기와 전체 승인 편의 동작을 나타내며, 외부 반영 가능 여부는 플랫폼 상태가 우선한다.
 
-## 8. SyncJob
+```text
+approvalStatus: DRAFT | APPROVED | REJECTED
+approvedAt: timestamptz nullable
+```
+
+플랫폼별 승인 전에는 해당 플랫폼 Task를 만들지 않는다. 이 변경은 다음 migration에서 반영한다.
+
+## 8. CalendarEvent
+
+공식 공휴일·아주대학교 공개 일정과 관리자 등록 일정을 저장한다.
+
+```text
+eventId: UUID PK
+title: text
+category: HOLIDAY | UNIVERSITY
+targetAudience: text nullable
+startDate: date
+endDate: date
+sourceType: OFFICIAL_HOLIDAY | AJOU_OFFICIAL | ADMIN
+sourceUrl: text
+retrievedAt: timestamptz
+lastVerifiedAt: timestamptz
+isPublic: boolean
+status: ACTIVE | CANCELLED | EXPIRED
+```
+
+개인 교직원 일정과 비공개 일정은 저장하지 않는다. 중복 식별과 최신성 검사는 `sourceType`, `sourceUrl`, 기간, 제목 조합을 사용한다.
+
+## 9. SyncJob
 
 ```text
 id: UUID PK
@@ -134,7 +166,7 @@ UNIQUE(approvedBy, idempotencyKey)
 
 UC1·UC2 원본 FK 중 정확히 하나만 값이 있어야 하며 `sourceType`과 일치해야 한다.
 
-## 9. PlatformSyncTask
+## 10. PlatformSyncTask
 
 ```text
 id: UUID PK
@@ -154,7 +186,7 @@ UNIQUE(syncJobId, platform)
 
 `nextRetryAt`은 지수 백오프 예약 시각이다. 현재 runner가 이 시각을 기다리지 않는 구현 격차가 있다.
 
-## 10. 핵심 DB 제약
+## 11. 핵심 DB 제약
 
 ```text
 StoreProfile temporary closure
@@ -176,7 +208,7 @@ PlatformSyncTask
 - CHECK(attemptCount BETWEEN 0 AND 3)
 ```
 
-## 11. 승인 트랜잭션
+## 12. 승인 트랜잭션
 
 ### UC1
 
@@ -203,7 +235,7 @@ lock ContentGeneration
 → background runner
 ```
 
-## 12. ERD
+## 13. ERD
 
 ```mermaid
 erDiagram
@@ -211,13 +243,14 @@ erDiagram
   StoreProfile ||--o{ SourceReview : has
   StoreProfile ||--o{ ContentGeneration : has
   ContentGeneration ||--o{ LocalSEOContent : generates
+  ContentGeneration }o--o{ CalendarEvent : uses
   StoreProfile ||--o{ SyncJob : owns
   StoreChangeProposal o|--o| SyncJob : approves
   ContentGeneration o|--o| SyncJob : approves
   SyncJob ||--|{ PlatformSyncTask : executes
 ```
 
-## 13. 보안 불변식
+## 14. 보안 불변식
 
 - `recognizedTextMasked`, `SourceReview.bodyMasked`에는 고객 PII 원문을 저장하지 않는다.
 - 마스킹 완료 리뷰만 Gemini 입력으로 사용한다.

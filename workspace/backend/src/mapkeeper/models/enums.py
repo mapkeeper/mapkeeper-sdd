@@ -92,6 +92,27 @@ class ApiErrorCode(StrEnum):
 
 
 @unique
+class ProposalFailureReason(StrEnum):
+    """Why one UC1 sentence did not become a proposal.
+
+    The user-facing message alone is not enough for the screen to act on: it
+    cannot tell "say a clock time" from "say a date" from "name one menu", so it
+    could only ever show the same retry box. This is the machine-readable half of
+    that refusal, and every value names a distinct thing the owner has to change
+    about what they said.
+    """
+
+    AMBIGUOUS_TIME = "AMBIGUOUS_TIME"
+    AMBIGUOUS_DATE = "AMBIGUOUS_DATE"
+    UNREADABLE_DATE_RANGE = "UNREADABLE_DATE_RANGE"
+    INVALID_DATE = "INVALID_DATE"
+    MULTIPLE_MENU_CANDIDATES = "MULTIPLE_MENU_CANDIDATES"
+    UNSUPPORTED_FIELD = "UNSUPPORTED_FIELD"
+    NO_CHANGE_FOUND = "NO_CHANGE_FOUND"
+    NO_EFFECTIVE_CHANGE = "NO_EFFECTIVE_CHANGE"
+
+
+@unique
 class PlatformErrorCode(StrEnum):
     """Normalized failure reported by one external platform adapter."""
 

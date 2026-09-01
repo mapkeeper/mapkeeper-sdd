@@ -8,6 +8,7 @@ from typing import Final
 
 from fastapi import status
 
+from mapkeeper.api.schemas.common import ProposalFailure
 from mapkeeper.models.enums import ApiErrorCode
 
 SAFE_INTERNAL_MESSAGE: Final = "요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
@@ -22,11 +23,24 @@ class MapKeeperError(Exception):
     http_status: int = status.HTTP_500_INTERNAL_SERVER_ERROR
     code: ApiErrorCode = ApiErrorCode.INTERNAL_SERVER_ERROR
 
-    def __init__(self, message: str, *, retryable: bool | None = None) -> None:
-        """Store a caller-safe message and an optional retry hint."""
+    def __init__(
+        self,
+        message: str,
+        *,
+        retryable: bool | None = None,
+        failure: ProposalFailure | None = None,
+    ) -> None:
+        """Store a caller-safe message, an optional retry hint and a failure cause.
+
+        ``failure`` is the machine-readable half of the refusal: which rule the
+        request broke, what the caller has to change, and the input they sent, so
+        a screen can offer a retry instead of a dead end. It stays optional
+        because most failures have nothing more to say than their contract code.
+        """
         super().__init__(message)
         self.message: str = message
         self.retryable: bool | None = retryable
+        self.failure: ProposalFailure | None = failure
 
 
 class ResourceNotFoundError(MapKeeperError):

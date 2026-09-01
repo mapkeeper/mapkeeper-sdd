@@ -40,13 +40,40 @@
     "code": "VALIDATION_ERROR",
     "message": "요청 값이 올바르지 않습니다.",
     "details": [{"field": "body.seedKeywords.0", "reason": "string required"}],
-    "retryable": null
+    "retryable": null,
+    "failure": null
   },
   "timestamp": "2026-08-17T00:00:00Z"
 }
 ```
 
 `details`는 입력 검증 오류의 필드별 설명이고, 최상위 `retryable`은 현재 공통 오류 모델의 선택 필드다. 플랫폼 반영 재시도 여부는 `platformTasks[].error.retryable`을 기준으로 판단한다.
+
+### 실패 원인 모델
+
+`error.failure`는 서버가 무엇을 고쳐야 하는지 말할 수 있을 때만 채운다. `code`는 어떤 계약 규칙을 어겼는지, `message`는 그것을 한 문장으로 말하지만, 둘 다 화면이 무엇을 제안해야 하는지는 알려주지 않는다. 사용자가 행동할 수 없는 거절은 과업을 끝내므로, 원인을 기계 판독 가능한 값으로 주고 다시 말하는 방법과 원본 입력을 함께 돌려준다.
+
+```json
+{
+  "reason": "AMBIGUOUS_TIME",
+  "message": "몇 시인지 정확히 알 수 없어요.",
+  "guidance": "“오후”, “저녁”처럼 대략적인 때만 말씀하셨거나 시계에 없는 시각이라 시각을 정하지 못했어요.",
+  "retry": "몇 시인지 함께 말씀해 주세요. 하루 종일 쉬시는 거라면 시각 대신 날짜로 말씀해 주세요.",
+  "examples": ["영업시간을 밤 10시까지로 바꿔줘", "내일 하루 쉽니다"],
+  "recognizedTextMasked": "오후에 문을 닫습니다"
+}
+```
+
+| 필드 | 의미 |
+|---|---|
+| `reason` | `ProposalFailureReason` 값. 화면 분기의 기준이다. |
+| `message` | 무엇이 문제인지 한 문장 |
+| `guidance` | 왜 그렇게 판단했는지 |
+| `retry` | 다시 말하는 구체적 방법 |
+| `examples` | 그대로 다시 시도할 수 있는 문장 |
+| `recognizedTextMasked` | 마스킹된 원본 입력. 화면은 이 값을 입력창에 되돌린다. |
+
+현재 이 객체를 채우는 것은 UC1 변경안 생성뿐이다. 다른 Endpoint는 `null`을 반환하며, 클라이언트는 없는 경우를 항상 처리해야 한다. `recognizedTextMasked`는 고객 PII를 제거한 뒤의 문장이므로 Constitution 6.2를 위반하지 않는다.
 
 이하 각 Endpoint의 성공 응답 예시는 가독성을 위해 공통 Envelope의 `data` 객체만 표시한다. 실제 HTTP 응답은 항상 위 성공 Envelope로 감싼다. 승인 Endpoint의 최상위 `status`는 `PROCESSING`, 나머지 동기 성공 응답은 `SUCCESS`다.
 
@@ -62,6 +89,8 @@
 | `SyncJobStatus` | `PENDING`, `PROCESSING`, `PARTIAL_SUCCESS`, `SUCCESS`, `FAILED`, `RETRYING` |
 | `PlatformSyncTaskStatus` | `PENDING`, `PROCESSING`, `SUCCESS`, `FAILED`, `RETRYING` |
 | `SyncSourceType` | `STORE_CHANGE_PROPOSAL`, `CONTENT_GENERATION` |
+| `ContentApprovalStatus` (PM Beta) | `DRAFT`, `APPROVED`, `REJECTED` |
+| `ProposalFailureReason` | `AMBIGUOUS_TIME`, `AMBIGUOUS_DATE`, `UNREADABLE_DATE_RANGE`, `INVALID_DATE`, `MULTIPLE_MENU_CANDIDATES`, `UNSUPPORTED_FIELD`, `NO_CHANGE_FOUND`, `NO_EFFECTIVE_CHANGE` |
 
 `PARTIAL_SUCCESS`는 SyncJob에만 허용한다.
 
@@ -112,6 +141,8 @@
 
 공통으로 입력에 없는 사실·과장·고객 PII를 만들지 않는다. `contentRules`는 서버가 생성한 읽기 전용 정보이며 클라이언트 요청으로 입력하거나 수정하지 않는다.
 
+리뷰 요약의 `reviewCount`가 0이면 `keywords`는 빈 배열이어야 한다. 서버와 클라이언트는 기본 긍정 키워드를 삽입하지 않으며, 생성 결과도 리뷰 근거 없는 장점을 포함할 수 없다.
+
 이 규칙은 프롬프트 지시가 아니라 생성 응답 경계에서 강제한다. 모델 응답의 구조 검증(플랫폼 3종·길이·키워드 수)을 통과해도 다음을 추가로 적용한다.
 
 - `draftText`와 `keywords`의 고객 PII는 저장 전에 결정적으로 마스킹한다. 해당 매장의 공개 주소·대표번호는 Constitution 6.3의 승인된 비즈니스 정보이므로 유지한다.
@@ -154,7 +185,8 @@ POST /api/v1/store-change-proposals
       "proposedValue": "김치찌개"
     }
   ],
-  "status": "DRAFT"
+  "status": "DRAFT",
+  "unmappedRequests": []
 }
 ```
 
@@ -175,6 +207,16 @@ POST /api/v1/store-change-proposals
 ```json
 {"field":"parkingInfo","currentValue":null,"proposedValue":"건물 뒤 3대 가능"}
 ```
+
+#### 상대 날짜·기간·복합 요청
+
+- 상대 날짜(`오늘`, `내일`, `모레`, `이번 주 <요일>`, `다음 주 <요일>`, `이번 주`, `다음 주`)는 Asia/Seoul 기준일로 계산해 확정 날짜로 구조화한다. 계산할 수 없는 표현(`조만간`, `곧`)은 확정하지 않고 `AMBIGUOUS_DATE`로 재확인한다.
+- 기간은 시작일과 종료일을 모두 구조화한다. `…부터 …까지`의 두 번째 끝이 월(`8월 25일부터 26일까지`)이나 주(`다음 주 월요일부터 수요일까지`)를 생략해도 첫 번째 끝의 문맥으로 해석한다. 한쪽 끝을 읽지 못하면 읽은 쪽만 반영하지 않고 `UNREADABLE_DATE_RANGE`로 거절한다.
+- 기간 표현(`하루`, `이틀`, `3일간`)은 시작일에서 해당 일수만큼의 종료일을 계산한다.
+- 한 문장이 여러 항목을 말하면 항목별 변경안으로 분리한다. `9월 1일은 임시 휴무이고 주차는 불가능합니다`는 `temporaryClosure`와 `parkingInfo` 두 개의 변경안이 된다.
+- 주차 가능·불가 진술(`주차는 불가능합니다`)은 `주차 불가`, `주차 가능`으로 구조화한다. 그 이상을 말하는 문장은 저장할 값을 직접 명시해야 한다.
+- 구조화하지 못한 항목은 조용히 버리지 않고 `unmappedRequests`에 한국어 항목명으로 담는다. 승인 화면은 이 목록을 표시해야 한다.
+- 어떤 항목도 구조화하지 못하면 `422 VALIDATION_ERROR`와 함께 위 `error.failure`를 반환한다.
 
 ### 4.2 변경안 전체 교체
 
@@ -320,6 +362,40 @@ Idempotency-Key: required
 
 Body와 `draftIds`가 없다. 응답은 `202 Accepted`다.
 
+### 6.6 플랫폼별 승인 (PM Beta, Planned)
+
+```http
+POST /api/v1/seo/generations/{generationId}/drafts/{platform}/approve
+Idempotency-Key: required
+```
+
+선택한 플랫폼의 `LocalSEOContent.approvalStatus`만 `APPROVED`로 변경하고 해당 플랫폼 Task만 생성한다. 전체 승인 Endpoint는 모든 플랫폼에 대한 편의 동작으로 유지하되, 개별 승인된 플랫폼을 다시 승인하지 않는다.
+
+### 6.7 플랫폼별 편집·부분 재생성 (PM Beta, Planned)
+
+```http
+PATCH /api/v1/seo/generations/{generationId}/drafts/{platform}
+POST /api/v1/seo/generations/{generationId}/drafts/{platform}/regenerate
+```
+
+직접 편집·재생성은 해당 플랫폼 결과만 갱신하고 Generation revision을 증가시킨다. 전체 결과와 플랫폼별 결과가 섞이지 않도록 응답에 `platform`, `revision`, `contentRules`를 포함한다.
+
+### 6.8 일정 조회 (PM Beta P1, Planned)
+
+```http
+GET /api/v1/calendar-events?from=YYYY-MM-DD&to=YYYY-MM-DD&category=HOLIDAY|UNIVERSITY
+```
+
+응답에는 일정 날짜, 공개 출처 URL, `retrievedAt`, `lastVerifiedAt`, 상태를 포함한다. 조회 실패는 일반 문구 생성 실패와 분리한다.
+
+### 6.9 게시 준비도 (PM Beta P1, Planned)
+
+```http
+GET /api/v1/seo/generations/{generationId}/readiness
+```
+
+검색 순위가 아닌 사실 일치성·플랫폼 적합성·정보 완성도·일정 최신성·과장·키워드 과다·이미지 보완 필요를 검사한다.
+
 ```json
 {
   "generationId": "33333333-3333-4333-8333-333333333333",
@@ -359,7 +435,7 @@ GET /api/v1/sync-jobs/{syncJobId}
 }
 ```
 
-실제 응답에는 플랫폼 Task 세 개가 정확히 하나씩 포함된다.
+현재 구현 응답에는 플랫폼 Task 세 개가 정확히 하나씩 포함된다. PM Beta의 플랫폼별 승인 전환 후에는 승인된 플랫폼 Task만 생성하며, API 응답 계약을 갱신한다.
 
 ### 7.2 실패 플랫폼 재시도
 
@@ -385,6 +461,11 @@ Body 없음. 재시도 가능한 실패 Task만 `RETRYING`으로 변경하고 `2
 | 10 | POST | `/api/v1/seo/generations/{generationId}/approve` | 202 |
 | 11 | GET | `/api/v1/sync-jobs/{syncJobId}` | 200 |
 | 12 | POST | `/api/v1/sync-jobs/{syncJobId}/retry` | 202 |
+| 13 | POST | `/api/v1/seo/generations/{generationId}/drafts/{platform}/approve` | Planned |
+| 14 | PATCH | `/api/v1/seo/generations/{generationId}/drafts/{platform}` | Planned |
+| 15 | POST | `/api/v1/seo/generations/{generationId}/drafts/{platform}/regenerate` | Planned |
+| 16 | GET | `/api/v1/calendar-events` | Planned |
+| 17 | GET | `/api/v1/seo/generations/{generationId}/readiness` | Planned |
 
 `GET /health`는 운영 health 경로이며 `/api/v1` 제품 Endpoint 수에서 제외한다.
 
