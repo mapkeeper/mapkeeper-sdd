@@ -804,4 +804,64 @@ describe('SeoGenerationWizard mobile flow', () => {
     expect(screen.getByLabelText('종료일')).toHaveValue(chuseok?.end);
     expect(screen.getByRole('button', { name: '맞아요, 이 기간으로 만들기' })).toBeInTheDocument();
   });
+
+  // F-07: the follow-up questions have to name the kind of news the owner just
+  // described. The generic "어떤 내용을 알려드리고 싶나요" asks for a benefit that
+  // may not exist, and a question borrowed from another kind (휴무 날짜, 할인율,
+  // 출시일) invites the owner to invent a fact they never stated.
+  test('연휴 정상 영업 소식은 영업 여부와 영업시간, 안내할 메뉴를 묻고 혜택을 요구하지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachNewsInterview(user);
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '추석 연휴에도 정상 영업합니다.');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    const detailQuestion = await screen.findByText(/연휴에 정상 영업하시나요/);
+    expect(detailQuestion.textContent).not.toMatch(/혜택|할인/);
+    expect(screen.queryByText(/손님에게 어떤 내용을 알려드리고 싶나요/)).not.toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '연휴 내내 정상 영업해요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    const scheduleQuestion = await screen.findByText(/연휴 동안 영업시간은 어떻게 되나요/);
+    expect(scheduleQuestion.textContent).not.toMatch(/혜택|할인/);
+    // The owner also has to be asked which menu to announce, but a 연휴 영업
+    // notice does not require one, so the question must accept "없어요".
+    expect(scheduleQuestion.textContent).toMatch(/안내하고 싶은 메뉴/);
+    expect(scheduleQuestion.textContent).toMatch(/없으면|없다면/);
+  });
+
+  test('신메뉴 출시 소식은 메뉴명과 특징, 판매 기간을 묻는다', async () => {
+    const user = userEvent.setup();
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachNewsInterview(user);
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '새로운 들깨 만두전골을 출시합니다.');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    const detailQuestion = await screen.findByText(/새 메뉴 이름과 가장 자랑하고 싶은 점을 알려주세요/);
+    expect(detailQuestion.textContent).not.toMatch(/휴무|할인/);
+    expect(screen.queryByText(/손님에게 어떤 내용을 알려드리고 싶나요/)).not.toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '들깨 만두전골이고 들깨 향이 진해요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    const scheduleQuestion = await screen.findByText(/신메뉴는 언제부터 언제까지 판매하나요/);
+    expect(scheduleQuestion.textContent).not.toMatch(/휴무|할인/);
+  });
+
+  test('할인 행사 소식은 대상 메뉴와 조건, 기간을 묻고 출시일을 되묻지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<SeoGenerationWizard storeProfileId="store-123" sourceReviews={sourceReviewFixtures} reviewSummary={reviewSummaryFixture} />);
+    await reachNewsInterview(user);
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '평일 점심 만두전골 10% 할인 행사를 합니다.');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    const detailQuestion = await screen.findByText(/어떤 메뉴를 얼마나 할인하나요/);
+    expect(detailQuestion.textContent).toMatch(/할인 대상과 조건/);
+    expect(detailQuestion.textContent).not.toMatch(/신메뉴|출시/);
+    expect(screen.queryByText(/손님에게 어떤 내용을 알려드리고 싶나요/)).not.toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox', { name: '사장님 답변 입력' }), '만두전골을 10% 할인해요');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    const scheduleQuestion = await screen.findByText(/할인 행사는 언제부터 언제까지인가요/);
+    expect(scheduleQuestion.textContent).not.toMatch(/신메뉴|출시/);
+  });
 });

@@ -74,7 +74,10 @@ function detectNewsKind(answer: string): NewsKind {
   if (/운영시간|영업시간/.test(normalized)) return 'HOURS';
   if (/할인|쿠폰|혜택/.test(normalized)) return 'DISCOUNT';
   if (/이벤트|행사/.test(normalized)) return 'EVENT';
-  if (/신메뉴|새메뉴|신제품/.test(normalized)) return 'NEW_MENU';
+  // Owners rarely say the word "신메뉴" — "새로운 들깨 만두전골을 출시합니다"
+  // is the same news, and falling through to GENERAL asked them what benefit
+  // the dish offers instead of its name and when it goes on sale.
+  if (/신메뉴|새메뉴|새로운메뉴|신제품|새로나온|출시/.test(normalized)) return 'NEW_MENU';
   if (SCHOOL_WORDS.test(normalized)) return 'SCHOOL';
   return 'GENERAL';
 }
@@ -92,7 +95,9 @@ const NEWS_DETAIL_QUESTIONS: Record<NewsKind, string> = {
 
 const NEWS_SCHEDULE_QUESTIONS: Record<NewsKind, string> = {
   CLOSURE: '휴무 사유나 손님께 함께 전하고 싶은 안내가 있나요? 예: “내부 공사로 쉬어요.” 없으면 “없어요”라고 말씀해 주세요.',
-  HOLIDAY: '연휴 동안 영업시간은 어떻게 되나요? 평소와 같으면 “평소와 같아요”라고 말씀해 주세요.',
+  // 연휴 정상 영업 안내는 영업시간과 함께 내세울 메뉴를 물어야 손님에게 전할 내용이
+  // 채워진다. 다만 없는 메뉴를 지어내게 하면 안 되므로 선택 항목으로 묻는다.
+  HOLIDAY: '연휴 동안 영업시간은 어떻게 되나요? 평소와 같으면 “평소와 같아요”라고 말씀해 주세요. 연휴에 안내하고 싶은 메뉴가 있으면 함께 알려주시고, 없으면 “없어요”라고 말씀해 주세요.',
   HOURS: '변경된 영업시간은 언제부터 적용되나요? 따로 정하신 기간이 없다면 “없어요”라고 말씀해 주세요.',
   DISCOUNT: '할인 행사는 언제부터 언제까지인가요? 따로 정하신 기간이나 조건이 없다면 “없어요”라고 말씀해 주세요.',
   EVENT: '이벤트는 언제까지 진행하나요? 따로 정하신 기간이 없다면 “없어요”라고 말씀해 주세요.',

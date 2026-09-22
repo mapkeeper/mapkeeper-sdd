@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { MapPlacePreview } from '@/components/MapPlacePreview/MapPlacePreview';
 import { CheckCircle, WarningCircle as AlertCircle } from '@phosphor-icons/react';
 import { ApiClientError } from '@/services/api';
 import { retryStartedMessage, SYNC_COPY, SYNC_STATUS_TITLES } from '@/content/syncMessages';
@@ -13,6 +14,7 @@ import type { Platform, PlatformTaskStatus, ProposalChange, SyncJob } from '@/ty
 import googleLogo from '@/assets/platforms/google.svg';
 import naverLogo from '@/assets/platforms/naver.svg';
 import kakaoLogo from '@/assets/platforms/kakao.svg';
+import { useDialogFocus } from './useDialogFocus';
 import './SyncStatus.css';
 
 const platformLabels: Record<Platform, string> = {
@@ -83,6 +85,8 @@ export interface SyncStatusDashboardProps {
   pollTimeoutMs?: number;
   viewMode?: 'store-change' | 'seo';
   storeChanges?: ProposalChange[];
+  /** Real store name for the map preview; omitted rather than invented when unknown. */
+  storeName?: string;
   seoContent?: string;
   seoTags?: string[];
 }
@@ -117,6 +121,7 @@ export function SyncStatusDashboard({
   pollTimeoutMs = 60_000,
   viewMode = 'store-change',
   storeChanges = [],
+  storeName,
   seoContent = '정성으로 준비한 대표 메뉴와 따뜻한 서비스를 만나보세요.',
   seoTags = ['맛있는메뉴', '친절함', '다시찾는집'],
 }: SyncStatusDashboardProps) {
@@ -129,6 +134,8 @@ export function SyncStatusDashboard({
   const [refreshToken, setRefreshToken] = useState(0);
   const [platformResults, setPlatformResults] = useState<PlatformResult[]>(() => toPlatformResults(initialJob ?? null));
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
+  const closeDetail = useCallback(() => setSelectedPlatform(null), []);
+  const detailDialogRef = useDialogFocus<HTMLElement>(selectedPlatform !== null, closeDetail);
 
   useEffect(() => {
     if (!autoPoll) return;
@@ -266,21 +273,23 @@ export function SyncStatusDashboard({
         </button>
       ) : null}
 
-      {selectedPlatform ? <div className="sync-detail-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedPlatform(null); }}>
-        <section className="sync-detail-modal__sheet" role="dialog" aria-modal="true" aria-labelledby="sync-detail-title">
+      {selectedPlatform ? <div className="sync-detail-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDetail(); }}>
+        <section ref={detailDialogRef} className="sync-detail-modal__sheet" role="dialog" aria-modal="true" aria-labelledby="sync-detail-title">
           <div className="sync-detail-modal__handle" aria-hidden="true" />
-          <header><div><span>{selectedPlatformName} 반영 내역</span><h2 id="sync-detail-title">정상적으로 등록되었어요</h2></div><button type="button" aria-label="반영 내역 닫기" onClick={() => setSelectedPlatform(null)}>×</button></header>
+          <header><div><span>{selectedPlatformName} 반영 내역</span><h2 id="sync-detail-title">정상적으로 등록되었어요</h2></div><button type="button" aria-label="반영 내역 닫기" onClick={closeDetail}>×</button></header>
           {viewMode === 'seo' ? <div className="sync-detail-modal__content">
             <section><small>AI 추천 홍보 문구</small><p>{seoContent}</p></section>
             <section><small>적용된 이벤트·키워드 태그</small><div className="sync-detail-modal__tags">{seoTags.map((tag) => <span key={tag}>#{tag.replace(/^#/, '')}</span>)}</div></section>
             <dl className="sync-detail-modal__publish"><dt>발행 상태</dt><dd><CheckCircle aria-hidden="true" /> 정상 등록</dd></dl>
           </div> : <div className="sync-detail-modal__content">
-            <small>매장 정보 변경 비교</small>
-            <dl className="sync-detail-modal__changes">
-              {storeChanges.length > 0 ? storeChanges.map((change) => <div key={change.field}><dt>{change.field === 'businessHours' ? '영업시간' : change.field === 'temporaryClosure' ? '임시 휴무' : '대표 메뉴'}</dt><dd><s>{change.currentValue}</s><b aria-hidden="true">→</b><strong>{change.proposedValue}</strong></dd></div>) : <div><dt>변경 내용</dt><dd><strong>반영된 변경 내용이 없습니다.</strong></dd></div>}
-            </dl>
+            {storeChanges.length > 0 ? <MapPlacePreview
+              platforms={renderedResults.map(({ id, status }) => ({ id, status }))}
+              changes={storeChanges}
+              initialPlatform={selectedPlatform}
+              storeName={storeName}
+            /> : <dl className="sync-detail-modal__changes"><div><dt>변경 내용</dt><dd><strong>반영된 변경 내용이 없습니다.</strong></dd></div></dl>}
           </div>}
-          <button className="sync-detail-modal__confirm" type="button" onClick={() => setSelectedPlatform(null)}>확인</button>
+          <button className="sync-detail-modal__confirm" type="button" onClick={closeDetail}>확인</button>
         </section>
       </div> : null}
     </section>

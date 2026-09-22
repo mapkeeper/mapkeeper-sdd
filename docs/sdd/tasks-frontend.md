@@ -63,6 +63,8 @@
 | 기본 2초 Polling | Done |
 | 최대 60초 후 중단 | Done |
 | 지연 안내·다시 확인 버튼 | Done |
+| UC1 반영 내역 지도 화면 Before/After 미리보기 (`MapPlacePreview`, FR-019) | Done |
+| 반영 내역 시트 Escape 닫기·초점 유지·초점 복귀 | Done |
 
 `SyncStatusDashboard`는 2초 간격으로 조회하고 60초가 지나면 자동 조회를 멈춘다. 사용자가 `다시 확인`을 누르면 새 60초 조회 구간을 시작한다.
 

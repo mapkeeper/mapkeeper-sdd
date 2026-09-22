@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import {
@@ -103,16 +103,61 @@ describe('SyncStatusDashboard', () => {
     }
   });
 
-  test('UC1 성공 플랫폼을 누르면 매장 정보 이전 값과 변경 값을 보여준다', async () => {
+  test('UC1 성공 플랫폼을 누르면 지도 화면 미리보기로 이전 값과 변경 값을 보여준다', async () => {
     const user = userEvent.setup();
-    render(<SyncStatusDashboard syncJobId="job-001" initialJob={successSyncJobFixture} autoPoll={false} viewMode="store-change" storeChanges={[{ field: 'representativeMenuName', currentValue: '만두전골', proposedValue: '김치찌개' }]} />);
+    render(<SyncStatusDashboard syncJobId="job-001" initialJob={successSyncJobFixture} autoPoll={false} viewMode="store-change" storeName="행복분식" storeChanges={[{ field: 'representativeMenuName', currentValue: '만두전골', proposedValue: '김치찌개' }]} />);
 
     await user.click(screen.getByRole('listitem', { name: /Google/ }));
-    expect(screen.getByRole('dialog', { name: '정상적으로 등록되었어요' })).toBeInTheDocument();
-    expect(screen.getByText('매장 정보 변경 비교')).toBeInTheDocument();
-    expect(screen.getByText('대표 메뉴')).toBeInTheDocument();
-    expect(screen.getByText('김치찌개')).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: '정상적으로 등록되었어요' });
+    const preview = within(dialog).getByRole('region', { name: '지도 화면 미리보기' });
+    expect(within(preview).getByText('미리보기 · 실제 지도 화면과 다를 수 있습니다')).toBeInTheDocument();
+    expect(within(preview).getByRole('tab', { name: /구글/ })).toHaveAttribute('aria-selected', 'true');
+    expect(within(preview).getByRole('heading', { name: '행복분식' })).toBeInTheDocument();
+    expect(preview.querySelector('.map-viewport[data-platform="google"] .map-viewport__query')).toHaveTextContent('행복분식');
+    expect(preview.querySelector('.map-viewport__surface')).toHaveAttribute('aria-hidden', 'true');
+    expect(within(preview).getByText('이번에 업데이트된 정보 1개')).toBeInTheDocument();
+    expect(within(preview).getByText('대표 메뉴')).toBeInTheDocument();
+    expect(within(preview).getByText('김치찌개')).toBeInTheDocument();
+    expect(within(preview).getByText('변경됨')).toBeInTheDocument();
     expect(screen.queryByText('인근 공영주차장 이용')).not.toBeInTheDocument();
+
+    await user.click(within(preview).getByRole('button', { name: 'Before · 변경 전' }));
+    expect(within(preview).getByText('만두전골')).toBeInTheDocument();
+    expect(within(preview).queryByText('김치찌개')).not.toBeInTheDocument();
+    expect(within(preview).queryByText('변경됨')).not.toBeInTheDocument();
+  });
+
+  test('UC1 미리보기에서 실패한 플랫폼은 반영된 것처럼 보이지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<SyncStatusDashboard syncJobId="job-001" initialJob={partialSuccessSyncJobFixture} autoPoll={false} viewMode="store-change" storeChanges={[{ field: 'parkingInfo', currentValue: '주차 불가', proposedValue: '건물 뒤 2대 주차 가능' }]} />);
+
+    await user.click(screen.getByRole('listitem', { name: /Google/ }));
+    const googleTab = screen.getByRole('tab', { name: /구글/ });
+    expect(screen.getByText('건물 뒤 2대 주차 가능')).toBeInTheDocument();
+
+    await user.type(googleTab, '{ArrowRight}');
+    const naverTab = screen.getByRole('tab', { name: /네이버/ });
+    expect(naverTab).toHaveAttribute('aria-selected', 'true');
+    expect(naverTab).toHaveFocus();
+    expect(naverTab).toHaveTextContent('반영 실패');
+    expect(screen.getByRole('status')).toHaveTextContent('반영에 실패해 변경 전 정보가 그대로 보여요');
+    expect(screen.getByText('주차 불가')).toBeInTheDocument();
+    expect(screen.queryByText('건물 뒤 2대 주차 가능')).not.toBeInTheDocument();
+    expect(screen.queryByText('변경됨')).not.toBeInTheDocument();
+  });
+
+  test('반영 내역 시트는 Escape로 닫히고 연 플랫폼으로 초점을 되돌린다', async () => {
+    const user = userEvent.setup();
+    render(<SyncStatusDashboard syncJobId="job-001" initialJob={successSyncJobFixture} autoPoll={false} viewMode="store-change" storeChanges={[{ field: 'businessHours', currentValue: '09:00-21:00', proposedValue: '10:00-22:00' }]} />);
+    const googleItem = screen.getByRole('listitem', { name: /Google/ });
+
+    googleItem.focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('button', { name: '반영 내역 닫기' })).toHaveFocus();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(googleItem).toHaveFocus();
   });
 
   test('UC2 성공 플랫폼을 누르면 최종 홍보 문구와 태그 및 발행 상태를 보여준다', async () => {
