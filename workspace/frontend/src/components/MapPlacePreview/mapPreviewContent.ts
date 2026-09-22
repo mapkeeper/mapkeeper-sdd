@@ -29,20 +29,76 @@ export const PREVIEW_STATUS_LABELS: Record<PreviewPlatformStatus, string> = {
   RETRYING: '재시도 중',
 };
 
+/** Top search treatment: floating pill, floating panel with a search button, flush top bar. */
+export type PreviewSearchChrome = 'pill' | 'panel' | 'bar';
+/** Map control cluster: separate circles, one grouped column, separate squares. */
+export type PreviewControlShape = 'round' | 'column' | 'square';
+/** Place sheet action row: icon circles, rounded squares, full-width buttons. */
+export type PreviewActionShape = 'circle' | 'squircle' | 'bar';
+/** Place sheet info rows: label over value, label beside value, separated blocks. */
+export type PreviewRowLayout = 'stacked' | 'split' | 'block';
+/** Map marker silhouette drawn on the SVG surface. */
+export type PreviewMarkerShape = 'teardrop' | 'balloon' | 'droplet';
+/** Decorative trailing control in the sheet heading. */
+export type PreviewHeadingAffordance = 'none' | 'more' | 'close';
+
 interface PlatformSkin {
   appName: string;
   tabLabel: string;
   logo: string;
   actions: string[];
   sections: string[];
+  searchChrome: PreviewSearchChrome;
+  controlShape: PreviewControlShape;
+  actionShape: PreviewActionShape;
+  rowLayout: PreviewRowLayout;
+  markerShape: PreviewMarkerShape;
+  headingAffordance: PreviewHeadingAffordance;
 }
 
 // Decorative chrome only: action and section labels mirror each app's place
-// detail layout and are hidden from assistive technology.
+// detail layout and are hidden from assistive technology. The layout variants
+// keep each platform structurally distinct, not merely recolored.
 export const PLATFORM_SKINS: Record<Platform, PlatformSkin> = {
-  google: { appName: 'Google 지도', tabLabel: '구글', logo: googleLogo, actions: ['경로', '저장', '공유'], sections: ['개요', '메뉴', '정보'] },
-  naver: { appName: '네이버 지도', tabLabel: '네이버', logo: naverLogo, actions: ['저장', '길찾기', '공유'], sections: ['홈', '메뉴', '정보'] },
-  kakao: { appName: '카카오맵', tabLabel: '카카오', logo: kakaoLogo, actions: ['길찾기', '공유'], sections: ['정보', '메뉴'] },
+  google: {
+    appName: 'Google 지도',
+    tabLabel: '구글',
+    logo: googleLogo,
+    actions: ['경로', '저장', '공유'],
+    sections: ['개요', '메뉴', '정보'],
+    searchChrome: 'pill',
+    controlShape: 'round',
+    actionShape: 'circle',
+    rowLayout: 'stacked',
+    markerShape: 'teardrop',
+    headingAffordance: 'none',
+  },
+  naver: {
+    appName: '네이버 지도',
+    tabLabel: '네이버',
+    logo: naverLogo,
+    actions: ['저장', '길찾기', '공유'],
+    sections: ['홈', '메뉴', '정보'],
+    searchChrome: 'panel',
+    controlShape: 'column',
+    actionShape: 'squircle',
+    rowLayout: 'split',
+    markerShape: 'balloon',
+    headingAffordance: 'more',
+  },
+  kakao: {
+    appName: '카카오맵',
+    tabLabel: '카카오',
+    logo: kakaoLogo,
+    actions: ['길찾기', '공유'],
+    sections: ['정보', '메뉴'],
+    searchChrome: 'bar',
+    controlShape: 'square',
+    actionShape: 'bar',
+    rowLayout: 'block',
+    markerShape: 'droplet',
+    headingAffordance: 'close',
+  },
 };
 
 /** Sheet subtitle derived from the real change set; never an invented place attribute. */

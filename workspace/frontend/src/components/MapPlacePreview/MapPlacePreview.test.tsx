@@ -16,6 +16,12 @@ const allSuccess = [
   { id: 'kakao', status: 'PENDING' },
 ] as const;
 
+const everyPlatformApplied = [
+  { id: 'google', status: 'SUCCESS' },
+  { id: 'naver', status: 'SUCCESS' },
+  { id: 'kakao', status: 'SUCCESS' },
+] as const;
+
 describe('MapPlacePreview', () => {
   test('네 가지 UC1 필드를 플랫폼 장소 카드에 실제 변경값으로 표시한다', () => {
     render(<MapPlacePreview platforms={[...allSuccess]} changes={allFieldChanges} />);
@@ -55,6 +61,76 @@ describe('MapPlacePreview', () => {
     expect(viewport).toContainElement(card);
     expect(within(card).getByText('경로')).toBeInTheDocument();
     expect(within(card).getByText('개요')).toBeInTheDocument();
+  });
+
+  test('플랫폼마다 검색 크롬·지도 컨트롤·행동·정보 행 구조가 다르게 재구성된다', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<MapPlacePreview platforms={[...everyPlatformApplied]} changes={allFieldChanges} storeName="행복분식" />);
+
+    const chrome = () => container.querySelector('.map-viewport__chrome');
+    const controls = () => container.querySelector('.map-viewport__controls');
+    const card = () => container.querySelector('.place-card');
+
+    // Google: floating pill search + account avatar, round controls, circular actions, stacked rows.
+    expect(chrome()).toHaveAttribute('data-chrome', 'pill');
+    expect(container.querySelector('.map-viewport__search')).toHaveAttribute('data-search', 'pill');
+    expect(controls()).toHaveAttribute('data-controls', 'round');
+    expect(container.querySelectorAll('.map-viewport__control')).toHaveLength(2);
+    expect(container.querySelector('.map-viewport__avatar')).toBeInTheDocument();
+    expect(container.querySelector('.map-surface__pin')).toHaveAttribute('data-marker', 'teardrop');
+    expect(card()).toHaveAttribute('data-actions', 'circle');
+    expect(card()).toHaveAttribute('data-rows', 'stacked');
+    expect(screen.getByText('경로')).toBeInTheDocument();
+    expect(screen.getByText('개요')).toBeInTheDocument();
+
+    // Naver: back chip + panel search with its own search button, grouped control column.
+    await user.click(screen.getByRole('tab', { name: /네이버/ }));
+    expect(chrome()).toHaveAttribute('data-chrome', 'panel');
+    expect(container.querySelector('.map-viewport__search')).toHaveAttribute('data-search', 'panel');
+    expect(container.querySelector('.map-viewport__back')).toBeInTheDocument();
+    expect(controls()).toHaveAttribute('data-controls', 'column');
+    expect(container.querySelectorAll('.map-viewport__control')).toHaveLength(3);
+    expect(container.querySelector('.map-surface__pin')).toHaveAttribute('data-marker', 'balloon');
+    expect(card()).toHaveAttribute('data-actions', 'squircle');
+    expect(card()).toHaveAttribute('data-rows', 'split');
+    expect(screen.getByText('길찾기')).toBeInTheDocument();
+    expect(screen.getByText('홈')).toBeInTheDocument();
+    expect(container.querySelector('.map-viewport__avatar')).not.toBeInTheDocument();
+
+    // Kakao: flush top bar, square control stack, full-width action bar, boxed rows.
+    await user.click(screen.getByRole('tab', { name: /카카오/ }));
+    expect(chrome()).toHaveAttribute('data-chrome', 'bar');
+    expect(container.querySelector('.map-viewport__search')).toHaveAttribute('data-search', 'bar');
+    expect(controls()).toHaveAttribute('data-controls', 'square');
+    expect(container.querySelector('.map-viewport__scale')).toBeInTheDocument();
+    expect(container.querySelector('.map-surface__pin')).toHaveAttribute('data-marker', 'droplet');
+    expect(card()).toHaveAttribute('data-actions', 'bar');
+    expect(card()).toHaveAttribute('data-rows', 'block');
+    expect(screen.getAllByText('길찾기')).toHaveLength(1);
+    expect(screen.queryByText('저장')).not.toBeInTheDocument();
+    expect(screen.getByText('정보')).toBeInTheDocument();
+    expect(screen.queryByText('개요')).not.toBeInTheDocument();
+  });
+
+  test('플랫폼을 바꿔도 실제 변경값과 Before/After 전환이 그대로 유지된다', async () => {
+    const user = userEvent.setup();
+    render(<MapPlacePreview platforms={[...everyPlatformApplied]} changes={allFieldChanges} storeName="행복분식" />);
+
+    await user.click(screen.getByRole('tab', { name: /카카오/ }));
+    const kakaoCard = screen.getByRole('article', { name: '카카오맵 장소 정보 미리보기' });
+    for (const change of allFieldChanges) {
+      expect(within(kakaoCard).getByText(change.proposedValue)).toBeInTheDocument();
+    }
+    expect(within(kakaoCard).getAllByText('변경됨')).toHaveLength(4);
+    expect(within(kakaoCard).getByText('이번에 업데이트된 정보 4개')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Before · 변경 전' }));
+    const beforeCard = screen.getByRole('article', { name: '카카오맵 장소 정보 미리보기' });
+    expect(within(beforeCard).getByText('만두전골')).toBeInTheDocument();
+    expect(within(beforeCard).getByText('등록된 정보 없음')).toBeInTheDocument();
+    expect(within(beforeCard).queryByText('김치찌개')).not.toBeInTheDocument();
+    expect(within(beforeCard).queryByText('변경됨')).not.toBeInTheDocument();
+    expect(beforeCard).not.toHaveTextContent(/리뷰|별점|주소|위도|경도/);
   });
 
   test('Before에서는 현재 값을 보여주고 비어 있으면 정보 없음으로 안내한다', async () => {

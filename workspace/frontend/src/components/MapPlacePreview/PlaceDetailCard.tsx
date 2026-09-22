@@ -1,8 +1,11 @@
 import {
-  BookmarkSimple, CalendarX, Car, Clock, ForkKnife, NavigationArrow, ShareNetwork, type Icon,
+  BookmarkSimple, CalendarX, Car, Clock, DotsThree, ForkKnife, NavigationArrow,
+  ShareNetwork, X, type Icon,
 } from '@phosphor-icons/react';
 import type { Platform, ProposalChange, ProposalField } from '@/types/domain';
-import { PLATFORM_SKINS, PREVIEW_FIELD_LABELS, sheetMetaMessage } from './mapPreviewContent';
+import {
+  PLATFORM_SKINS, PREVIEW_FIELD_LABELS, sheetMetaMessage, type PreviewHeadingAffordance,
+} from './mapPreviewContent';
 
 const fieldIcons: Record<ProposalField, Icon> = {
   businessHours: Clock,
@@ -19,6 +22,12 @@ const actionIcons: Record<string, Icon> = {
   공유: ShareNetwork,
 };
 
+const headingIcons: Record<PreviewHeadingAffordance, Icon | null> = {
+  none: null,
+  more: DotsThree,
+  close: X,
+};
+
 interface PlaceDetailCardProps {
   platform: Platform;
   storeName: string;
@@ -26,14 +35,31 @@ interface PlaceDetailCardProps {
   showProposed: boolean;
 }
 
+/**
+ * Reconstructed place detail sheet. Each platform gets its own action shape,
+ * section tab treatment and info row layout so the preview reads as that app's
+ * screen; every value shown comes from the real approved change set.
+ */
 export function PlaceDetailCard({ platform, storeName, changes, showProposed }: PlaceDetailCardProps) {
   const skin = PLATFORM_SKINS[platform];
+  const HeadingIcon = headingIcons[skin.headingAffordance];
   return (
-    <article className="place-card" data-platform={platform} aria-label={`${skin.appName} 장소 정보 미리보기`}>
+    <article
+      className="place-card"
+      data-platform={platform}
+      data-actions={skin.actionShape}
+      data-rows={skin.rowLayout}
+      aria-label={`${skin.appName} 장소 정보 미리보기`}
+    >
       <div className="place-card__grabber" aria-hidden="true" />
       <div className="place-card__heading">
-        <h3 className="place-card__title">{storeName}</h3>
-        <p className="place-card__meta">{sheetMetaMessage(showProposed, changes.length)}</p>
+        <div className="place-card__heading-text">
+          <h3 className="place-card__title">{storeName}</h3>
+          <p className="place-card__meta">{sheetMetaMessage(showProposed, changes.length)}</p>
+        </div>
+        {HeadingIcon ? (
+          <span className="place-card__heading-icon" aria-hidden="true"><HeadingIcon weight="bold" /></span>
+        ) : null}
       </div>
       <div className="place-card__actions" aria-hidden="true">
         {skin.actions.map((action, index) => {
