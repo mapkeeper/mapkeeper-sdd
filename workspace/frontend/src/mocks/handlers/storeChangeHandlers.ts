@@ -1,6 +1,8 @@
 import { http, HttpResponse } from 'msw';
 import { errorEnvelope, mockDelay, nextRequestId, successEnvelope } from '@/mocks/factories/envelopeFactory';
 import { storeChangeApprovalFixture, storeChangeValidationErrorFixture } from '@/mocks/fixtures/storeChangeFixtures';
+import { holidayClarificationCopy, holidayOccurrence } from '@/mocks/fixtures/holidayFixtures';
+import type { KoreanHoliday } from '@/mocks/fixtures/holidayFixtures';
 import { getMockScenario, scenarioLatency } from '@/mocks/scenarios';
 import type { ApiErrorBody, CreateStoreChangeRequest, PatchStoreChangeRequest, ProposalChangeRequest, StoreChangeApprovalResponse } from '@/services/api.types';
 import { PROPOSAL_FIELDS } from '@/types/domain';
@@ -22,9 +24,21 @@ const PARKING_UNAVAILABLE = new RegExp(`${PARKING_SUBJECT}(?:불가능|불가|�
 const PARKING_AVAILABLE = new RegExp(`${PARKING_SUBJECT}(?:가능합니다|가능해요|가능|됩니다|돼요|된다)`);
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
 const DURATION_WORDS: Record<string, number> = { 하루: 1, 이틀: 2, 사흘: 3, 나흘: 4, 닷새: 5, 엿새: 6, 일주일: 7 };
+// "설" alone starts ordinary words ("설명", "설거지"), so it is only the holiday
+// when a qualifier follows it - the same reading `adapters/intent.py` does.
+const HOLIDAY_TITLES: Record<string, string> = { 추석: '추석', 한가위: '추석', 설날: '설날', 구정: '설날', 설: '설날' };
+const HOLIDAY_PATTERN = /(추석|한가위|설날|구정|설(?=\s*(?:연휴|당일)))\s*(연휴\s*전체|연휴|당일|날(?!짜))?/;
+// A holiday that already happened, or one a year away. Neither is the closure the
+// next occurrence would propose.
+const SHIFTED_YEAR_WORDS = /작년|재작년|지난해|지난|내년|내후년/;
 
 function isoOf(value: Date): string {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+}
+
+function dateOf(iso: string): Date {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
 }
 
 function addDays(from: Date, days: number): Date {
@@ -38,7 +52,46 @@ function weekdayIndex(value: Date): number {
   return (value.getDay() + 6) % 7;
 }
 
+/** The holiday a sentence names, with how much of it was asked for. */
+function namedHoliday(text: string, today: Date): { event: KoreanHoliday; qualifier: string | null } | null {
+  const match = HOLIDAY_PATTERN.exec(text);
+  const title = match?.[1] ? HOLIDAY_TITLES[match[1]] : undefined;
+  if (!title || SHIFTED_YEAR_WORDS.test(text)) return null;
+  const event = holidayOccurrence(title, isoOf(today));
+  if (!event) return null;
+  return { event, qualifier: match?.[2]?.replace(/\s/g, '') ?? null };
+}
+
+/**
+ * The exact days a named holiday covers, or null when the sentence did not say.
+ *
+ * "추석 연휴" is the whole published period and "추석 당일" is the one day, so a bare
+ * "이번 추석" is two different closures at once and is left for the owner to be
+ * asked about rather than guessed at.
+ */
+function holidayDates(text: string, today: Date): [Date, Date] | null {
+  const named = namedHoliday(text, today);
+  if (!named) return null;
+  const { event, qualifier } = named;
+  if (qualifier?.startsWith('연휴')) return [dateOf(event.startDate), dateOf(event.endDate)];
+  if (qualifier === '당일' || qualifier === '날') return [dateOf(event.observanceDate), dateOf(event.observanceDate)];
+  // A holiday that lasts one day says the same thing either way.
+  if (event.startDate === event.endDate) return [dateOf(event.startDate), dateOf(event.endDate)];
+  return null;
+}
+
+/** The holiday a refusal can name dates for: named, but never pinned to days. */
+function unresolvedHolidayEvent(text: string, today: Date): KoreanHoliday | null {
+  const named = namedHoliday(text.trim(), today);
+  if (!named || named.qualifier !== null) return null;
+  return named.event.startDate === named.event.endDate ? null : named.event;
+}
+
 function relativeDates(text: string, today: Date): [Date, Date] | null {
+  // A named holiday is the most specific reading: "이번 주 추석 연휴" names the
+  // published period, not the seven days of this week.
+  const holiday = holidayDates(text, today);
+  if (holiday) return holiday;
   const nextWeekday = /(?<!다)다음\s*주\s*([월화수목금토일])요일?/.exec(text);
   const mondayThisWeek = addDays(today, -weekdayIndex(today));
   if (nextWeekday?.[1]) {
@@ -174,9 +227,17 @@ export function parseStoreChangeText(recognizedText: string, today: Date = new D
   return whole ? [whole] : [];
 }
 
-function failureFor(text: string): ApiErrorBody {
+/**
+ * The refusal the real API builds for a sentence it read nothing from.
+ *
+ * An unpinned holiday keeps the contract's AMBIGUOUS_DATE reason - no new enum
+ * value for the screen to learn - and only swaps in the copy that names the
+ * period's real dates.
+ */
+export function storeChangeFailureBody(text: string, today: Date = new Date()): ApiErrorBody {
   const reason = failureReason(text);
-  const copy = FAILURE_COPY[reason];
+  const holiday = reason === 'AMBIGUOUS_DATE' ? unresolvedHolidayEvent(text, today) : null;
+  const copy = holiday ? holidayClarificationCopy(holiday) : FAILURE_COPY[reason];
   return {
     code: 'VALIDATION_ERROR',
     message: copy.message,
@@ -205,11 +266,14 @@ export const storeChangeHandlers = [
     await mockDelay(scenarioLatency());
     const body = await request.json() as Partial<CreateStoreChangeRequest>;
     if (!validCreate(body)) return HttpResponse.json(errorEnvelope(storeChangeValidationErrorFixture), { status: 422, ...responseOptions() });
-    const changes = parseStoreChangeText(body.recognizedText);
+    // One reference date for both readings, so a request that crosses midnight
+    // cannot be parsed against one day and refused against the next.
+    const today = new Date();
+    const changes = parseStoreChangeText(body.recognizedText, today);
     // The real API never returns a proposal with nothing in it: an unread
     // sentence is a refusal that names its cause and hands the words back.
     if (changes.length === 0) {
-      return HttpResponse.json(errorEnvelope(failureFor(body.recognizedText.trim())), { status: 422, ...responseOptions() });
+      return HttpResponse.json(errorEnvelope(storeChangeFailureBody(body.recognizedText.trim(), today)), { status: 422, ...responseOptions() });
     }
     if (changes.every((change) => JSON.stringify(change.currentValue) === JSON.stringify(change.proposedValue))) {
       const copy = FAILURE_COPY.NO_EFFECTIVE_CHANGE;

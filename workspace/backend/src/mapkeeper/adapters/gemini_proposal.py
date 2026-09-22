@@ -19,6 +19,7 @@ from pydantic import TypeAdapter, ValidationError
 from mapkeeper.adapters.gemini_seo import GeminiModelClient, strip_code_fence
 from mapkeeper.adapters.intent import (
     is_multiple_menu_request,
+    named_holiday_event,
     parse_intent,
     unmapped_request_labels,
 )
@@ -59,6 +60,24 @@ def today_in_seoul() -> date:
     return datetime.now(_SEOUL_TIMEZONE).date()
 
 
+def _holiday_context(masked_text: str, reference: date) -> str:
+    """State the published dates of a holiday the sentence names, if it names one.
+
+    Empty for every other sentence, so a prompt that has nothing to do with a
+    holiday is unchanged.
+    """
+    event = named_holiday_event(masked_text, reference)
+    if event is None:
+        return ""
+    return f"""
+참고 공식 일정 (아래 날짜만 사용한다):
+- {event.title} 연휴: {event.start_date.isoformat()} ~ {event.end_date.isoformat()}
+- {event.title} 당일: {event.observance_date.isoformat()}
+연휴 전체인지 당일인지 문장에서 분명하지 않으면 temporaryClosure를 넣지 않는다.
+여기에 없는 공휴일 날짜는 추측하지 않는다.
+"""
+
+
 def build_proposal_prompt(
     masked_text: str,
     profile: StoreProfile,
@@ -69,9 +88,15 @@ def build_proposal_prompt(
     The reference date is passed in rather than left to the model. "내일" is the
     most ordinary way an owner states a closure, and a model with no calendar can
     only refuse it — which is what the earlier prompt told it to do.
+
+    A holiday the sentence names is looked up and stated outright for the same
+    reason, one step further: 설날 and 추석 are lunar, so a model asked for their
+    dates does not refuse — it answers from memory, and a plausible wrong date
+    becomes a closure published to three public maps.
     """
     reference = today if today is not None else today_in_seoul()
     weekday = _WEEKDAY_NAMES[reference.weekday()]
+    holiday = _holiday_context(masked_text, reference)
     closure = "없음"
     if profile.temporary_closure_start_date and profile.temporary_closure_end_date:
         closure = f"{profile.temporary_closure_start_date} ~ {profile.temporary_closure_end_date}"
@@ -80,7 +105,7 @@ def build_proposal_prompt(
     return f"""사장님이 말한 문장을 매장 정보 변경안으로 바꾼다.
 
 오늘 날짜: {reference.isoformat()} ({weekday}요일)
-
+{holiday}
 현재 매장 상태:
 - 영업시간: 여는 시각 {hours.get("open")}, 닫는 시각 {hours.get("close")}
 - 임시 휴무: {closure}

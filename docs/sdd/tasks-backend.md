@@ -127,6 +127,8 @@ uv run --locked pytest --cov=mapkeeper --cov-report=term-missing --cov-fail-unde
 | P0 | 플랫폼별 승인·편집·부분 재생성 | Planned | 플랫폼별 승인 상태와 해당 Task만 원자적으로 생성 |
 | P0 | 상태·지연·복구 공통 모델 | Planned | VALIDATING/GENERATING, 10초 안내, 30초 복구 경로 |
 | P0 | StoreProfile·seed 정합성 검사 | Planned | 주소·메뉴·키워드·리뷰 근거 회귀 테스트 |
-| P1 | CalendarEvent 수집·검색·출처 추적 | Planned | 공식 공휴일·아주대 공개 일정, 중복·만료·취소 처리 |
+| P1 | CalendarEvent 수집·검색·출처 추적 | Planned (UC1 명절 연휴만 내장 표로 선반영) | 공식 공휴일·아주대 공개 일정, 중복·만료·취소 처리 |
 | P1 | 일정별 질문 분기 | Planned | 선택 일정 날짜 확인, 조회 실패 시 일반 작성 유지 |
 | P1 | 플랫폼별 생성 규칙·게시 준비도 | Planned | 사실성·형식·최신성·과장·키워드 과다 진단 |
+
+UC1의 `추석 연휴`·`설 연휴`는 `src/mapkeeper/adapters/korean_holidays.json`(2024~2027)과 `adapters/holiday_calendar.py`의 조회 지점으로 먼저 처리한다. 저장형 `CalendarEvent`와 아주대 일정 수집은 그대로 남아 있으며, 표를 연장할 때는 KASI 공표 역서와 대체공휴일 지정을 확인한다. UC2의 공휴일 문맥 제공은 아직 이 표를 사용하지 않는다.

@@ -1,0 +1,72 @@
+{
+  "source": "관공서의 공휴일에 관한 규정(대통령령) 및 한국천문연구원(KASI) 공표 역서",
+  "sourceUrl": "https://astro.kasi.re.kr/life/pageView/8",
+  "retrievedAt": "2026-09-22",
+  "coveredYears": [2024, 2025, 2026, 2027],
+  "notes": [
+    "설날·추석은 음력이라 계산으로 만들지 않고 공표된 날짜만 표에 적는다.",
+    "startDate~endDate는 관공서 휴일 기준 연속 구간이며 대체공휴일을 포함한다.",
+    "observanceDate는 명절 당일이다. '추석 연휴'와 '추석 당일'은 서로 다른 휴무다.",
+    "임시공휴일은 정부가 그때그때 지정하므로 이 표에 담지 않는다.",
+    "coveredYears 밖의 날짜는 추정하지 않는다. 조회 실패는 날짜 재확인으로 이어진다.",
+    "표를 연장할 때는 KASI 공표 역서와 대체공휴일 지정을 확인한 뒤 추가한다."
+  ],
+  "events": [
+    {
+      "title": "설날",
+      "startDate": "2024-02-09",
+      "endDate": "2024-02-12",
+      "observanceDate": "2024-02-10",
+      "note": "2월 11일이 일요일이라 2월 12일이 대체공휴일이다."
+    },
+    {
+      "title": "추석",
+      "startDate": "2024-09-16",
+      "endDate": "2024-09-18",
+      "observanceDate": "2024-09-17",
+      "note": ""
+    },
+    {
+      "title": "설날",
+      "startDate": "2025-01-28",
+      "endDate": "2025-01-30",
+      "observanceDate": "2025-01-29",
+      "note": "2025년 1월 27일 임시공휴일은 표에 담지 않는다."
+    },
+    {
+      "title": "추석",
+      "startDate": "2025-10-05",
+      "endDate": "2025-10-08",
+      "observanceDate": "2025-10-06",
+      "note": "10월 5일이 일요일이라 10월 8일이 대체공휴일이다."
+    },
+    {
+      "title": "설날",
+      "startDate": "2026-02-16",
+      "endDate": "2026-02-18",
+      "observanceDate": "2026-02-17",
+      "note": ""
+    },
+    {
+      "title": "추석",
+      "startDate": "2026-09-24",
+      "endDate": "2026-09-26",
+      "observanceDate": "2026-09-25",
+      "note": "추석 연휴가 토요일과 겹쳐도 설·추석은 대체공휴일 대상이 아니다."
+    },
+    {
+      "title": "설날",
+      "startDate": "2027-02-06",
+      "endDate": "2027-02-09",
+      "observanceDate": "2027-02-07",
+      "note": "설날 당일이 일요일이라 2월 9일이 대체공휴일이다."
+    },
+    {
+      "title": "추석",
+      "startDate": "2027-09-14",
+      "endDate": "2027-09-16",
+      "observanceDate": "2027-09-15",
+      "note": ""
+    }
+  ]
+}

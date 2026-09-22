@@ -15,7 +15,8 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Final, final
 
-from mapkeeper.adapters.intent import classify_failure_reason
+from mapkeeper.adapters.holiday_calendar import CalendarEvent
+from mapkeeper.adapters.intent import classify_failure_reason, unresolved_holiday_event
 from mapkeeper.api.schemas.common import ProposalFailure
 from mapkeeper.core.errors import InvalidStateError
 from mapkeeper.models.enums import ProposalFailureReason
@@ -113,9 +114,58 @@ def build_failure(reason: ProposalFailureReason, masked_text: str) -> ProposalFa
     )
 
 
+def _day_in_korean(day: date) -> str:
+    """Render one date the way the question about it will be read aloud."""
+    return f"{day.month}월 {day.day}일"
+
+
+def _holiday_copy(event: CalendarEvent) -> _Copy:
+    """Ask which part of a named holiday the owner meant, with its real dates.
+
+    "이번 추석" is either the whole 연휴 or the day itself. Asking without saying
+    what the calendar holds made the owner look up a lunar date to answer a
+    question the service could already answer; naming the period turns it into a
+    choice between two sentences they can just say back.
+    """
+    period = f"{_day_in_korean(event.start_date)}부터 {_day_in_korean(event.end_date)}까지"
+    return _Copy(
+        message=_COPY[ProposalFailureReason.AMBIGUOUS_DATE].message,
+        guidance=(
+            f"{event.start_date.year}년 {event.title} 연휴는 {period}이고 "
+            f"{event.title} 당일은 {_day_in_korean(event.observance_date)}이에요. "
+            "연휴 전체를 쉬시는지 당일만 쉬시는지 정하지 못했어요."
+        ),
+        retry=(
+            f"“{event.title} 연휴 전체”처럼 연휴 전체인지, "
+            f"“{event.title} 당일”처럼 하루인지 함께 말씀해 주세요."
+        ),
+        examples=(
+            f"{event.title} 연휴 전체 쉽니다",
+            f"{event.title} 당일 하루 쉽니다",
+        ),
+    )
+
+
 def classify(masked_text: str, today: date | None = None) -> ProposalFailure:
     """Diagnose a sentence no change could be read from."""
-    return build_failure(classify_failure_reason(masked_text, today), masked_text)
+    reason = classify_failure_reason(masked_text, today)
+    if reason is ProposalFailureReason.AMBIGUOUS_DATE:
+        event = unresolved_holiday_event(masked_text, today)
+        if event is not None:
+            # Still AMBIGUOUS_DATE: the screen branches on the reason, and this is
+            # the same date question it already handles, asked with the calendar's
+            # answer in it. A new reason would be a contract change every client
+            # had to learn before it could show anything at all.
+            copy = _holiday_copy(event)
+            return ProposalFailure(
+                reason=reason,
+                message=copy.message,
+                guidance=copy.guidance,
+                retry=copy.retry,
+                examples=copy.examples,
+                recognized_text_masked=masked_text,
+            )
+    return build_failure(reason, masked_text)
 
 
 def no_effective_change_error(masked_text: str, message: str) -> InvalidStateError:

@@ -435,6 +435,104 @@ def test_a_range_whose_far_end_cannot_be_read_is_declined(sentence: str) -> None
     assert parse_intent(sentence, make_profile(), today=date(2026, 9, 1)) is None
 
 
+# --- official holiday periods --------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("sentence", "today", "expected_start", "expected_end"),
+    [
+        # The reported sentence: a closure over the whole 연휴, said the ordinary
+        # way. The store closes for every published day of the period.
+        (
+            "이번 추석 연휴에 문닫을 예정이야",
+            date(2026, 9, 22),
+            date(2026, 9, 24),
+            date(2026, 9, 26),
+        ),
+        ("추석 연휴 전체 쉽니다", date(2026, 9, 22), date(2026, 9, 24), date(2026, 9, 26)),
+        ("추석 연휴 동안 휴무입니다", date(2026, 9, 22), date(2026, 9, 24), date(2026, 9, 26)),
+        # The day itself, which is a different closure from the period.
+        ("추석 당일만 쉽니다", date(2026, 9, 22), date(2026, 9, 25), date(2026, 9, 25)),
+        ("추석 당일 하루 문 닫습니다", date(2026, 9, 22), date(2026, 9, 25), date(2026, 9, 25)),
+        # A different year and a different holiday, so the answer cannot be one
+        # hardcoded date: 2025's 추석 carries a 대체공휴일 the period includes.
+        ("추석 연휴 전체 쉽니다", date(2025, 9, 1), date(2025, 10, 5), date(2025, 10, 8)),
+        ("설 연휴에 문 닫습니다", date(2025, 1, 2), date(2025, 1, 28), date(2025, 1, 30)),
+        ("설날 당일 쉽니다", date(2026, 1, 5), date(2026, 2, 17), date(2026, 2, 17)),
+        # The period this year is already over, so "추석 연휴" is next year's.
+        ("추석 연휴 전체 쉽니다", date(2026, 10, 1), date(2027, 9, 14), date(2027, 9, 16)),
+    ],
+)
+def test_a_named_holiday_period_becomes_its_published_dates(
+    sentence: str,
+    today: date,
+    expected_start: date,
+    expected_end: date,
+) -> None:
+    # Given: a closure stated against the calendar rather than a date, which is
+    # how an owner actually says it. Before this the sentence reached no reader
+    # at all and came back as "며칠인지 알 수 없어요".
+
+    # When: the parser reads it against a known current date.
+    changes = parse_intent(sentence, make_profile(), today=today)
+
+    # Then: the closure carries the exact published dates of that period.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, TemporaryClosureChange)
+    assert change.proposed_value.start_date == expected_start
+    assert change.proposed_value.end_date == expected_end
+
+
+def test_a_duration_spoken_with_a_holiday_starts_at_the_period() -> None:
+    # Given: a stated number of days counted from the start of the 연휴.
+    # When: the parser reads it.
+    changes = parse_intent("추석 연휴 이틀 쉽니다", make_profile(), today=date(2026, 9, 22))
+
+    # Then: the duration the owner said wins over the published length.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, TemporaryClosureChange)
+    assert change.proposed_value.start_date == date(2026, 9, 24)
+    assert change.proposed_value.end_date == date(2026, 9, 25)
+
+
+@pytest.mark.parametrize(
+    ("sentence", "today"),
+    [
+        # The reported sentence without the 연휴: "이번 추석" is either the three-day
+        # period or the day itself, and closing for the wrong one is published to
+        # three public maps. It has to be asked about, not guessed.
+        ("이번 추석 문닫을 예정이야", date(2026, 9, 22)),
+        ("추석에 쉽니다", date(2026, 9, 22)),
+        ("설날에 휴무입니다", date(2026, 1, 5)),
+        # A period the table does not cover. Extrapolating a lunar date would be
+        # inventing the closure rather than reading it.
+        ("추석 연휴 전체 쉽니다", date(2032, 1, 1)),
+        # A holiday that has already happened is not a closure to propose.
+        ("지난 추석 연휴에 쉬었습니다", date(2026, 9, 22)),
+    ],
+)
+def test_an_unpinned_holiday_closure_is_never_guessed(sentence: str, today: date) -> None:
+    # Given: a sentence naming a holiday without saying which days of it.
+    # When / Then: the parser declines, leaving the owner to be asked.
+    assert parse_intent(sentence, make_profile(), today=today) is None
+
+
+def test_a_holiday_word_alone_is_not_read_as_a_closure() -> None:
+    # Given: a sentence that mentions the holiday but asks for something else.
+    sentence = "대표 메뉴를 추석 한정 갈비찜으로 바꿔줘"
+
+    # When: the parser reads it.
+    changes = parse_intent(sentence, make_profile(), today=date(2026, 9, 22))
+
+    # Then: only the menu changes. A holiday name is not a request to close.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, RepresentativeMenuNameChange)
+    assert change.proposed_value == "추석 한정 갈비찜"
+
+
 # --- conjugated closure verbs --------------------------------------------------
 
 

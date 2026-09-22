@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 
+from mapkeeper.adapters.holiday_calendar import CalendarEvent, get_holiday_calendar
 from mapkeeper.api.schemas.store_change import (
     MENU_NAME_MAX_LENGTH,
     PARKING_INFO_MAX_LENGTH,
@@ -118,6 +119,33 @@ _NEXT_WEEKDAY_PATTERN: Final = re.compile(_NEXT_WEEK + r"\s*(?P<weekday>[월화�
 # the whole Monday-to-Sunday week — so asking to close one Friday proposed a
 # seven-day closure, and "이번 주 금요일 하루만" closed the Monday instead.
 _THIS_WEEKDAY_PATTERN: Final = re.compile(r"이번\s*주\s*(?P<weekday>[월화수목금토일])요일?")
+
+# "추석 연휴에 문 닫아요" names its days through the calendar instead of stating
+# them. The holiday itself is looked up rather than derived: 설날 and 추석 are lunar,
+# so the only honest source is the published table behind
+# :func:`~mapkeeper.adapters.holiday_calendar.get_holiday_calendar`.
+#
+# "설" alone is a syllable that starts ordinary words ("설명", "설거지"), so it is
+# only read as the holiday when a qualifier follows it.
+_HOLIDAY_TITLES: Final = {
+    "추석": "추석",
+    "한가위": "추석",
+    "설날": "설날",
+    "구정": "설날",
+    "설": "설날",
+}
+_HOLIDAY_NAME_GROUP: Final = r"(?P<name>추석|한가위|설날|구정|설(?=\s*(?:연휴|당일)))"
+_HOLIDAY_QUALIFIER_GROUP: Final = r"\s*(?P<qualifier>연휴\s*전체|연휴|당일|날(?!짜))?"
+_HOLIDAY_PATTERN: Final = re.compile(_HOLIDAY_NAME_GROUP + _HOLIDAY_QUALIFIER_GROUP)
+# Which days of the holiday the sentence asked for. "연휴" is the whole observed
+# period including any 대체공휴일; "당일" is the holiday itself. Saying neither
+# leaves a three-day closure and a one-day closure equally likely, which is a
+# question for the owner rather than a guess to publish.
+_WHOLE_PERIOD_QUALIFIER: Final = "연휴"
+_SINGLE_DAY_QUALIFIERS: Final = frozenset({"당일", "날"})
+# A holiday that already happened, or one a year away. Neither is the closure the
+# next occurrence would propose, so the sentence is left to be asked about.
+_SHIFTED_YEAR_WORDS: Final = re.compile(r"작년|재작년|지난해|지난|내년|내후년")
 
 _HOURS_CONTEXT: Final = re.compile(r"영업|문\s*을?|마감|오픈|open|close|열|닫|시작|종료|폐점|개점")
 _OPENING_WORDS: Final = re.compile(r"열|오픈|시작|개점")
@@ -289,7 +317,97 @@ def _parse_business_hours(text: str, profile: StoreProfile) -> ProposalChange | 
     )
 
 
+def _named_holiday(text: str, today: date) -> tuple[CalendarEvent, str | None] | None:
+    """Read the holiday a sentence names, with how much of it was asked for.
+
+    Args:
+        text: The sentence, or one clause of it.
+        today: The reference date in Asia/Seoul terms.
+
+    Returns:
+        The next occurrence of the named holiday and the qualifier that narrows
+        it ("연휴", "당일", or None when the sentence said neither), or None when
+        the sentence names no holiday, names a past or future year's, or names
+        one the calendar does not cover.
+    """
+    match = _HOLIDAY_PATTERN.search(text)
+    if match is None or _SHIFTED_YEAR_WORDS.search(text) is not None:
+        return None
+    event = get_holiday_calendar().occurrence(_HOLIDAY_TITLES[match.group("name")], today)
+    if event is None:
+        return None
+    qualifier = match.group("qualifier")
+    return event, None if qualifier is None else qualifier.replace(" ", "")
+
+
+def _resolve_holiday_dates(text: str, today: date) -> tuple[date, date] | None:
+    """Turn a holiday a sentence names into the exact days it covers, or None.
+
+    "추석 연휴" is the whole published period and "추석 당일" is the one day, so a
+    bare "이번 추석" is two different closures at once. It is answered with None —
+    the owner is asked which, and :func:`classify_failure_reason` carries the
+    calendar's candidate dates into that question.
+    """
+    named = _named_holiday(text, today)
+    if named is None:
+        return None
+    event, qualifier = named
+    if qualifier is not None and qualifier.startswith(_WHOLE_PERIOD_QUALIFIER):
+        return event.start_date, event.end_date
+    if qualifier in _SINGLE_DAY_QUALIFIERS:
+        return event.observance_date, event.observance_date
+    # A holiday that lasts one day says the same thing either way.
+    if event.start_date == event.end_date:
+        return event.start_date, event.end_date
+    return None
+
+
+def unresolved_holiday_event(masked_text: str, today: date | None = None) -> CalendarEvent | None:
+    """Return the holiday a sentence names but does not pin down to days.
+
+    Args:
+        masked_text: The sentence, already stripped of customer PII.
+        today: Reference date for the occurrence. Defaults to today in Seoul.
+
+    Returns:
+        The occurrence the owner most likely meant, so the refusal can name its
+        dates instead of asking them to look up a lunar date. None when the
+        sentence named no holiday, already said which days it meant, or named one
+        the calendar cannot place.
+    """
+    reference = today if today is not None else datetime.now(_SEOUL_TIMEZONE).date()
+    named = _named_holiday(masked_text.strip(), reference)
+    if named is None:
+        return None
+    event, qualifier = named
+    if qualifier is not None or event.start_date == event.end_date:
+        return None
+    return event
+
+
+def named_holiday_event(masked_text: str, today: date | None = None) -> CalendarEvent | None:
+    """Return the holiday occurrence a sentence names, whatever it asked of it.
+
+    Used to ground the model prompt: a model with no lunar calendar can only
+    invent 설날 and 추석 dates, so it is handed the published ones instead.
+    """
+    reference = today if today is not None else datetime.now(_SEOUL_TIMEZONE).date()
+    named = _named_holiday(masked_text.strip(), reference)
+    return None if named is None else named[0]
+
+
 def _resolve_relative_dates(text: str, today: date) -> tuple[date, date] | None:
+    """Turn every relative expression this module reads into exact dates."""
+    # A named holiday is checked first because it is the most specific reading:
+    # "이번 주 추석 연휴" names the published period, not the seven days this week.
+    holiday = _resolve_holiday_dates(text, today)
+    if holiday is not None:
+        return holiday
+    return _resolve_week_relative_dates(text, today)
+
+
+def _resolve_week_relative_dates(text: str, today: date) -> tuple[date, date] | None:
+    """Resolve the day- and week-relative expressions counted off from today."""
     weekday_match = _NEXT_WEEKDAY_PATTERN.search(text)
     if weekday_match is not None:
         next_monday = today - timedelta(days=today.weekday()) + timedelta(days=7)
@@ -718,4 +836,10 @@ def _closure_failure_reason(
     return None
 
 
-__all__ = ["classify_failure_reason", "parse_intent", "unmapped_request_labels"]
+__all__ = [
+    "classify_failure_reason",
+    "named_holiday_event",
+    "parse_intent",
+    "unmapped_request_labels",
+    "unresolved_holiday_event",
+]

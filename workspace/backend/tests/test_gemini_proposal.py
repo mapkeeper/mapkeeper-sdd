@@ -109,6 +109,28 @@ def test_the_prompt_dates_relative_expressions_against_today() -> None:
     assert "확정 날짜로 바꾼다" in prompt
 
 
+def test_the_prompt_hands_the_model_the_published_holiday_dates() -> None:
+    # Given: a sentence naming a holiday, whose date a model with no lunar
+    # calendar can only invent.
+    prompt = build_proposal_prompt("이번 추석에 쉴게요", make_profile(), today=date(2026, 9, 22))
+
+    # When / Then: the officially published period and day are stated for it, and
+    # the model is told not to fill in an ambiguous one.
+    assert "2026-09-24" in prompt
+    assert "2026-09-26" in prompt
+    assert "2026-09-25" in prompt
+    assert "추측하지 않는다" in prompt
+
+
+def test_a_sentence_naming_no_holiday_carries_no_holiday_dates() -> None:
+    # Given: an ordinary relative closure.
+    prompt = build_proposal_prompt("내일 쉴게요", make_profile(), today=date(2026, 9, 22))
+
+    # When / Then: nothing about a holiday is put in front of the model.
+    assert "추석" not in prompt
+    assert "참고 공식 일정" not in prompt
+
+
 def test_the_prompt_asks_for_every_change_a_sentence_states() -> None:
     # Given: the prompt.
     prompt = build_proposal_prompt("9월 1일은 휴무이고 주차는 불가능합니다", make_profile())

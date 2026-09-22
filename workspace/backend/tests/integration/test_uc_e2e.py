@@ -20,6 +20,7 @@ from mapkeeper.adapters.base import (
     SyncRequest,
 )
 from mapkeeper.adapters.gemini_proposal import today_in_seoul
+from mapkeeper.adapters.holiday_calendar import CalendarEvent, get_holiday_calendar
 from mapkeeper.adapters.registry import AcceptingAdapter
 from mapkeeper.core.config import get_settings
 from mapkeeper.core.json_types import JsonObject
@@ -33,6 +34,7 @@ from .factories import make_store_profile
 pytestmark = pytest.mark.asyncio
 
 ACTOR_ID: Final = "99999999-9999-4999-8999-999999999999"
+CHUSEOK_TITLE: Final = "추석"
 
 
 @pytest_asyncio.fixture
@@ -507,6 +509,68 @@ async def test_uc1_a_compound_closure_and_parking_becomes_two_changes(
     assert text_of(closure["endDate"]).endswith("-09-01")
     assert text_of(changes["parkingInfo"]["proposedValue"]) == "주차 불가"
     assert arr(data["unmappedRequests"]) == []
+
+
+def _upcoming_chuseok() -> CalendarEvent:
+    """Return the 추석 the bundled table places next, or skip when it has none."""
+    event = get_holiday_calendar().occurrence(CHUSEOK_TITLE, today_in_seoul())
+    if event is None:
+        pytest.skip("the bundled holiday table no longer covers today; refresh it")
+    return event
+
+
+async def test_uc1_a_holiday_period_is_structured_as_its_published_dates(
+    api_database: tuple[str, list[UUID]],
+    client: TestClient,
+) -> None:
+    """The reported sentence: "이번 추석 연휴" must become the published 연휴 dates."""
+    database_url, created_profiles = api_database
+    profile_id = await _create_profile(database_url, created_profiles)
+    event = _upcoming_chuseok()
+
+    response = client.post(
+        "/api/v1/store-change-proposals",
+        json={
+            "storeProfileId": str(profile_id),
+            "recognizedText": "이번 추석 연휴에 문닫을 예정이야",
+            "locale": "ko-KR",
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED
+    data = obj(body_of(response.text)["data"])
+    (change,) = arr(data["changes"])
+    assert text_of(obj(change)["field"]) == "temporaryClosure"
+    closure = obj(obj(change)["proposedValue"])
+    assert text_of(closure["startDate"]) == event.start_date.isoformat()
+    assert text_of(closure["endDate"]) == event.end_date.isoformat()
+
+
+async def test_uc1_an_unpinned_holiday_is_asked_about_rather_than_guessed(
+    api_database: tuple[str, list[UUID]],
+    client: TestClient,
+) -> None:
+    """A bare "이번 추석" is the 연휴 or the day itself, so the API has to ask."""
+    database_url, created_profiles = api_database
+    profile_id = await _create_profile(database_url, created_profiles)
+    event = _upcoming_chuseok()
+    sentence = "이번 추석 문닫을 예정이야"
+
+    response = client.post(
+        "/api/v1/store-change-proposals",
+        json={
+            "storeProfileId": str(profile_id),
+            "recognizedText": sentence,
+            "locale": "ko-KR",
+        },
+    )
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    failure = obj(obj(body_of(response.text)["error"])["failure"])
+    # The same reason the contract already publishes, so no client has to change.
+    assert text_of(failure["reason"]) == "AMBIGUOUS_DATE"
+    assert f"{event.start_date.month}월 {event.start_date.day}일" in text_of(failure["guidance"])
+    assert text_of(failure["recognizedTextMasked"]) == sentence
 
 
 async def test_uc1_an_ambiguous_time_names_its_cause_and_a_way_to_retry(

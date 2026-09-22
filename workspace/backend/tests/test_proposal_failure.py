@@ -2,13 +2,30 @@
 
 from datetime import date
 from typing import Final
+from uuid import uuid4
 
 import pytest
 
+from mapkeeper.adapters.intent import parse_intent
+from mapkeeper.api.schemas.store_change import TemporaryClosureChange
+from mapkeeper.models import StoreProfile
 from mapkeeper.models.enums import ProposalFailureReason
 from mapkeeper.services.proposal_failure import build_failure, classify, no_effective_change_error
 
 TODAY: Final = date(2026, 9, 1)
+
+
+def _profile() -> StoreProfile:
+    """Return the store the offered example sentences are read against."""
+    return StoreProfile(
+        id=uuid4(),
+        store_name="만두전골 하우스",
+        public_address="서울특별시 관악구 시연로 12",
+        business_hours={"open": "09:00", "close": "22:00"},
+        representative_menu_name="만두전골",
+        representative_phone="02-000-0000",
+        platform_account_refs={},
+    )
 
 
 @pytest.mark.parametrize(
@@ -75,6 +92,49 @@ def test_every_reason_has_copy_a_person_can_act_on(reason: ProposalFailureReason
     assert failure.guidance.strip() != ""
     assert failure.retry.strip() != ""
     assert failure.examples != ()
+
+
+def test_an_unpinned_holiday_is_asked_about_with_the_dates_it_could_mean() -> None:
+    # Given: the reported sentence. "이번 추석" is either the whole 연휴 or the day
+    # itself, and the service must not pick one for the owner.
+    sentence = "이번 추석 문닫을 예정이야"
+
+    # When: the refusal is built against a date before the 2026 연휴.
+    failure = classify(sentence, date(2026, 9, 22))
+
+    # Then: it is still the contract's date clarification - no new enum value for
+    # a client to learn - but it now names the period the owner almost certainly
+    # meant instead of asking them to look up a lunar date themselves.
+    assert failure.reason is ProposalFailureReason.AMBIGUOUS_DATE
+    assert "9월 24일" in failure.guidance
+    assert "9월 26일" in failure.guidance
+    assert "9월 25일" in failure.guidance
+    assert failure.recognized_text_masked == sentence
+
+
+def test_the_holiday_clarification_offers_sentences_that_actually_work() -> None:
+    # Given: the clarification for an unpinned 추석.
+    failure = classify("이번 추석 문닫을 예정이야", date(2026, 9, 22))
+
+    # When: the owner says one of the offered sentences back.
+    # Then: each one is readable, so the retry the screen shows is not a dead end.
+    assert failure.examples
+    for example in failure.examples:
+        changes = parse_intent(example, _profile(), today=date(2026, 9, 22))
+        assert changes is not None, example
+        (change,) = changes
+        assert isinstance(change, TemporaryClosureChange)
+
+
+def test_a_holiday_outside_the_table_keeps_the_plain_date_clarification() -> None:
+    # Given: a holiday the bundled table does not cover.
+    # When: the refusal is built.
+    failure = classify("이번 추석 문닫을 예정이야", date(2032, 1, 1))
+
+    # Then: the refusal says what it always said rather than naming dates nobody
+    # published.
+    assert failure.reason is ProposalFailureReason.AMBIGUOUS_DATE
+    assert "연휴" not in failure.guidance
 
 
 def test_a_change_that_matches_the_store_is_refused_with_its_own_reason() -> None:
