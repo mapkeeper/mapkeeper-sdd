@@ -439,7 +439,7 @@ function SettingsScreen({
         <div className="mt-3 flex items-center gap-3">
           <span className="min-w-0 flex-1">
             <strong className="block text-[14px] font-bold text-ink">글자 크게 보기</strong>
-            <span className="block text-[12px] text-slate-500">화면 전체 글자와 버튼을 더 크게 보여줘요</span>
+            <span className="block text-[12px] text-slate-500">글자와 터치 영역을 함께 키워 읽고 누르기 쉽게 보여줘요</span>
           </span>
           <ToggleSwitch checked={largeText} onChange={onToggleLargeText} label="글자 크게 보기" />
         </div>

@@ -32,9 +32,53 @@ body, button, input, textarea, select { font-family: Pretendard, sans-serif; }
   font-family: var(--font-body);
   font-size: 18px;
   line-height: 1.6;
+  --text-scale: 1;
   -webkit-font-smoothing: antialiased;
 }
-.app-viewport--large-text { zoom: 1.2; }
+.app-viewport--large-text {
+  --text-scale: 1.18;
+}
+.app-viewport--large-text :where(p, span, strong, small, label, button, input, textarea, select, h1, h2, h3, h4, h5, h6, dt, dd, a, li):not(:has(p, span, strong, small, label, button, input, textarea, select, h1, h2, h3, h4, h5, h6, dt, dd, a, li)) {
+  zoom: var(--text-scale);
+}
+.app-viewport--large-text :where(input, textarea, select) {
+  min-height: 3.25rem;
+}
+.app-viewport--large-text :where(button) {
+  zoom: var(--text-scale);
+}
+.app-viewport--large-text button :where(p, span, strong, small, label, button, input, textarea, select, h1, h2, h3, h4, h5, h6, dt, dd, a, li) {
+  zoom: 1 !important;
+}
+.app-viewport--large-text [role='switch'] {
+  zoom: 1 !important;
+  width: 3.5rem !important;
+  min-height: 2.75rem !important;
+}
+.app-viewport--large-text [role='switch'][aria-checked='true'] > span {
+  transform: translate(1.625rem, -50%) !important;
+}
+.app-viewport--large-text [role='switch'] > span {
+  top: 50% !important;
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+  transform: translate(.125rem, -50%) !important;
+}
+.app-viewport--large-text .home-nav button,
+.app-viewport--large-text .review-modal__header button,
+.app-viewport--large-text [role='switch'] {
+  min-height: 0 !important;
+}
+.app-viewport--large-text .home-nav button {
+  font-size: .7375rem !important;
+}
+.app-viewport--large-text .review-modal__header button {
+  width: 2.75rem !important;
+  min-height: 2.75rem !important;
+}
+.app-viewport--large-text [role='switch'] {
+  min-height: 2.75rem !important;
+}
 /* The blanket heading rule below outranks Tailwind's utilities, so every screen
    styled in CSS overrides it with a scoped rule of its own. The settings and
    history screens are styled in Tailwind and have no such rule, so they declare
