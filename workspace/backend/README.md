@@ -11,12 +11,24 @@ FastAPI 애플리케이션과 API Contract v0.2 기준 Pydantic schema, PostgreS
 | `DATABASE_URL` | PostgreSQL DSN. `postgresql+asyncpg://` 드라이버만 허용한다. |
 | `DB_ECHO` | SQL 로깅 여부. 기본값은 `false`다. |
 | `MVP_ACTOR_ID` | 승인 주체 UUID. 로그인 없는 MVP에서 `approvedBy`로 사용한다. 요청 Body에서 받지 않는다. |
+| `FIREBASE_AUTH_REQUIRED` | `true`이면 모든 `/api/v1` 요청에 Firebase ID Token을 요구한다. 로컬 기본값은 `false`다. |
+| `FIREBASE_PROJECT_ID` | Firebase 프로젝트 ID. Admin SDK가 검증할 토큰의 audience다. |
+| `FIREBASE_CREDENTIALS_PATH` | 컨테이너 내부에 마운트한 Firebase Admin 서비스 계정 JSON 경로. 저장소에 커밋하지 않는다. |
 | `GEMINI_API_KEY` | 선택. 없으면 UC2 문구 생성이 결정적 stub으로 동작한다. |
 | `GEMINI_MODEL` | 기본 `gemini-3.6-flash`. |
 | `TEST_DATABASE_URL` | `tests/integration`이 사용하는 빈 DB. 없으면 해당 테스트를 건너뛴다. |
 
 PostgreSQL은 Proxmox의 별도 LXC를 사용하며 Compose에 DB 컨테이너를 추가하지 않는다.
 설정은 지연 로딩이므로 `DATABASE_URL`이 없어도 `/health`는 동작한다.
+
+## Firebase 서버 인증
+
+공개 배포에서는 `FIREBASE_AUTH_REQUIRED=true`로 설정하고, Firebase Console의
+서비스 계정 JSON을 저장소 밖의 안전한 호스트 경로에 둔 뒤
+`FIREBASE_CREDENTIALS_HOST_PATH`로 컨테이너에 읽기 전용 마운트한다. FastAPI는 프론트엔드가
+보낸 `Authorization: Bearer <Firebase ID Token>`을 Admin SDK로 검증하고, 검증된
+Firebase UID를 기존 승인 actor UUID로 안정적으로 변환한다. 서비스 계정 JSON은
+프론트엔드 환경변수나 이미지에 넣지 않는다.
 
 ⚠️ `TEST_DATABASE_URL`은 반드시 버려도 되는 빈 DB를 가리켜야 한다. 해당 DB에는
 migration이 적용되고 테스트가 데이터를 쓴다.

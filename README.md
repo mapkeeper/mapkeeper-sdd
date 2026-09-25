@@ -110,6 +110,13 @@ GitHub 저장소의 `development` Environment에 다음 Secret을 등록한다.
 | `DEPLOY_USER` | Docker 실행 권한이 있는 배포 사용자 |
 | `DEPLOY_SSH_KEY` | 배포 전용 SSH 개인키 |
 | `DEPLOY_KNOWN_HOSTS` | `ssh-keyscan`으로 사전에 확인한 VM 호스트 키 |
+| `FIREBASE_API_KEY` | Firebase Web 앱 API key |
+| `FIREBASE_AUTH_DOMAIN` | Firebase Auth 도메인 |
+| `FIREBASE_PROJECT_ID` | Firebase 프로젝트 ID |
+| `FIREBASE_STORAGE_BUCKET` | Firebase Storage bucket |
+| `FIREBASE_MESSAGING_SENDER_ID` | Firebase Web 메시징 발신자 ID |
+| `FIREBASE_APP_ID` | Firebase Web 앱 ID |
+| `FIREBASE_ADMIN_JSON` | Firebase Admin SDK 서비스 계정 JSON 전체 내용 |
 
 Ubuntu VM에는 Docker Engine, Docker Compose 플러그인, `curl`이 설치되어 있어야 한다. GitHub Actions의 **Deploy development** 워크플로를 수동 실행하면 다음 작업을 수행한다.
 
@@ -119,6 +126,10 @@ Ubuntu VM에는 Docker Engine, Docker Compose 플러그인, `curl`이 설치되�
 4. 교체로 사라지기 전에 현재 버전의 로그를 호스트로 복사한다.
 5. 새 이미지를 실행하고 두 컨테이너의 health를 확인한다.
 6. 실패하면 실패한 버전의 로그를 남긴 뒤 직전 이미지로 롤백한다.
+
+배포 워크플로는 `FIREBASE_ADMIN_JSON`을 VM의 `~/mapkeeper/firebase-admin.json`에
+권한 600으로 업로드하고, `FIREBASE_AUTH_REQUIRED=true`를 강제한다. 따라서 공개
+배포에서 인증 설정이 빠진 채로 기존 MVP actor로 요청을 처리하는 fail-open 경로가 없다.
 
 PostgreSQL LXC와 Gemini 키는 서버 환경변수로 관리하며 저장소에 커밋하지 않는다.
 

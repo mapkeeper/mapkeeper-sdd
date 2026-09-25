@@ -34,6 +34,7 @@ NOT_FOUND_MESSAGE: Final = "요청한 리소스를 찾을 수 없습니다."
 RATE_LIMITED_MESSAGE: Final = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."
 
 _STATUS_TO_CODE: Final[dict[int, ApiErrorCode]] = {
+    status.HTTP_401_UNAUTHORIZED: ApiErrorCode.AUTHENTICATION_REQUIRED,
     status.HTTP_400_BAD_REQUEST: ApiErrorCode.MALFORMED_REQUEST,
     status.HTTP_404_NOT_FOUND: ApiErrorCode.RESOURCE_NOT_FOUND,
     status.HTTP_409_CONFLICT: ApiErrorCode.INVALID_STATE,
@@ -41,6 +42,7 @@ _STATUS_TO_CODE: Final[dict[int, ApiErrorCode]] = {
     status.HTTP_429_TOO_MANY_REQUESTS: ApiErrorCode.REQUEST_RATE_LIMITED,
 }
 _STATUS_TO_MESSAGE: Final[dict[int, str]] = {
+    status.HTTP_401_UNAUTHORIZED: "로그인이 필요합니다.",
     status.HTTP_400_BAD_REQUEST: MALFORMED_REQUEST_MESSAGE,
     status.HTTP_404_NOT_FOUND: NOT_FOUND_MESSAGE,
     status.HTTP_422_UNPROCESSABLE_CONTENT: VALIDATION_MESSAGE,

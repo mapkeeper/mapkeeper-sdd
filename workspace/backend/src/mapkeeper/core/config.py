@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # MVP has no login. Approvals are attributed to this fixed actor, never to a
     # value taken from the request body.
     mvp_actor_id: UUID
+    firebase_auth_required: bool = False
+    firebase_project_id: str | None = None
+    firebase_credentials_path: str | None = None
     # Optional. Without it the SEO generation falls back to a deterministic stub,
     # so the UC2 flow runs offline.
     gemini_api_key: SecretStr | None = None

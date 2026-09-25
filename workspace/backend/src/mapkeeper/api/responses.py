@@ -57,6 +57,10 @@ _DESCRIPTIONS: Final[dict[int, tuple[str, tuple[ApiErrorCode, ...]]]] = {
         "MapKeeper API request limit reached.",
         (ApiErrorCode.REQUEST_RATE_LIMITED,),
     ),
+    status.HTTP_401_UNAUTHORIZED: (
+        "Firebase ID Token is missing or invalid.",
+        (ApiErrorCode.AUTHENTICATION_REQUIRED,),
+    ),
     status.HTTP_500_INTERNAL_SERVER_ERROR: (
         "Internal error replaced with a safe message.",
         (ApiErrorCode.INTERNAL_SERVER_ERROR,),
@@ -81,6 +85,7 @@ COMMON_ERRORS: Final = (
     status.HTTP_400_BAD_REQUEST,
     status.HTTP_422_UNPROCESSABLE_CONTENT,
     status.HTTP_429_TOO_MANY_REQUESTS,
+    status.HTTP_401_UNAUTHORIZED,
     status.HTTP_500_INTERNAL_SERVER_ERROR,
 )
 RESOURCE_ERRORS: Final = (status.HTTP_404_NOT_FOUND, *COMMON_ERRORS)

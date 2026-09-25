@@ -43,6 +43,13 @@ class MapKeeperError(Exception):
         self.failure: ProposalFailure | None = failure
 
 
+class AuthenticationError(MapKeeperError):
+    """The request has no valid Firebase identity."""
+
+    http_status: int = status.HTTP_401_UNAUTHORIZED
+    code: ApiErrorCode = ApiErrorCode.AUTHENTICATION_REQUIRED
+
+
 class ResourceNotFoundError(MapKeeperError):
     """No resource matches the requested id."""
 

@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from mapkeeper.api.auth import CurrentActor
 from mapkeeper.api.responses import (
     COMMON_ERRORS,
     TRANSITION_ERRORS,
@@ -21,7 +22,6 @@ from mapkeeper.api.schemas.store_change import (
     StoreChangeProposalApprovalResponse,
     StoreChangeProposalResponse,
 )
-from mapkeeper.core.config import get_settings
 from mapkeeper.db.session import get_session, get_session_factory
 from mapkeeper.models import ApiResponseStatus, ProposalStatus
 from mapkeeper.services.proposal import (
@@ -118,12 +118,13 @@ async def approve_proposal(
     idempotency_key: IdempotencyKeyHeader,
     session: SessionDep,
     background_tasks: BackgroundTasks,
+    actor_id: CurrentActor,
 ) -> ApprovalEnvelope:
     """Commit approval and queue synchronization only after the commit succeeds."""
     result = await approve_proposal_service(
         session,
         proposal_id,
-        get_settings().mvp_actor_id,
+        actor_id,
         idempotency_key,
     )
     await session.commit()

@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from mapkeeper.api.auth import CurrentActor
 from mapkeeper.api.responses import (
     COMMON_ERRORS,
     TRANSITION_ERRORS,
@@ -22,7 +23,6 @@ from mapkeeper.api.schemas.seo import (
     EditContentDraftsRequest,
     RegenerateContentGenerationRequest,
 )
-from mapkeeper.core.config import get_settings
 from mapkeeper.db.session import get_session, get_session_factory
 from mapkeeper.models import ApiResponseStatus, ContentGenerationStatus, Platform
 from mapkeeper.services.generation_approval import approve_generation as approve_generation_service
@@ -133,12 +133,13 @@ async def approve_generation(
     idempotency_key: IdempotencyKeyHeader,
     session: SessionDep,
     background_tasks: BackgroundTasks,
+    actor_id: CurrentActor,
 ) -> ApprovalEnvelope:
     """Commit whole-generation approval before queuing synchronization."""
     result = await approve_generation_service(
         session,
         generation_id,
-        get_settings().mvp_actor_id,
+        actor_id,
         idempotency_key,
     )
     await session.commit()

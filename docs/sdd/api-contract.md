@@ -15,7 +15,7 @@
 - 요청 schema에 정의되지 않은 필드: 거절
 - 승인 API: `Idempotency-Key` 필수
 - 요청 추적: `X-Request-ID`, 미입력 시 서버 생성
-- `approvedBy`: 요청에서 받지 않고 서버 `MVP_ACTOR_ID` 사용
+- `approvedBy`: 요청에서 받지 않는다. 로컬 Mock에서는 `MVP_ACTOR_ID`, 공개 배포에서는 검증된 Firebase UID에서 서버가 생성한다.
 
 ### 성공 Envelope
 
@@ -96,7 +96,7 @@
 
 ### API 오류 코드
 
-`MALFORMED_REQUEST`, `VALIDATION_ERROR`, `RESOURCE_NOT_FOUND`, `INVALID_STATE`, `STALE_PROPOSAL`, `IDEMPOTENCY_CONFLICT`, `NO_RETRYABLE_TASKS`, `REQUEST_RATE_LIMITED`, `INTERNAL_SERVER_ERROR`
+`MALFORMED_REQUEST`, `VALIDATION_ERROR`, `RESOURCE_NOT_FOUND`, `INVALID_STATE`, `STALE_PROPOSAL`, `IDEMPOTENCY_CONFLICT`, `NO_RETRYABLE_TASKS`, `REQUEST_RATE_LIMITED`, `AUTHENTICATION_REQUIRED`, `INTERNAL_SERVER_ERROR`
 
 ### 플랫폼 Task 오류 코드
 

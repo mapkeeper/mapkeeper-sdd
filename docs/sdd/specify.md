@@ -15,7 +15,8 @@
 ## 2. 사용자와 전제
 
 - 핵심 사용자는 모바일 입력과 긴 설정 화면에 부담을 느끼는 소상공인이다.
-- MVP에는 로그인 기능이 없으며 하나의 고정 `MVP_ACTOR_ID`를 사용한다.
+- 로컬 Mock 모드는 로그인 없이 하나의 고정 `MVP_ACTOR_ID`를 사용한다. 공개 라이브
+  데모는 Firebase Google 로그인과 FastAPI의 Firebase ID Token 검증을 사용한다.
 - Google·Naver·Kakao API는 정상 동작한다고 가정하고 내부 파이프라인을 검증한다.
 - 실제 외부 발행과 시뮬레이션 발행은 검증 기록에서 구분한다.
 

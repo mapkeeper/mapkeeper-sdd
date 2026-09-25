@@ -33,6 +33,13 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}
           TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_ADMIN_JSON: ${{ secrets.FIREBASE_ADMIN_JSON }}
         run: |
           : "${DEPLOY_HOST:?DEPLOY_HOST is required}"
           : "${DEPLOY_KNOWN_HOSTS:?DEPLOY_KNOWN_HOSTS is required}"
@@ -40,6 +47,13 @@ jobs:
           : "${DEPLOY_USER:?DEPLOY_USER is required}"
           : "${TS_AUDIENCE:?TS_AUDIENCE is required}"
           : "${TS_OAUTH_CLIENT_ID:?TS_OAUTH_CLIENT_ID is required}"
+          : "${FIREBASE_API_KEY:?FIREBASE_API_KEY is required}"
+          : "${FIREBASE_AUTH_DOMAIN:?FIREBASE_AUTH_DOMAIN is required}"
+          : "${FIREBASE_PROJECT_ID:?FIREBASE_PROJECT_ID is required}"
+          : "${FIREBASE_STORAGE_BUCKET:?FIREBASE_STORAGE_BUCKET is required}"
+          : "${FIREBASE_MESSAGING_SENDER_ID:?FIREBASE_MESSAGING_SENDER_ID is required}"
+          : "${FIREBASE_APP_ID:?FIREBASE_APP_ID is required}"
+          : "${FIREBASE_ADMIN_JSON:?FIREBASE_ADMIN_JSON is required}"
 
       - name: Log in to GHCR
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
@@ -68,6 +82,12 @@ jobs:
             VITE_MOCK_SCENARIO=default
             VITE_STORE_PROFILE_ID=11111111-1111-4111-8111-111111111111
             VITE_SHOW_DEVELOPER_TOOLS=false
+            VITE_FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
+            VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }}
+            VITE_FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
+            VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }}
+            VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+            VITE_FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}
           tags: |
             ${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
             ${{ env.FRONTEND_IMAGE_NAME }}:development
@@ -95,13 +115,21 @@ jobs:
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          FIREBASE_ADMIN_JSON: ${{ secrets.FIREBASE_ADMIN_JSON }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: |
           ssh "$DEPLOY_USER@$DEPLOY_HOST" 'mkdir -p "$HOME/mapkeeper"'
           scp workspace/compose.yaml "$DEPLOY_USER@$DEPLOY_HOST:mapkeeper/compose.yaml.next"
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'REMOTE'
+          printf '%s' "$FIREBASE_ADMIN_JSON" | ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+            'umask 077; cat > "$HOME/mapkeeper/firebase-admin.json"; chmod 600 "$HOME/mapkeeper/firebase-admin.json"; test -s "$HOME/mapkeeper/firebase-admin.json"'
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$FIREBASE_PROJECT_ID" <<'REMOTE'
           set -eu
+          firebase_project_id=$1
           cd "$HOME/mapkeeper"
-          if ! docker compose -f compose.yaml.next config --quiet; then
+          if ! FIREBASE_AUTH_REQUIRED=true \
+            FIREBASE_PROJECT_ID="$firebase_project_id" \
+            FIREBASE_CREDENTIALS_HOST_PATH="$HOME/mapkeeper/firebase-admin.json" \
+            docker compose -f compose.yaml.next config --quiet; then
             rm -f compose.yaml.next
             exit 1
           fi
@@ -114,14 +142,20 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BACKEND_IMAGE_REF: ${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
           FRONTEND_IMAGE_REF: ${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: |
           printf '%s' "$GHCR_TOKEN" | ssh "$DEPLOY_USER@$DEPLOY_HOST" \
             "docker login ghcr.io --username '${{ github.actor }}' --password-stdin"
           ssh "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- \
-            "$BACKEND_IMAGE_REF" "$FRONTEND_IMAGE_REF" <<'REMOTE'
+            "$BACKEND_IMAGE_REF" "$FRONTEND_IMAGE_REF" "$FIREBASE_PROJECT_ID" <<'REMOTE'
           set -u
           backend_image_ref=$1
           frontend_image_ref=$2
+          firebase_project_id=$3
+          export FIREBASE_AUTH_REQUIRED=true
+          export FIREBASE_PROJECT_ID="$firebase_project_id"
+          export FIREBASE_CREDENTIALS_HOST_PATH="$HOME/mapkeeper/firebase-admin.json"
+          export FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase-admin.json
           cd "$HOME/mapkeeper"
 
           previous_backend_image=

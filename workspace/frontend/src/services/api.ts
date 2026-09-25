@@ -1,6 +1,7 @@
 import type { ZodType } from 'zod';
 import type { ApiEnvelope, ApiErrorBody, ApiResult } from '@/services/api.types';
 import { apiEnvelopeSchema } from '@/services/contracts/common';
+import { firebaseAuth } from '@/lib/firebase';
 
 export class ApiClientError extends Error {
   constructor(
@@ -33,6 +34,16 @@ async function fetchEnvelope(path: string, options: ApiRequestOptions): Promise<
   const headers = new Headers(options.headers);
   headers.set('Accept', 'application/json');
   if (options.body !== undefined) headers.set('Content-Type', 'application/json');
+
+  try {
+    if (import.meta.env.VITE_API_MOCKING !== 'true' && firebaseAuth?.currentUser) {
+      const idToken = await firebaseAuth.currentUser.getIdToken();
+      headers.set('Authorization', `Bearer ${idToken}`);
+    }
+  } catch (error: unknown) {
+    if (error instanceof Error) throw new ApiClientError('로그인 상태를 확인하지 못했습니다.', 401, null);
+    throw error;
+  }
 
   let response: Response;
   try {

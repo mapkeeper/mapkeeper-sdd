@@ -60,7 +60,8 @@ MapKeeper MVP는 다음 두 유스케이스를 모두 포함한다.
 3. 승인 트랜잭션은 승인 대상, SyncJob, 승인된 플랫폼 Task만 원자적으로 저장한다.
 4. DB commit 전에는 플랫폼 어댑터를 호출하지 않는다.
 5. 승인 API는 `Idempotency-Key`를 요구한다.
-6. `approvedBy`는 요청에서 받지 않고 서버의 `MVP_ACTOR_ID`를 사용한다.
+6. `approvedBy`는 요청에서 받지 않는다. 로컬 Mock 모드에서는 `MVP_ACTOR_ID`를 사용하고,
+   공개 배포에서는 검증된 Firebase UID를 서버가 안정적인 actor UUID로 변환해 사용한다.
 7. 현재 Google·Naver·Kakao 발행 어댑터는 외부 호출 없이 성공을 재현하는 시뮬레이션 구현이다.
 8. 내부 문서와 보고서에서는 파이프라인 검증과 실제 운영 API 연동 검증을 구분한다.
 9. 현재 구현의 전체 승인 모델은 PM Beta 범위에 맞춰 플랫폼별 승인 모델로 전환해야 하며, 전환 전까지는 `Planned`로 기록한다.

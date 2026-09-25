@@ -33,7 +33,7 @@ BODYLESS_ENDPOINTS: Final = (
     ("post", "/api/v1/seo/generations/{generationId}/approve"),
     ("post", "/api/v1/sync-jobs/{syncJobId}/retry"),
 )
-CONTRACT_ERROR_STATUSES: Final = frozenset({"400", "404", "409", "422", "429", "500"})
+CONTRACT_ERROR_STATUSES: Final = frozenset({"400", "401", "404", "409", "422", "429", "500"})
 IDEMPOTENCY_KEY_PATTERN: Final = r"^[A-Za-z0-9._:-]+$"
 
 
@@ -115,7 +115,7 @@ def test_every_endpoint_documents_the_contract_error_codes(
     documented = set(obj(operation_of(document, method, path)["responses"]))
 
     # When: the documented failures are compared with the contract's error table.
-    expected = {"400", "422", "429", "500"}
+    expected = {"400", "401", "422", "429", "500"}
     if "{" in path:
         expected.add("404")
 

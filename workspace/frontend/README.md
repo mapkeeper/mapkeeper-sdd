@@ -51,6 +51,13 @@ mock 모드에서는 Vite의 `/api` 백엔드 프록시가 비활성화되고, `
 1. **MSW 화면 개발** — `VITE_API_MOCKING=true`. service worker가 same-origin `/api`를 가로채며 실제 네트워크로 우회하지 않습니다.
 2. **실제 FastAPI 연결** — `VITE_API_MOCKING=false`. 로컬 Compose와 배포 앱이 사용하는 모드입니다.
 
+## Google 로그인 데모
+
+`VITE_FIREBASE_*` 환경변수 6개가 모두 설정되면 홈 화면에 Firebase Authentication
+Google 로그인 버튼이 표시됩니다. `FIREBASE_AUTH_REQUIRED=true`인 배포 환경에서는
+FastAPI가 Firebase ID Token을 검증하고, 로컬 Mock 모드에서는 기존 MVP의 고정
+`MVP_ACTOR_ID`를 사용합니다.
+
 CI의 `Frontend and backend contract gate`는 PostgreSQL 16에 migration과 공식 데모 seed를 적용하고 FastAPI를 실제로 실행합니다. 그 다음 `npm run test:backend-contract`가 프론트 프로덕션 서비스 함수로 UC1의 `{open, close}` 응답과 UC2 생성 근거를 검증합니다. MSW나 별도 계약 stub은 사용하지 않습니다.
 
 ## 실제 백엔드로 전환
