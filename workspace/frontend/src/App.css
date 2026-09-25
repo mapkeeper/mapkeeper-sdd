@@ -58,6 +58,11 @@ body, button, input, textarea, select { font-family: Pretendard, sans-serif; }
 .home__brand > span { display:grid; width:30px; height:30px; place-items:center; border-radius:var(--radius-sm); background:#fff; color:#2563eb; font-size:17px; font-weight:900; letter-spacing:-.06em; }
 .app-viewport .home__brand h1 { margin:0; color:#fff; font-size:20px; font-weight:800; letter-spacing:-.035em; }
 .home__header-actions { display:flex; align-items:center; gap:8px; }
+.google-auth { display:flex; min-width:0; flex-direction:column; align-items:flex-end; gap:3px; }
+.google-auth__button { display:flex; min-height:38px; max-width:180px; align-items:center; gap:7px; padding:0 12px; border:1px solid rgba(255,255,255,.24); border-radius:var(--radius-pill); background:#fff; color:#334155; font-size:12px; font-weight:750; white-space:nowrap; }
+.google-auth__button:disabled { cursor:wait; opacity:.7; }
+.google-auth__mark { display:grid; width:20px; height:20px; place-items:center; border-radius:50%; background:#fff; color:#4285f4; font-family:Arial,sans-serif; font-size:14px; font-weight:800; }
+.google-auth__error { max-width:180px; margin:0; color:#fee2e2; font-size:10px; line-height:1.3; text-align:right; }
 .home__notification, .home__profile { display:grid; width:38px; height:38px; min-height:38px; place-items:center; border:1px solid rgba(255,255,255,.16); border-radius:50%; background:rgba(255,255,255,.12); color:#fff; }
 .home__notification svg, .home__profile svg { width:20px; height:20px; }
 .home__notification { position:relative; }
@@ -160,5 +165,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .notification-panel__body strong { color:#1e293b; font-size:13px; font-weight:650; line-height:1.4; word-break:keep-all; }
 .notification-panel__body small { color:#94a3b8; font-size:11.5px; }
 @media (prefers-reduced-motion: reduce) { .home-card { transition:none; } }
+@media (max-width: 380px) {
+  .google-auth__button { max-width:132px; overflow:hidden; padding-inline:9px; font-size:11px; text-overflow:ellipsis; }
+  .google-auth__button span:last-child { overflow:hidden; text-overflow:ellipsis; }
+}
 @keyframes review-sheet-in { from { transform:translateY(24px); opacity:0; } to { transform:translateY(0); opacity:1; } }
 @keyframes notification-panel-in { from { transform:translateY(-6px); opacity:0; } to { transform:translateY(0); opacity:1; } }

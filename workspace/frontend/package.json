@@ -17,6 +17,7 @@
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "@vitejs/plugin-react": "latest",
+    "firebase": "^12.19.0",
     "msw": "latest",
     "react": "latest",
     "react-dom": "latest",

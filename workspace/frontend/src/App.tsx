@@ -30,6 +30,7 @@ import { DEMO_STORE } from '@/config/demoStore';
 import googleLogo from '@/assets/platforms/google.svg';
 import naverLogo from '@/assets/platforms/naver.svg';
 import kakaoLogo from '@/assets/platforms/kakao.svg';
+import { GoogleAuthButton } from '@/components/Auth/GoogleAuthButton';
 import './App.css';
 
 type AppScreen = 'HOME' | 'STORE_CHANGE' | 'SEO' | 'STORE_SYNC' | 'HISTORY' | 'SETTINGS';
@@ -135,6 +136,7 @@ function Home({
       <div className="home__brand-row">
         <div className="home__brand"><span aria-hidden="true">M</span><h1>MapKeeper</h1></div>
         <div className="home__header-actions">
+          <GoogleAuthButton />
           <button
             type="button"
             aria-label="알림"
