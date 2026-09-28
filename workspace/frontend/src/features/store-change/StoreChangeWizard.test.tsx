@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { server } from '@/mocks/server';
 import { StoreChangeWizard } from '@/features/store-change/StoreChangeWizard';
+import { ApiClientError } from '@/services/api';
+import { safeUserMessage } from '@/features/store-change/useStoreChangeFlow';
 
 async function createDraft(user: ReturnType<typeof userEvent.setup>): Promise<void> {
   await user.click(screen.getByRole('button', { name: '직접 입력하기' }));
@@ -13,6 +15,16 @@ async function createDraft(user: ReturnType<typeof userEvent.setup>): Promise<vo
 
 describe('StoreChangeWizard', () => {
   afterEach(() => vi.unstubAllEnvs());
+
+  test('인증되지 않은 UC1 요청은 권한 오류 대신 로그인을 안내한다', () => {
+    const error = new ApiClientError('로그인이 필요합니다.', 401, 'req-401', {
+      code: 'AUTHENTICATION_REQUIRED',
+      message: '로그인이 필요합니다.',
+    });
+
+    expect(safeUserMessage(error)).toBe('로그인이 필요합니다. 먼저 Google로 로그인해 주세요.');
+  });
+
   // --- T256: 상대 날짜·기간·복합 요청·실패 원인 -------------------------------
 
   async function submit(user: ReturnType<typeof userEvent.setup>, text: string): Promise<void> {

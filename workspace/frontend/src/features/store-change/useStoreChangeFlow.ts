@@ -46,7 +46,7 @@ function failureOf(error: unknown): ProposalFailure | null {
   return error.causeBody?.failure ?? null;
 }
 
-function safeUserMessage(error: unknown): string {
+export function safeUserMessage(error: unknown): string {
   if (!(error instanceof ApiClientError)) return '예상하지 못한 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
   // The server writes one caller-safe sentence per refusal and it names what to
   // say instead ("바꿀 수 있는 건 영업시간, 임시 휴무…"). Replacing it with "입력
@@ -55,7 +55,10 @@ function safeUserMessage(error: unknown): string {
     return error.causeBody.message.trim() || '입력 내용을 다시 확인해 주세요.';
   }
   if (error.causeBody?.code === 'INVALID_STATE') return error.causeBody.message;
-  if (error.causeBody?.code === 'PERMISSION_DENIED' || error.status === 401 || error.status === 403) {
+  if (error.causeBody?.code === 'AUTHENTICATION_REQUIRED' || error.status === 401) {
+    return '로그인이 필요합니다. 먼저 Google로 로그인해 주세요.';
+  }
+  if (error.causeBody?.code === 'PERMISSION_DENIED' || error.status === 403) {
     return '이 작업을 수행할 권한이 없습니다. 관리자에게 문의해 주세요.';
   }
   if (error.causeBody?.code === 'API_TIMEOUT') return '처리 시간이 길어지고 있습니다. 잠시 후 다시 시도해 주세요.';
