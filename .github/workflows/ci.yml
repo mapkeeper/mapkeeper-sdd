@@ -182,6 +182,7 @@ jobs:
       - backend
       - frontend-backend-contract
     runs-on: ubuntu-latest
+    environment: development
     steps:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
