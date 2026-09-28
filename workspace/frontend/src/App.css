@@ -210,8 +210,16 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .notification-panel__body small { color:#94a3b8; font-size:11.5px; }
 @media (prefers-reduced-motion: reduce) { .home-card { transition:none; } }
 @media (max-width: 380px) {
+  .home__brand-row { align-items:flex-start; flex-wrap:wrap; row-gap:12px; }
+  .home__brand { min-width:0; }
+  .home__header-actions { width:100%; justify-content:flex-end; }
   .google-auth__button { max-width:132px; overflow:hidden; padding-inline:9px; font-size:11px; text-overflow:ellipsis; }
   .google-auth__button span:last-child { overflow:hidden; text-overflow:ellipsis; }
+}
+@media (min-width: 381px) and (max-width: 480px) {
+  .home__brand-row { align-items:flex-start; flex-wrap:wrap; row-gap:12px; }
+  .home__brand { min-width:0; }
+  .home__header-actions { width:100%; justify-content:flex-end; }
 }
 @keyframes review-sheet-in { from { transform:translateY(24px); opacity:0; } to { transform:translateY(0); opacity:1; } }
 @keyframes notification-panel-in { from { transform:translateY(-6px); opacity:0; } to { transform:translateY(0); opacity:1; } }
