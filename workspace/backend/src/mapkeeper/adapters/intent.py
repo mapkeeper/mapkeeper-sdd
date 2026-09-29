@@ -121,20 +121,35 @@ _NEXT_WEEKDAY_PATTERN: Final = re.compile(_NEXT_WEEK + r"\s*(?P<weekday>[월화�
 _THIS_WEEKDAY_PATTERN: Final = re.compile(r"이번\s*주\s*(?P<weekday>[월화수목금토일])요일?")
 
 # "추석 연휴에 문 닫아요" names its days through the calendar instead of stating
-# them. The holiday itself is looked up rather than derived: 설날 and 추석 are lunar,
-# so the only honest source is the published table behind
+# them. The holiday itself is looked up rather than derived: lunar holidays and
+# government-published substitute days belong in the bundled table behind
 # :func:`~mapkeeper.adapters.holiday_calendar.get_holiday_calendar`.
 #
 # "설" alone is a syllable that starts ordinary words ("설명", "설거지"), so it is
 # only read as the holiday when a qualifier follows it.
 _HOLIDAY_TITLES: Final = {
+    "신정": "신정",
+    "삼일절": "삼일절",
+    "3.1절": "삼일절",
+    "어린이날": "어린이날",
+    "부처님오신날": "부처님오신날",
+    "석가탄신일": "부처님오신날",
+    "현충일": "현충일",
+    "광복절": "광복절",
+    "개천절": "개천절",
+    "한글날": "한글날",
+    "성탄절": "성탄절",
+    "크리스마스": "성탄절",
     "추석": "추석",
     "한가위": "추석",
     "설날": "설날",
     "구정": "설날",
     "설": "설날",
 }
-_HOLIDAY_NAME_GROUP: Final = r"(?P<name>추석|한가위|설날|구정|설(?=\s*(?:연휴|당일)))"
+_HOLIDAY_NAME_GROUP: Final = (
+    r"(?P<name>신정|삼일절|3\.1절|어린이날|부처님오신날|석가탄신일|현충일|"
+    r"광복절|개천절|한글날|성탄절|크리스마스|추석|한가위|설날|구정|설(?=\s*(?:연휴|당일)))"
+)
 _HOLIDAY_QUALIFIER_GROUP: Final = r"\s*(?P<qualifier>연휴\s*전체|연휴|당일|날(?!짜))?"
 _HOLIDAY_PATTERN: Final = re.compile(_HOLIDAY_NAME_GROUP + _HOLIDAY_QUALIFIER_GROUP)
 # Which days of the holiday the sentence asked for. "연휴" is the whole observed
@@ -143,6 +158,7 @@ _HOLIDAY_PATTERN: Final = re.compile(_HOLIDAY_NAME_GROUP + _HOLIDAY_QUALIFIER_GR
 # question for the owner rather than a guess to publish.
 _WHOLE_PERIOD_QUALIFIER: Final = "연휴"
 _SINGLE_DAY_QUALIFIERS: Final = frozenset({"당일", "날"})
+_MULTI_DAY_HOLIDAY_TITLES: Final = frozenset({"설날", "추석"})
 # A holiday that already happened, or one a year away. Neither is the closure the
 # next occurrence would propose, so the sentence is left to be asked about.
 _SHIFTED_YEAR_WORDS: Final = re.compile(r"작년|재작년|지난해|지난|내년|내후년")
@@ -356,9 +372,10 @@ def _resolve_holiday_dates(text: str, today: date) -> tuple[date, date] | None:
         return event.start_date, event.end_date
     if qualifier in _SINGLE_DAY_QUALIFIERS:
         return event.observance_date, event.observance_date
-    # A holiday that lasts one day says the same thing either way.
-    if event.start_date == event.end_date:
-        return event.start_date, event.end_date
+    # Fixed-date holidays and one-day holidays mean the named observance when no
+    # range qualifier is spoken, even when a substitute day extends the table row.
+    if event.title not in _MULTI_DAY_HOLIDAY_TITLES or event.start_date == event.end_date:
+        return event.observance_date, event.observance_date
     return None
 
 

@@ -484,6 +484,46 @@ def test_a_named_holiday_period_becomes_its_published_dates(
     assert change.proposed_value.end_date == expected_end
 
 
+def test_a_fixed_date_holiday_is_resolved_without_a_model_call() -> None:
+    # Given: the ordinary one-day way an owner names 개천절.
+    changes = parse_intent("개천절엔 쉬어요", make_profile(), today=date(2026, 9, 29))
+
+    # Then: the published fixed-date holiday becomes a one-day closure locally.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, TemporaryClosureChange)
+    assert change.proposed_value.start_date == date(2026, 10, 3)
+    assert change.proposed_value.end_date == date(2026, 10, 3)
+
+
+@pytest.mark.parametrize(
+    ("sentence", "expected_date"),
+    [
+        ("신정엔 쉬어요", date(2027, 1, 1)),
+        ("삼일절엔 쉬어요", date(2027, 3, 1)),
+        ("어린이날엔 쉬어요", date(2027, 5, 5)),
+        ("부처님오신날엔 쉬어요", date(2027, 5, 13)),
+        ("현충일엔 쉬어요", date(2027, 6, 6)),
+        ("광복절엔 쉬어요", date(2027, 8, 15)),
+        ("한글날엔 쉬어요", date(2027, 10, 9)),
+        ("성탄절엔 쉬어요", date(2027, 12, 25)),
+    ],
+)
+def test_fixed_public_holidays_are_resolved_without_a_model_call(
+    sentence: str,
+    expected_date: date,
+) -> None:
+    # Given: a fixed-date public holiday named in the ordinary spoken form.
+    changes = parse_intent(sentence, make_profile(), today=date(2026, 12, 31))
+
+    # Then: the next published occurrence becomes a one-day closure locally.
+    assert changes is not None
+    (change,) = changes
+    assert isinstance(change, TemporaryClosureChange)
+    assert change.proposed_value.start_date == expected_date
+    assert change.proposed_value.end_date == expected_date
+
+
 def test_a_duration_spoken_with_a_holiday_starts_at_the_period() -> None:
     # Given: a stated number of days counted from the start of the 연휴.
     # When: the parser reads it.

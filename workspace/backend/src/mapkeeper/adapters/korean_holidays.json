@@ -27,11 +27,25 @@
       "note": ""
     },
     {
+      "title": "개천절",
+      "startDate": "2024-10-03",
+      "endDate": "2024-10-03",
+      "observanceDate": "2024-10-03",
+      "note": ""
+    },
+    {
       "title": "설날",
       "startDate": "2025-01-28",
       "endDate": "2025-01-30",
       "observanceDate": "2025-01-29",
       "note": "2025년 1월 27일 임시공휴일은 표에 담지 않는다."
+    },
+    {
+      "title": "개천절",
+      "startDate": "2025-10-03",
+      "endDate": "2025-10-03",
+      "observanceDate": "2025-10-03",
+      "note": ""
     },
     {
       "title": "추석",
@@ -55,6 +69,13 @@
       "note": "추석 연휴가 토요일과 겹쳐도 설·추석은 대체공휴일 대상이 아니다."
     },
     {
+      "title": "개천절",
+      "startDate": "2026-10-03",
+      "endDate": "2026-10-05",
+      "observanceDate": "2026-10-03",
+      "note": "대체공휴일 2026-10-05은 별도 표기하지 않고 법정일과 함께 범위에 포함한다."
+    },
+    {
       "title": "설날",
       "startDate": "2027-02-06",
       "endDate": "2027-02-09",
@@ -67,6 +88,237 @@
       "endDate": "2027-09-16",
       "observanceDate": "2027-09-15",
       "note": ""
+    },
+    {
+      "title": "개천절",
+      "startDate": "2027-10-03",
+      "endDate": "2027-10-04",
+      "observanceDate": "2027-10-03",
+      "note": ""
+    },
+    {
+      "title": "신정",
+      "startDate": "2024-01-01",
+      "endDate": "2024-01-01",
+      "observanceDate": "2024-01-01",
+      "note": ""
+    },
+    {
+      "title": "삼일절",
+      "startDate": "2024-03-01",
+      "endDate": "2024-03-01",
+      "observanceDate": "2024-03-01",
+      "note": ""
+    },
+    {
+      "title": "어린이날",
+      "startDate": "2024-05-05",
+      "endDate": "2024-05-06",
+      "observanceDate": "2024-05-05",
+      "note": ""
+    },
+    {
+      "title": "부처님오신날",
+      "startDate": "2024-05-15",
+      "endDate": "2024-05-15",
+      "observanceDate": "2024-05-15",
+      "note": ""
+    },
+    {
+      "title": "현충일",
+      "startDate": "2024-06-06",
+      "endDate": "2024-06-06",
+      "observanceDate": "2024-06-06",
+      "note": ""
+    },
+    {
+      "title": "광복절",
+      "startDate": "2024-08-15",
+      "endDate": "2024-08-15",
+      "observanceDate": "2024-08-15",
+      "note": ""
+    },
+    {
+      "title": "한글날",
+      "startDate": "2024-10-09",
+      "endDate": "2024-10-09",
+      "observanceDate": "2024-10-09",
+      "note": ""
+    },
+    {
+      "title": "성탄절",
+      "startDate": "2024-12-25",
+      "endDate": "2024-12-25",
+      "observanceDate": "2024-12-25",
+      "note": ""
+    },
+    {
+      "title": "신정",
+      "startDate": "2025-01-01",
+      "endDate": "2025-01-01",
+      "observanceDate": "2025-01-01",
+      "note": ""
+    },
+    {
+      "title": "삼일절",
+      "startDate": "2025-03-01",
+      "endDate": "2025-03-03",
+      "observanceDate": "2025-03-01",
+      "note": "대체공휴일 2025-03-03은 별도 표기하지 않고 법정일만 보존한다."
+    },
+    {
+      "title": "어린이날",
+      "startDate": "2025-05-05",
+      "endDate": "2025-05-06",
+      "observanceDate": "2025-05-05",
+      "note": ""
+    },
+    {
+      "title": "부처님오신날",
+      "startDate": "2025-05-05",
+      "endDate": "2025-05-06",
+      "observanceDate": "2025-05-05",
+      "note": ""
+    },
+    {
+      "title": "현충일",
+      "startDate": "2025-06-06",
+      "endDate": "2025-06-06",
+      "observanceDate": "2025-06-06",
+      "note": ""
+    },
+    {
+      "title": "광복절",
+      "startDate": "2025-08-15",
+      "endDate": "2025-08-15",
+      "observanceDate": "2025-08-15",
+      "note": ""
+    },
+    {
+      "title": "한글날",
+      "startDate": "2025-10-09",
+      "endDate": "2025-10-09",
+      "observanceDate": "2025-10-09",
+      "note": ""
+    },
+    {
+      "title": "성탄절",
+      "startDate": "2025-12-25",
+      "endDate": "2025-12-25",
+      "observanceDate": "2025-12-25",
+      "note": ""
+    },
+    {
+      "title": "신정",
+      "startDate": "2026-01-01",
+      "endDate": "2026-01-01",
+      "observanceDate": "2026-01-01",
+      "note": ""
+    },
+    {
+      "title": "삼일절",
+      "startDate": "2026-03-01",
+      "endDate": "2026-03-02",
+      "observanceDate": "2026-03-01",
+      "note": "대체공휴일 2026-03-02은 별도 표기하지 않고 법정일만 보존한다."
+    },
+    {
+      "title": "어린이날",
+      "startDate": "2026-05-05",
+      "endDate": "2026-05-05",
+      "observanceDate": "2026-05-05",
+      "note": ""
+    },
+    {
+      "title": "부처님오신날",
+      "startDate": "2026-05-24",
+      "endDate": "2026-05-25",
+      "observanceDate": "2026-05-24",
+      "note": "대체공휴일 2026-05-25은 별도 표기하지 않고 법정일만 보존한다."
+    },
+    {
+      "title": "현충일",
+      "startDate": "2026-06-06",
+      "endDate": "2026-06-06",
+      "observanceDate": "2026-06-06",
+      "note": ""
+    },
+    {
+      "title": "광복절",
+      "startDate": "2026-08-15",
+      "endDate": "2026-08-17",
+      "observanceDate": "2026-08-15",
+      "note": "대체공휴일 2026-08-17은 별도 표기하지 않고 법정일만 보존한다."
+    },
+    {
+      "title": "한글날",
+      "startDate": "2026-10-09",
+      "endDate": "2026-10-09",
+      "observanceDate": "2026-10-09",
+      "note": ""
+    },
+    {
+      "title": "성탄절",
+      "startDate": "2026-12-25",
+      "endDate": "2026-12-25",
+      "observanceDate": "2026-12-25",
+      "note": ""
+    },
+    {
+      "title": "신정",
+      "startDate": "2027-01-01",
+      "endDate": "2027-01-01",
+      "observanceDate": "2027-01-01",
+      "note": ""
+    },
+    {
+      "title": "삼일절",
+      "startDate": "2027-03-01",
+      "endDate": "2027-03-01",
+      "observanceDate": "2027-03-01",
+      "note": ""
+    },
+    {
+      "title": "어린이날",
+      "startDate": "2027-05-05",
+      "endDate": "2027-05-05",
+      "observanceDate": "2027-05-05",
+      "note": ""
+    },
+    {
+      "title": "부처님오신날",
+      "startDate": "2027-05-13",
+      "endDate": "2027-05-13",
+      "observanceDate": "2027-05-13",
+      "note": ""
+    },
+    {
+      "title": "현충일",
+      "startDate": "2027-06-06",
+      "endDate": "2027-06-06",
+      "observanceDate": "2027-06-06",
+      "note": ""
+    },
+    {
+      "title": "광복절",
+      "startDate": "2027-08-15",
+      "endDate": "2027-08-16",
+      "observanceDate": "2027-08-15",
+      "note": "대체공휴일 2027-08-16은 별도 표기하지 않고 법정일만 보존한다."
+    },
+    {
+      "title": "한글날",
+      "startDate": "2027-10-09",
+      "endDate": "2027-10-11",
+      "observanceDate": "2027-10-09",
+      "note": "대체공휴일 2027-10-11은 별도 표기하지 않고 법정일만 보존한다."
+    },
+    {
+      "title": "성탄절",
+      "startDate": "2027-12-25",
+      "endDate": "2027-12-27",
+      "observanceDate": "2027-12-25",
+      "note": "대체공휴일 2027-12-27은 별도 표기하지 않고 법정일만 보존한다."
     }
   ]
 }

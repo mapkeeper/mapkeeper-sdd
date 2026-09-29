@@ -1,9 +1,9 @@
 """Official Korean holiday dates, read from a published table rather than guessed.
 
 "추석 연휴에 문 닫아요" is one of the most ordinary things an owner says, and it is
-a date only a calendar can answer: 설날 and 추석 are lunar, so no rule derives them
-and a model with no calendar can only invent them. Inventing one here is not a
-small error — it becomes a closure published to three public maps once approved.
+a date only a calendar can answer. Lunar holidays cannot be derived safely, and
+fixed holidays still need their official observed dates. Inventing one here is not
+a small error — it becomes a closure published to three public maps once approved.
 
 So the dates are data, not arithmetic. The table ships with the service, names its
 source and the years it covers, and a lookup outside that range says it does not

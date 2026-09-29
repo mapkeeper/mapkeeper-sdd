@@ -389,6 +389,24 @@ async def test_a_compound_sentence_the_parser_reads_whole_skips_the_model() -> N
 
 
 @pytest.mark.asyncio
+async def test_a_fixed_date_holiday_never_reaches_the_model_fallback() -> None:
+    # Given: the exact one-day holiday sentence that previously fell through to
+    # Gemini and surfaced a transport failure as HTTP 500.
+    client = CountingClient("[]")
+    generator = DeterministicFirstGenerator(GeminiProposalStructurer(client))
+
+    # When: the sentence is structured against the current Seoul date.
+    changes = await generator.generate("개천절엔 쉬어요", make_profile())
+
+    # Then: the published date is returned locally and no model call is needed.
+    (change,) = changes
+    assert isinstance(change, TemporaryClosureChange)
+    assert change.proposed_value.start_date == date(2026, 10, 3)
+    assert change.proposed_value.end_date == date(2026, 10, 3)
+    assert client.calls == 0
+
+
+@pytest.mark.asyncio
 async def test_a_sentence_naming_a_second_topic_reaches_the_model() -> None:
     # Given: a sentence whose hours half is a span the parser declines to read, so
     # its own answer would drop that half in silence.

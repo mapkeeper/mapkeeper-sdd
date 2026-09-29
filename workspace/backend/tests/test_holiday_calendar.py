@@ -1,4 +1,4 @@
-"""The official Korean holiday table UC1 resolves 추석·설 연휴 against."""
+"""The official Korean holiday table UC1 resolves Korean public holidays against."""
 
 import json
 from datetime import date
@@ -76,6 +76,29 @@ def test_the_table_carries_both_holidays_it_claims_to_cover() -> None:
     assert event.start_date == date(2025, 1, 28)
     assert event.end_date == date(2025, 1, 30)
     assert event.observance_date == date(2025, 1, 29)
+
+
+def test_the_table_carries_fixed_public_holidays_for_the_current_year() -> None:
+    # Given: the current year's fixed-date public holidays and Buddha's Birthday.
+    calendar = load_bundled_calendar()
+
+    # Then: each title resolves to the published 2026 date without model inference.
+    expected = {
+        "신정": date(2027, 1, 1),
+        "삼일절": date(2027, 3, 1),
+        "어린이날": date(2027, 5, 5),
+        "부처님오신날": date(2027, 5, 13),
+        "현충일": date(2027, 6, 6),
+        "광복절": date(2027, 8, 15),
+        "개천절": date(2027, 10, 3),
+        "한글날": date(2027, 10, 9),
+        "성탄절": date(2027, 12, 25),
+    }
+    for title, expected_date in expected.items():
+        event = calendar.occurrence(title, date(2026, 12, 31))
+        assert event is not None
+        assert event.observance_date == expected_date
+        assert event.start_date <= expected_date <= event.end_date
 
 
 def test_every_published_event_is_a_range_a_closure_can_use() -> None:
